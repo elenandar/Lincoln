@@ -3,21 +3,26 @@ function omBudget(start = Date.now(), ms = 280) { return () => { if (Date.now()-
 const modifier = function (text) {
   if (typeof LC === "undefined") return { text: String(text || "") };
   const L = LC.lcInit();
-const _notice = (L.visibleNotice || "").trim();
-if (_notice) L.visibleNotice = "";
+  const notices = [];
+  const _notice = (L.visibleNotice || "").trim();
+  if (_notice) {
+    notices.push(_notice);
+    L.visibleNotice = "";
+  }
 
 
   let out = String(text || "").trim();
   const clean = LC.lcStripSys(out);
 
 
-// Print critical visible notices (even if sysShow=false)
-try {
-  if (L.visibleNotice) {
-    out = (out ? (out + "\n\n") : "") + String(L.visibleNotice);
-    L.visibleNotice = "";
-  }
-} catch(_) {}
+  // Print critical visible notices (even if sysShow=false)
+  try {
+    const pendingNotice = (L.visibleNotice || "").trim();
+    if (pendingNotice) {
+      notices.push(pendingNotice);
+      L.visibleNotice = "";
+    }
+  } catch(_) {}
   const isCmd = LC.lcGetFlag("isCmd", false);
   const isRetry = LC.lcGetFlag("isRetry", false);
 
@@ -111,11 +116,33 @@ try {
     }
   }
 
+  // Capture notices that may have been set during processing (e.g., auto-epoch)
+  {
+    const postNotice = (L.visibleNotice || "").trim();
+    if (postNotice) {
+      notices.push(postNotice);
+      L.visibleNotice = "";
+    }
+  }
+
+  // Append any pending visible notices (including pre-cleared ones)
+  if (notices.length) {
+    try {
+      for (const note of notices) {
+        const trimmed = String(note || "").trim();
+        if (!trimmed) continue;
+        if (out.indexOf(trimmed) !== -1) continue;
+        out = out ? out + "\n\n" + trimmed : trimmed;
+      }
+    } catch (_) {
+      const fallback = notices.filter(n => n && String(n).trim());
+      if (fallback.length) {
+        const suffix = fallback.map(n => String(n).trim()).join("\n\n");
+        out = out ? out + "\n\n" + suffix : suffix;
+      }
+    }
+  }
+
   return { text: out };
 };
 return modifier(text);
-// PATCH (fallback): append notice at end if not returned earlier
-if (typeof out !== "undefined" && _notice) {
-  try { const _s = String(out||""); if (_s.indexOf(_notice)===-1) { out = (_s.trim()? _s.trim()+"\n\n": "") + _notice; } }
-  catch(_e){ out = (out||"") + "\n\n" + _notice; }
-}
