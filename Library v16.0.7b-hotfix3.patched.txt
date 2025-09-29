@@ -574,52 +574,52 @@ L.debugMode = toBool(L.debugMode, false);
         const P = { relations:[], status:[], obligations:[], facts:[] };
         const tryPush = (arr, src, flags) => { try { arr.push(new RegExp(src, flags)); return true; } catch(e){ return false; } };
 
-        const okR1 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+и\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)", "iu");
-        const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "iu");
-        const okR3 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+and\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)", "iu");
-        const okR4 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "iu");
+        const okR1 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+и\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)", "giu");
+        const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu");
+        const okR3 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+and\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)", "giu");
+        const okR4 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu");
 
-        const okS1 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)", "iu");
-        const okS2 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)", "iu");
-        const okS3 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)", "iu");
-        const okS4 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)", "iu");
-        const okS5 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okS1 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okS2 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okS3 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okS4 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okS5 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)", "giu");
 
-        const okO1 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+должен\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)", "iu");
-        const okO2 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)", "iu");
-        const okO3 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+owes\\s+([\\p{L}'-]+)\\s+(.+?)(?:[.,!]|$)", "iu");
-        const okO4 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okO1 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+должен\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okO2 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okO3 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+owes\\s+([\\p{L}'-]+)\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okO4 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)", "giu");
 
-        const okF1 = tryPush(P.facts, "важно:\\s*(.+?)(?:[.!]|$)", "iu");
-        const okF2 = tryPush(P.facts, "запомни:\\s*(.+?)(?:[.!]|$)", "iu");
-        const okF3 = tryPush(P.facts, "факт:\\s*(.+?)(?:[.!]|$)", "iu");
-        const okF4 = tryPush(P.facts, "important:\\s*(.+?)(?:[.!]|$)", "iu");
-        const okF5 = tryPush(P.facts, "remember:\\s*(.+?)(?:[.!]|$)", "iu");
+        const okF1 = tryPush(P.facts, "важно:\\s*(.+?)(?:[.!]|$)", "giu");
+        const okF2 = tryPush(P.facts, "запомни:\\s*(.+?)(?:[.!]|$)", "giu");
+        const okF3 = tryPush(P.facts, "факт:\\s*(.+?)(?:[.!]|$)", "giu");
+        const okF4 = tryPush(P.facts, "important:\\s*(.+?)(?:[.!]|$)", "giu");
+        const okF5 = tryPush(P.facts, "remember:\\s*(.+?)(?:[.!]|$)", "giu");
 
         const needFallback = !(okR1 && okR2 && okR3 && okR4 && okS1 && okS2 && okS3 && okS4 && okS5 && okO1 && okO2 && okO3 && okO4 && okF1 && okF2 && okF3 && okF4 && okF5);
         if (needFallback) {
           const LTR = "A-Za-zА-Яа-яЁё";
-          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "i"));
-          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "i"));
-          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+and\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)`, "i"));
-          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "i"));
+          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "gi"));
+          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi"));
+          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+and\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)`, "gi"));
+          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi"));
 
-          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)`, "i"));
-          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "i"));
-          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)`, "i"));
-          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)`, "i"));
-          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)`, "gi"));
 
-          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+должен\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)`, "i"));
-          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "i"));
-          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+owes\\s+([${LTR}'-]+)\\s+(.+?)(?:[.,!]|$)`, "i"));
-          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+должен\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+owes\\s+([${LTR}'-]+)\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)`, "gi"));
 
-          P.facts.push(/важно:\s*(.+?)(?:[.!]|$)/i);
-          P.facts.push(/запомни:\s*(.+?)(?:[.!]|$)/i);
-          P.facts.push(/факт:\s*(.+?)(?:[.!]|$)/i);
-          P.facts.push(/important:\s*(.+?)(?:[.!]|$)/i);
-          P.facts.push(/remember:\s*(.+?)(?:[.!]|$)/i);
+          P.facts.push(/важно:\s*(.+?)(?:[.!]|$)/ig);
+          P.facts.push(/запомни:\s*(.+?)(?:[.!]|$)/ig);
+          P.facts.push(/факт:\s*(.+?)(?:[.!]|$)/ig);
+          P.facts.push(/important:\s*(.+?)(?:[.!]|$)/ig);
+          P.facts.push(/remember:\s*(.+?)(?:[.!]|$)/ig);
         }
         return P;
       },
