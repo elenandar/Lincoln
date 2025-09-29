@@ -995,7 +995,13 @@ function turnSet(n) {
   L.lastOutput = "";
 
   if (L.tm && Array.isArray(L.tm.recapTurns)) {
-    L.tm.recapTurns = L.tm.recapTurns.filter(t => Number(t) < v);
+    const recapTurns = L.tm.recapTurns
+      .map(t => Number(t))
+      .filter(t => Number.isFinite(t) && t < v)
+      .sort((a, b) => a - b);
+    L.tm.recapTurns = recapTurns;
+    const last = recapTurns.length ? recapTurns[recapTurns.length - 1] : -Infinity;
+    L.lastRecapTurn = Number.isFinite(last) ? last : 0;
   }
   if (L.tm && Number(L.tm.wantRecapTurn) >= v) {
     L.tm.wantRecapTurn = 0;
