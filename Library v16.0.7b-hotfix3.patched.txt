@@ -993,7 +993,14 @@ function turnSet(n) {
   L.epochDraft = null;
   L.prevOutput = "";
   L.lastOutput = "";
-  
+
+  if (L.tm && Array.isArray(L.tm.recapTurns)) {
+    L.tm.recapTurns = L.tm.recapTurns.filter(t => Number(t) < v);
+  }
+  if (L.tm && Number(L.tm.wantRecapTurn) >= v) {
+    L.tm.wantRecapTurn = 0;
+  }
+
       // clear flags on rewind
     LC.lcSetFlag("wantRecap", false);
     LC.lcSetFlag("doRecap", false);
