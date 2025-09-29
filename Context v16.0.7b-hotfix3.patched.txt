@@ -1,0 +1,95 @@
+﻿// === CONTEXT MODIFIER v16.0.7-compat6d ===
+const modifier = function (text) {
+  
+  const RETRY_KEEP_CONTEXT = (typeof LC !== 'undefined' && LC.lcGetFlag && (LC.lcGetFlag('RETRY_KEEP_CONTEXT', false) === true)); 
+if (typeof LC === "undefined") return { text: String(text || "") };
+  const L = LC.lcInit();
+
+  const isRetry = LC.lcGetFlag("isRetry", false);
+  if (isRetry && !RETRY_KEEP_CONTEXT) return { text: String(text || "") };
+
+  const isCmd = LC.lcGetFlag("isCmd", false);
+
+  const priority = [];
+  const normal = [];
+
+  // Style guides
+  priority.push("⟦GUIDE⟧ Lincoln Heights school drama. Third person past tense.");
+  priority.push("⟦GUIDE⟧ 2–4 short paragraphs. Show emotions via actions and subtext.");
+  priority.push("⟦GUIDE⟧ Keep it plausible and consistent. PG-16.");
+  normal.push("⟦GUIDE⟧ Do NOT repeat last 2–3 sentences from previous output.");
+
+  // Intent
+  if (L.lastIntent && L.lastIntent.length > 2) priority.push(`⟦INTENT⟧ ${L.lastIntent}`);
+
+  // Tasks
+  if (!isCmd && LC.lcGetFlag("doRecap", false)) {
+    priority.push("⟦TASK⟧ NOW WRITE A RECAP: Summarize the last 10–15 turns in 5–7 clear sentences, focusing on key events/relationships and current situation.");
+  }
+  if (!isCmd && LC.lcGetFlag("doEpoch", false)) {
+    priority.push("⟦TASK⟧ NOW WRITE AN EPOCH: Compress multiple recaps into 5–7 sentences with major consequences and status changes.");
+  }
+
+  // Canon
+  const canon = LC.autoEvergreen.getCanon();
+  if (canon) priority.push(`⟦CANON⟧ ${canon}`);
+
+  // Opening
+  const opening = LC.getOpeningLine();
+  if (opening) normal.push(opening);
+
+  // Characters
+  const chars = LC.getActiveCharacters(10);
+  if (chars.length) {
+    const hot = []; const active = [];
+    for (let i=0;i<chars.length;i++){
+      const c = chars[i];
+      if (c.turnsAgo <= (LC.CONFIG.CHAR_WINDOW_HOT || 3)) hot.push(c.name);
+      else if (c.turnsAgo <= (LC.CONFIG.CHAR_WINDOW_ACTIVE || 10)) active.push(c.name);
+    }
+    if (hot.length)    priority.push(`⟦SCENE⟧ Focus on: ${hot.join(", ")}`);
+    if (active.length) normal.push(`⟦SCENE⟧ Recently active: ${active.join(", ")}`);
+  }
+
+  // META
+  if (L.turn > 0) {
+    const sinceRecap = L.turn - (L.lastRecapTurn || 0);
+    const sinceEpoch = L.turn - (L.lastEpochTurn || 0);
+    const retryInfo = L.consecutiveRetries > 0 ? ` (${L.consecutiveRetries} retries)` : "";
+    normal.push(`⟦META⟧ Turn ${L.turn}${retryInfo}, ${sinceRecap} since recap, ${sinceEpoch} since epoch.`);
+  }
+
+  // Dedup + sort
+  const all = priority.concat(normal);
+  const seen = {};
+  const uniq = [];
+  for (let i=0;i<all.length;i++){
+    const r = all[i]; const k = r.toLowerCase();
+    if (!seen[k]){ seen[k] = 1; uniq.push(r); }
+  }
+  function weight(line){
+    if (line.indexOf("⟦INTENT⟧") === 0) return 1000;
+    if (line.indexOf("⟦TASK⟧") === 0)   return 900;
+    if (line.indexOf("⟦CANON⟧") === 0)  return 800;
+    if (line.indexOf("⟦OPENING⟧") === 0)return 700;
+    if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
+    if (line.indexOf("⟦SCENE⟧") === 0)  return 500;
+    if (line.indexOf("⟦GUIDE⟧") === 0)  return 400;
+    if (line.indexOf("⟦META⟧") === 0)   return 100;
+    return 0;
+  }
+  uniq.sort((a,b)=> weight(b) - weight(a));
+
+  // 800-лимит
+  const MAX = LC.CONFIG.LIMITS.CONTEXT_LENGTH || 800;
+  let overlay = "";
+  for (let i=0;i<uniq.length;i++){
+    const line = uniq[i];
+    const nl = overlay ? "\n" : "";
+    if ((overlay.length + line.length + nl.length) > MAX) continue;
+    overlay += nl + line;
+  }
+
+  return { text: overlay };
+};
+return modifier(text);

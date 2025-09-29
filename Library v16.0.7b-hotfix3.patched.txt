@@ -1,0 +1,1104 @@
+﻿// === LIBRARY — Lincoln Heights Core v16.0.7-compat6d ===
+
+(function () {
+  // ---------- Utils ----------
+  const getState = () => (typeof state !== "undefined" ? state : {});
+  const toNum  = (x, d=0)    => (typeof x === "number" && !isNaN(x)) ? x : (Number(x) || d);
+  const toStr  = (x)         => String(x == null ? "" : x);
+  const toBool = (x, d=false)=> (x == null ? d : !!x);
+
+  // FNV-1a 32-bit (умножение на prime через сумму сдвигов — эквивалент Math.imul(h, 0x01000193))
+  const FNV1A = (str) => {
+    let h = 0x811c9dc5 >>> 0;
+    const s = String(str || "");
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h >>> 0;
+  };
+
+  const CONFIG = {
+  VERSION: "16.0.7-compat6d",
+  DATA_VERSION: "16.0.7b-hotfix3",
+  CHAR_WINDOW_HOT: 3,
+  CHAR_WINDOW_ACTIVE: 10,
+  CMD_PLACEHOLDER: "⟦SYS⟧ OK.",
+  LIMITS: {
+    CONTEXT_LENGTH: 800,
+    SYS_MSGS_MAX: 15,
+    CARDS_MAX: 50,
+    CADENCE: { MIN: 6, MAX: 24, DEFAULT: 12 },
+    EVERGREEN_MAX_PER_CATEGORY: 5,
+    ANTI_ECHO: {
+      MIN_LENGTH: 200,
+      SIMILARITY_THRESHOLD_DEFAULT: 0.85,
+      TRIM_PERCENTAGE: 0.75,
+      CONTINUE_TRIM: 0.60,
+      CHECK_TAIL_LENGTH: 300,
+      CACHE_MAX: 1024,
+      CONTINUE_THRESHOLD_MULT: { SOFT: 0.96, HARD: 0.90 }
+    },
+    EXTENDED_STORE_CAP: 120,
+    EVENTS_WINDOW_TURNS: 50
+  },
+  RECAP_V2: {
+    SCORE_THRESHOLD: 1.0,
+    COOLDOWN_TURNS: 3,
+    BASE_CADENCE_BONUS: 0.08,
+    DECAY_HALF_LIFE: 12,
+    WEIGHTS: {
+      conflict: 1.0, romance: 1.2, authority: 0.8, achievement: 0.9,
+      reveal: 1.1, location: 0.4, timeskip: 0.5
+    },
+    HOT_NPC_BONUS: 0.25,
+    AUTO_EPOCH_SCORE: 1.5,
+    AUTO_EPOCH_WINDOW: 8,
+    AUTO_EPOCH_MIN_RECAPS: 2
+  }
+};
+
+  const LC = {
+    CONFIG,
+
+    lcInit() {
+      const st = getState();
+      const L = (st.lincoln = st.lincoln || {});
+      L.version = CONFIG.VERSION;
+      // echo cache auto-flush on new session
+      try { if ((L.turn|0) <= 0) { this._echoCache = {}; this._echoOrder = []; } } catch(_) {}
+
+
+      // turn/flags
+      L.turn = toNum(L.turn, 0);
+      L.lastProcessedTurn = toNum(L.lastProcessedTurn, -1);
+      L.lastActionType = toStr(L.lastActionType);
+      L.flags = L.flags || {};
+
+      // io
+      L.lastInput = toStr(L.lastInput);
+      L.lastOutput = toStr(L.lastOutput);
+      L.prevOutput = toStr(L.prevOutput);
+      L.lastIntent = toStr(L.lastIntent);
+
+      // counters
+      L.retryCount = toNum(L.retryCount, 0);
+      L.consecutiveRetries = toNum(L.consecutiveRetries, 0);
+      L.continueCount = toNum(L.continueCount, 0);
+
+      // settings
+      L.antiEchoEnabled = toBool(L.antiEchoEnabled, true);
+      L.antiEchoSensitivity = toNum(L.antiEchoSensitivity, 85);
+      L.antiEchoMode = (L.antiEchoMode === "hard") ? "hard" : "soft";
+      {
+  const MIN = CONFIG.LIMITS.CADENCE.MIN;
+  const MAX = CONFIG.LIMITS.CADENCE.MAX;
+  const DEF = CONFIG.LIMITS.CADENCE.DEFAULT;
+  let cad = toNum(L.cadence, DEF);
+  if (!cad || cad < MIN) cad = DEF;
+  L.cadence = Math.min(MAX, Math.max(MIN, cad));
+}
+L.debugMode = toBool(L.debugMode, false);
+      L.sysShow = toBool(L.sysShow, true);
+
+      // opening
+      L.opening = toStr(L.opening);
+      L.openingCaptured = toBool(L.openingCaptured, false);
+      L.openingTurn = toNum(L.openingTurn, -1);
+      L.openingTTL = toNum(L.openingTTL, 15);
+
+      // system messages
+      L.sysMsgs = Array.isArray(L.sysMsgs) ? L.sysMsgs : [];
+      if (L.sysMsgs.length > CONFIG.LIMITS.SYS_MSGS_MAX) {
+        L.sysMsgs = L.sysMsgs.slice(-CONFIG.LIMITS.SYS_MSGS_MAX);
+      }
+
+      // characters/cards/aliases
+      L.characters = L.characters || {};
+      L.worldInfoIds = Array.isArray(L.worldInfoIds) ? L.worldInfoIds : [];
+      L.pinnedWorldInfoIds = Array.isArray(L.pinnedWorldInfoIds) ? L.pinnedWorldInfoIds : [];
+      L.aliases = L.aliases || {}; // { "Хлоя": ["chloe","harper"] }
+
+      // recap/epoch + drafts
+      L.lastRecapTurn = toNum(L.lastRecapTurn, 0);
+      L.lastEpochTurn = toNum(L.lastEpochTurn, 0);
+      L.recapDraft = L.recapDraft || null;
+      L.epochDraft = L.epochDraft || null;
+      L.recapMuteUntil = toNum(L.recapMuteUntil, 0);
+
+      // events/telemetry
+      L.events = Array.isArray(L.events) ? L.events : [];
+      L.tm = L.tm || {}; // wantRecapTurn, recaps, epochs, echoHits, errors, etc.
+      L.tm.recapTurns = Array.isArray(L.tm.recapTurns) ? L.tm.recapTurns : [];
+      L.tm.echoCacheHits = toNum(L.tm.echoCacheHits, 0);
+
+      // evergreen (+history cap)
+      L.evergreen = L.evergreen || {
+        enabled: true, relations: {}, status: {}, obligations: {}, facts: {},
+        history: [], lastUpdate: 0
+      };
+      L.evergreen.history = Array.isArray(L.evergreen.history) ? L.evergreen.history : [];
+      L.evergreenHistoryCap = toNum(L.evergreenHistoryCap, 0); // 0 = без капа
+
+      return L;
+    },
+
+    // ---------- SYS ----------
+    lcSys(msg)  { const L=this.lcInit(); const m = `⟦SYS⟧ ${toStr(msg)}`; L.sysMsgs.push(m);
+                  if (L.sysMsgs.length > CONFIG.LIMITS.SYS_MSGS_MAX) {
+                    L.sysMsgs = L.sysMsgs.slice(-Math.floor(CONFIG.LIMITS.SYS_MSGS_MAX/2));
+                  } },
+    lcWarn(m)   { this.lcSys("⚠️ " + m); },
+    lcError(m)  { this.lcSys("❌ " + m); const L=this.lcInit(); L.tm.errors=(L.tm.errors||0)+1; },
+    lcDebug(m)  { const L=this.lcInit(); if (L.debugMode) this.lcSys("🔍 " + m); },
+    lcConsumeMsgs(){ const L=this.lcInit(); const a=L.sysMsgs.slice(); L.sysMsgs=[]; return a; },
+
+    // ---------- FLAGS ----------
+    lcSetFlag(k,v){ const L=this.lcInit(); L.flags[toStr(k)] = v; },
+    lcGetFlag(k,def){ const L=this.lcInit(); return (k in L.flags) ? L.flags[k] : def; },
+
+    // ---------- Text utils ----------
+    _normU(s){
+      const src = toStr(s).toLowerCase();
+      try {
+        return src.replace(/[^\p{L}\p{N}\s]+/gu, " ").replace(/\s+/g, " ").trim();
+      } catch(e) {
+        return src.replace(/[^\w\s]+/g, " ").replace(/\s+/g, " ").trim();
+      }
+    },
+    lcStripSys(text){ return toStr(text).replace(/⟦[A-Z]+⟧[^\n]*\n?/g, "").trim(); },
+    stripYouWrappers(s){
+      let x = toStr(s).trim();
+      const m1 = x.match(/^\s*You\s+(say|ask|whisper|shout)\s*[:"'»«“”„]?([\s\S]*?)["'»«“”„]?\s*$/i);
+      if (m1) return m1[2].trim();
+      const m2 = x.match(/^\s*You\s+(?!say|ask|whisper|shout)(.+)$/i);
+      if (m2) return m2[1].trim();
+      return x;
+    },
+
+    // ---------- Continue/Retry helpers ----------
+    _isSoftContinue(raw){
+      const r = String(raw == null ? "" : raw);
+      const tokens = ["", " ", "...", "—", ">"];
+      if (tokens.indexOf(r) !== -1) return true;
+      if (/^(continue|next|дальше|продолжить|продолжи|далее)$/i.test(r)) return true;
+      if (/^["'\s]+$/.test(r) && r.length <= 4) return true;
+      const norm = this._normU(r);
+      return norm === "";
+    },
+
+    // ---------- Input type & turn ----------
+    detectInputType(raw){
+      const L = this.lcInit();
+      const currentNorm = this._normU(raw);
+      const lastNorm = this._normU(L.lastInput || "");
+
+      let inputType = "new";
+      const isContinue = this._isSoftContinue(raw);
+      const isRetry = !isContinue && currentNorm.length > 0 && currentNorm === lastNorm;
+
+      if (isContinue){
+        inputType = "continue";
+        L.continueCount++; L.consecutiveRetries = 0;
+        this.lcSetFlag("isContinue", true); this.lcSetFlag("isRetry", false);
+      } else if (isRetry){
+        inputType = "retry";
+        L.consecutiveRetries++; L.continueCount = 0;
+        this.lcSetFlag("isRetry", true); this.lcSetFlag("isContinue", false);
+        L.tm.retries = (L.tm.retries || 0) + 1;
+      } else {
+        inputType = "new";
+        L.consecutiveRetries = 0; L.continueCount = 0;
+        this.lcSetFlag("isRetry", false); this.lcSetFlag("isContinue", false);
+        L.lastInput = toStr(raw);
+      }
+      L.lastActionType = inputType;
+      return inputType;
+    },
+
+    shouldIncrementTurn(){
+      const isRetry = this.lcGetFlag("isRetry", false);
+      const isCmd   = this.lcGetFlag("isCmd", false);
+      const isContinue = this.lcGetFlag("isContinue", false);
+      return !isCmd && !(isRetry && !isContinue);
+    },
+    incrementTurn(){
+      const L = this.lcInit();
+      L.turn = (L.turn || 0) + 1;
+      L.lastProcessedTurn = L.turn;
+      this.lcDebug(`Turn → ${L.turn}`);
+    },
+
+    // ---------- Opening ----------
+    captureOpeningFromHistory(){
+      const L = this.lcInit();
+      if (L.openingCaptured) return;
+      const st = getState();
+      let opening = "";
+      if (st.memory && st.memory.frontMemory) opening = toStr(st.memory.frontMemory).trim();
+      else if (typeof history !== "undefined" && Array.isArray(history) && history.length > 0) {
+        const first = history[0];
+        opening = toStr(first && (first.text || first.message || first.value)).trim();
+      } else if (st.$$INITIAL_PROMPT) opening = toStr(st.$$INITIAL_PROMPT).trim();
+      else if (st.memory && st.memory.authorsNote) opening = toStr(st.memory.authorsNote).trim();
+      if (opening && opening.length > 20) {
+        L.opening = opening.split(/\r?\n/)[0].slice(0, 200);
+        L.openingCaptured = true; L.openingTurn = 0;
+        this.lcSys(`📖 Opening: "${L.opening.slice(0, 50)}..."`);
+      }
+    },
+    captureOpeningFromOutput(out){
+      const L = this.lcInit();
+      if (L.openingCaptured) return;
+      const s = toStr(out);
+      if (s.length > 20) {
+        L.opening = s.split(/\r?\n/)[0].slice(0, 200);
+        L.openingCaptured = true; L.openingTurn = L.turn;
+        this.lcSys("📖 Opening captured from output.");
+      }
+    },
+    getOpeningLine(){
+      const L = this.lcInit();
+      const age = L.turn - L.openingTurn;
+      if (!L.opening || age > L.openingTTL) return "";
+      return `⟦OPENING⟧ ${L.opening}`;
+    },
+
+    // ---------- Story Cards (API + fallback) ----------
+    capExtendedStore(max){
+      const st = getState();
+      const ext = st.$$WORLD_INFO_EXTENDED;
+      const M = max || this.CONFIG.LIMITS.EXTENDED_STORE_CAP;
+      if (Array.isArray(ext) && ext.length > M) {
+        st.$$WORLD_INFO_EXTENDED = ext.slice(-M);
+        this.lcWarn(`WORLD_INFO_EXTENDED trimmed to ${M}`);
+      }
+    },
+
+    createStoryCard(entry, windowTurns, kind){
+      const L = this.lcInit();
+      const text = toStr(entry || "").trim();
+      if (!text) return null;
+
+      const id  = `wi_${Date.now()}_${Math.floor(Math.random()*1e6)}`;
+      const win = Array.isArray(windowTurns) ? windowTurns : [Math.max(0, L.turn - L.cadence), L.turn];
+      const keys = ['recap', 'lincoln heights', `id:${id}`, `turns_${win[0]}-${win[1]}`].join(', ');
+
+      let ok = false;
+      try {
+        if (typeof addStoryCard === "function") {
+          const r = addStoryCard(keys, text, kind || "note");
+          ok = (r !== false);
+        }
+      } catch (e){ this.lcWarn("addStoryCard failed: " + (e && e.message)); }
+
+      L.worldInfoIds.push(id);
+
+      if (!ok) {
+        const st = getState();
+        st.$$WORLD_INFO_EXTENDED = Array.isArray(st.$$WORLD_INFO_EXTENDED) ? st.$$WORLD_INFO_EXTENDED : [];
+        st.$$WORLD_INFO_EXTENDED.push({
+          __lincoln: true,
+          worldInfoId: id,
+          keys, entry: text,
+          kind: (kind || "note"),
+          createdTurnStart: win[0],
+          createdTurnEnd: win[1],
+          priority: 50,
+          ts: Date.now()
+        });
+        this.capExtendedStore(this.CONFIG.LIMITS.EXTENDED_STORE_CAP);
+        this.lcWarn("Cards API unavailable or returned false. Saved to $$WORLD_INFO_EXTENDED.");
+      }
+
+      this.cleanupOldCards();
+      return id;
+    },
+    _findStoryCardIndexById(id){
+      try {
+        if (typeof storyCards !== "undefined" && Array.isArray(storyCards)) {
+          for (let i=0;i<storyCards.length;i++){
+            const c = storyCards[i];
+            const k = (c && c.keys) ? String(c.keys) : "";
+            if (k.indexOf(`id:${id}`) !== -1) return i;
+          }
+        }
+      } catch(e){}
+      return -1;
+    },
+    removeStoryCardById(id){
+      let removed = false;
+      try {
+        const idx = this._findStoryCardIndexById(id);
+        if (idx >= 0 && typeof removeStoryCard === "function") {
+          removeStoryCard(idx);
+          removed = true;
+        }
+      } catch(e){}
+      // registry
+      const L = this.lcInit();
+      // also unpin if pinned
+      try {
+        if (Array.isArray(L.pinnedWorldInfoIds)) {
+          const pi = L.pinnedWorldInfoIds.indexOf(String(id));
+          if (pi !== -1) L.pinnedWorldInfoIds.splice(pi, 1);
+        }
+      } catch(_){}
+
+      const p = L.worldInfoIds.indexOf(id);
+      if (p !== -1) L.worldInfoIds.splice(p,1);
+
+      // fallback purge + cap
+      const st = getState();
+      const ext = st.$$WORLD_INFO_EXTENDED;
+      if (Array.isArray(ext)) {
+        for (let i = ext.length - 1; i >= 0; i--) {
+          if (ext[i] && ext[i].worldInfoId === id) ext.splice(i, 1);
+        }
+        this.capExtendedStore(this.CONFIG.LIMITS.EXTENDED_STORE_CAP);
+      }
+      return removed;
+    },
+    cleanupOldCards(){
+      const L = this.lcInit();
+      const pinned = {};
+      for (let i=0;i<L.pinnedWorldInfoIds.length;i++) pinned[L.pinnedWorldInfoIds[i]] = true;
+
+      let guard = 0, target = CONFIG.LIMITS.CARDS_MAX;
+      while (L.worldInfoIds.length > target && guard < L.worldInfoIds.length + 5) {
+        const oldId = L.worldInfoIds.shift(); guard++;
+        if (pinned[oldId]) { L.worldInfoIds.push(oldId); continue; }
+        this.removeStoryCardById(oldId);
+      }
+      if (L.worldInfoIds.length > target) {
+        this.lcWarn(`Cards limit exceeded (${L.worldInfoIds.length}/${target}) due to pinned items.`);
+      }
+    },
+
+    // ---------- Aliases (user + built-in) ----------
+    getAliasMap(){
+      const L = this.lcInit();
+      // built-in
+      const base = {
+        "максим": ["максим","макс","maxim","max","bergman","бергман"],
+        "хлоя": ["хлоя","хлои","хлое","chloe","харпер","harper"],
+        "эшли": ["эшли","ashley","ash","эш"],
+        "миссис грейсон": ["миссис грейсон","грейсон","grayson","учительница","teacher"],
+        "директор ковальски": ["директор ковальски","ковальски","kovalski","александр","alexander"]
+      };
+      // user-defined: { "Хлоя": ["Chloe","Harper"] }
+      const user = {};
+      for (const k in (L.aliases||{})) {
+        const canon = String(k || "").trim();
+        if (!canon) continue;
+        const list = Array.isArray(L.aliases[k]) ? L.aliases[k] : [];
+        user[canon.toLowerCase()] = list.map(s => String(s||"").trim().toLowerCase()).filter(Boolean);
+      }
+      // merge: при совпадении канона — объединяем списки
+      const merged = {};
+      function add(canon, arr){
+        const c = canon.toLowerCase();
+        merged[c] = merged[c] || [];
+        for (let i=0;i<arr.length;i++){
+          const v = arr[i].toLowerCase();
+          if (merged[c].indexOf(v) === -1) merged[c].push(v);
+        }
+      }
+      for (const b in base) add(b, base[b]);
+      for (const u in user) add(u, user[u]);
+      return merged; // { "максим": ["максим","макс",...] , ... }
+    },
+
+    // ---------- Characters ----------
+    updateCharacterActivity(text, isRetry){
+      if (!text || isRetry) return;
+      const L = this.lcInit();
+      const low = toStr(text).toLowerCase();
+      const t = L.turn || 0;
+
+      const aliasesMap = this.getAliasMap();
+      function reEscape(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+      function wordHit(hay, needle){
+        try {
+          const rx = new RegExp(`(?:^|[^\\p{L}\\p{N}])${reEscape(needle)}(?:[^\\p{L}\\p{N}]|$)`, "iu");
+          return rx.test(hay);
+        } catch(e) {
+          const rx2 = new RegExp(`(?:^|[^A-Za-z0-9_])${reEscape(needle)}(?:[^A-Za-z0-9_]|$)`, "i");
+          return rx2.test(hay);
+        }
+      }
+
+      const names = Object.keys(aliasesMap);
+      for (let i=0;i<names.length;i++){
+        const canon = names[i];
+        const list = aliasesMap[canon] || [];
+        let hit = false;
+        for (let j=0;j<list.length;j++){ if (wordHit(low, list[j])) { hit = true; break; } }
+        if (hit){
+          let key; try { key = canon.replace(/^\p{Ll}/u, m=>m.toUpperCase()); } catch(e) { key = canon.charAt(0).toUpperCase() + canon.slice(1);} // легкий кап первой буквы
+          const rec = L.characters[key] || { mentions:0, lastSeen:-1, firstSeen:t };
+          rec.lastSeen = t; rec.mentions++;
+          L.characters[key] = rec;
+        }
+      }
+    },
+    getActiveCharacters(max){
+      const L = this.lcInit();
+      const t = L.turn || 0;
+      const arr = [];
+      for (const name in (L.characters || {})) {
+        const d = L.characters[name];
+        const turnsAgo = t - d.lastSeen;
+        if (turnsAgo < 50) {
+          arr.push({
+            name, lastSeen: d.lastSeen, mentions: d.mentions,
+            turnsAgo, importance: d.mentions + Math.max(0, 20 - turnsAgo)
+          });
+        }
+      }
+      arr.sort((a,b)=> b.importance - a.importance);
+      return arr.slice(0, max || 10);
+    },
+
+    // ---------- Anti-Echo ----------
+    _echoCache: {},
+    _echoOrder: [],
+
+    antiEchoCheck(current, previous, actionType){
+      const L = this.lcInit();
+      if (!L.antiEchoEnabled) return { isEcho:false, sim:0 };
+      if (!current || !previous) return { isEcho:false, sim:0 };
+      if (actionType === "retry") return { isEcho:false, sim:0 };
+
+      const minLen = CONFIG.LIMITS.ANTI_ECHO.MIN_LENGTH;
+      if (String(current).length < minLen || String(previous).length < minLen) {
+        return { isEcho:false, sim:0 };
+      }
+
+      const tailN = CONFIG.LIMITS.ANTI_ECHO.CHECK_TAIL_LENGTH;
+      const a = this._normU(String(current).slice(-tailN));
+      const b = this._normU(String(previous).slice(-tailN));
+      if (a.length < 50 || b.length < 50) return { isEcho:false, sim:0 };
+
+      const cacheKey = (FNV1A(a + "|" + b + "|" + (actionType||"")).toString(36));
+      if (this._echoCache[cacheKey] !== undefined) {
+        if (L.debugMode) this.lcSys(`antiEcho: cache hit (${cacheKey})`);
+        const p = this._echoOrder.indexOf(cacheKey);
+        if (p !== -1) { this._echoOrder.splice(p, 1); this._echoOrder.push(cacheKey); }
+        L.tm.echoCacheHits = (L.tm.echoCacheHits || 0) + 1;
+        return this._echoCache[cacheKey];
+      }
+
+      const base = (L.antiEchoSensitivity || 85) / 100;
+      let thr = base;
+      if (actionType === "continue") {
+        const mult = (L.antiEchoMode === "hard")
+          ? CONFIG.LIMITS.ANTI_ECHO.CONTINUE_THRESHOLD_MULT.HARD
+          : CONFIG.LIMITS.ANTI_ECHO.CONTINUE_THRESHOLD_MULT.SOFT;
+        thr = Math.min(0.99, base * mult);
+      }
+
+      const setA = {}; let aCount = 0;
+      const wa = a.split(" ");
+      for (let i=0;i<wa.length;i++){ const w=wa[i]; if (!setA[w]){ setA[w]=1; aCount++; } }
+      const setB = {}; let bCount = 0;
+      const wb = b.split(" ");
+      for (let i=0;i<wb.length;i++){ const w=wb[i]; if (!setB[w]){ setB[w]=1; bCount++; } }
+
+      let inter = 0;
+      for (const w in setA) if (setB[w]) inter++;
+      const union = aCount + bCount - inter;
+      const sim = union > 0 ? (inter/union) : 0;
+
+      const res = { isEcho: sim >= thr, sim };
+      this._echoCache[cacheKey] = res;
+      this._echoOrder.push(cacheKey);
+
+      const max = CONFIG.LIMITS.ANTI_ECHO.CACHE_MAX;
+      if (this._echoOrder.length > max) {
+        const toRemove = Math.floor(max / 2);
+        for (let i=0;i<toRemove;i++){
+          const oldKey = this._echoOrder.shift();
+          if (oldKey && this._echoCache[oldKey] !== undefined) delete this._echoCache[oldKey];
+        }
+        if (L.debugMode) this.lcDebug(`antiEcho: cache pruned (-${toRemove}, size=${this._echoOrder.length})`);
+      }
+
+      if (L.debugMode) this.lcDebug(`antiEcho: sim=${sim.toFixed(3)} thr=${thr.toFixed(2)} act=${actionType||"new"} mode=${L.antiEchoMode}`);
+      return res;
+    },
+    applyAntiEcho(currentOutput, previousOutput, actionType){
+      if (actionType === "retry") return currentOutput;
+      const { isEcho } = this.antiEchoCheck(currentOutput, previousOutput, actionType);
+      if (!isEcho) return currentOutput;
+
+      const ratio = (actionType === "continue")
+        ? CONFIG.LIMITS.ANTI_ECHO.CONTINUE_TRIM
+        : CONFIG.LIMITS.ANTI_ECHO.TRIM_PERCENTAGE;
+
+      let cut = Math.floor(currentOutput.length * ratio);
+      const search = 100;
+      const winS = Math.max(0, cut - search);
+      const window = currentOutput.slice(winS, cut + search);
+      const ends = window.match(/[.!?…]\s|—\s/g);
+      if (ends && ends.length > 0){
+        const last = ends[ends.length-1];
+        const lastIdx = window.lastIndexOf(last);
+        if (lastIdx !== -1) cut = winS + lastIdx + last.length;
+      }
+      const trimmed = currentOutput.slice(0, cut).trim();
+      if (trimmed.length < 80) return currentOutput;
+
+      const L = this.lcInit();
+      L.tm.echoHits = (L.tm.echoHits || 0) + 1;
+      this.lcSys("🔄 Echo detected and trimmed.");
+      return trimmed;
+    },
+    antiEchoStats(){
+      const L = this.lcInit();
+      return {
+        cacheEntries: Object.keys(this._echoCache).length,
+        lruSize: this._echoOrder.length,
+        hits: toNum(L.tm.echoCacheHits, 0)
+      };
+    },
+    antiEchoFlush(){
+      this._echoCache = {};
+      this._echoOrder = [];
+      this.lcSys("🧹 Anti-echo cache flushed.");
+    },
+
+    // ---------- Evergreen (patterns + fallback) ----------
+    autoEvergreen: {
+      _buildPatterns(){
+        const P = { relations:[], status:[], obligations:[], facts:[] };
+        const tryPush = (arr, src, flags) => { try { arr.push(new RegExp(src, flags)); return true; } catch(e){ return false; } };
+
+        const okR1 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+и\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)", "iu");
+        const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "iu");
+        const okR3 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+and\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)", "iu");
+        const okR4 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "iu");
+
+        const okS1 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okS2 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okS3 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okS4 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okS5 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)", "iu");
+
+        const okO1 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+должен\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okO2 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okO3 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+owes\\s+([\\p{L}'-]+)\\s+(.+?)(?:[.,!]|$)", "iu");
+        const okO4 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)", "iu");
+
+        const okF1 = tryPush(P.facts, "важно:\\s*(.+?)(?:[.!]|$)", "iu");
+        const okF2 = tryPush(P.facts, "запомни:\\s*(.+?)(?:[.!]|$)", "iu");
+        const okF3 = tryPush(P.facts, "факт:\\s*(.+?)(?:[.!]|$)", "iu");
+        const okF4 = tryPush(P.facts, "important:\\s*(.+?)(?:[.!]|$)", "iu");
+        const okF5 = tryPush(P.facts, "remember:\\s*(.+?)(?:[.!]|$)", "iu");
+
+        const needFallback = !(okR1 && okR2 && okR3 && okR4 && okS1 && okS2 && okS3 && okS4 && okS5 && okO1 && okO2 && okO3 && okO4 && okF1 && okF2 && okF3 && okF4 && okF5);
+        if (needFallback) {
+          const LTR = "A-Za-zА-Яа-яЁё";
+          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "i"));
+          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "i"));
+          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+and\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)`, "i"));
+          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "i"));
+
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)`, "i"));
+
+          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+должен\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+owes\\s+([${LTR}'-]+)\\s+(.+?)(?:[.,!]|$)`, "i"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)`, "i"));
+
+          P.facts.push(/важно:\s*(.+?)(?:[.!]|$)/i);
+          P.facts.push(/запомни:\s*(.+?)(?:[.!]|$)/i);
+          P.facts.push(/факт:\s*(.+?)(?:[.!]|$)/i);
+          P.facts.push(/important:\s*(.+?)(?:[.!]|$)/i);
+          P.facts.push(/remember:\s*(.+?)(?:[.!]|$)/i);
+        }
+        return P;
+      },
+
+      patterns: null,
+
+      normalizeCharName(name){
+        const n = String(name || "").trim();
+        if (!n) return "";
+        const aliases = {
+          "макс":"Максим","max":"Максим","maxim":"Максим","бергман":"Максим","bergman":"Максим",
+          "хлои":"Хлоя","хлое":"Хлоя","chloe":"Хлоя","харпер":"Хлоя","harper":"Хлоя",
+          "эш":"Эшли","ash":"Эшли","ashley":"Эшли",
+          "грейсон":"Миссис Грейсон","grayson":"Миссис Грейсон","учительница":"Миссис Грейсон","teacher":"Миссис Грейсон",
+          "ковальски":"Директор Ковальски","kovalski":"Директор Ковальски","директор":"Директор Ковальски","александр":"Директор Ковальски"
+        };
+        const low = n.toLowerCase();
+        return aliases[low] || (n.charAt(0).toUpperCase() + n.slice(1));
+      },
+      isImportantCharacter(name){
+        const core = ["Максим","Хлоя","Эшли","Миссис Грейсон","Директор Ковальски","Maxim","Chloe","Ashley"];
+        return core.indexOf(name) !== -1;
+      },
+      limitCategories(L){
+        const maxPer = LC.CONFIG.LIMITS.EVERGREEN_MAX_PER_CATEGORY;
+        function limit(obj){
+          const keys = Object.keys(obj || {});
+          if (keys.length > maxPer){
+            const slice = keys.slice(-maxPer);
+            const next = {};
+            for (let i=0;i<slice.length;i++){ const k = slice[i]; next[k] = obj[k]; }
+            return next;
+          }
+          return obj;
+        }
+        L.evergreen.relations   = limit(L.evergreen.relations || {});
+        L.evergreen.status      = limit(L.evergreen.status || {});
+        L.evergreen.obligations = limit(L.evergreen.obligations || {});
+        L.evergreen.facts       = limit(L.evergreen.facts || {});
+      },
+      analyze(text, actionType){
+        const L = LC.lcInit();
+        if (!this.patterns) this.patterns = this._buildPatterns();
+        if (!L.evergreen || !L.evergreen.enabled || actionType === "retry" || !text) return;
+        const T = String(text);
+
+        function upd(cat, key, val){
+          if (!val || val.length < 2) return;
+          const box = (L.evergreen[cat] = L.evergreen[cat] || {});
+          const prev = box[key];
+          if (prev !== val){
+            if (prev) L.evergreen.history.push({ turn:L.turn, category:cat, old:prev, new:val });
+            box[key] = val;
+            // кап истории по флагу
+            const cap = toNum(L.evergreenHistoryCap, 0);
+            if (cap > 0 && Array.isArray(L.evergreen.history) && L.evergreen.history.length > cap) {
+              L.evergreen.history = L.evergreen.history.slice(-cap);
+            }
+          }
+        }
+
+        // RELATIONS
+        for (let i=0;i<this.patterns.relations.length;i++){
+          const p = this.patterns.relations[i]; p.lastIndex = 0;
+          let m; while ((m = p.exec(T)) !== null){
+            const A = this.normalizeCharName(m[1]);
+            const B = this.normalizeCharName(m[2]);
+            const ACT = String(m[3] || "").trim();
+            if (A && B && ACT && this.isImportantCharacter(A)) {
+              upd("relations", A, `${A} ${ACT} ${B}`);
+            }
+          }
+        }
+        // STATUS
+        for (let i=0;i<this.patterns.status.length;i++){
+          const p = this.patterns.status[i]; p.lastIndex = 0;
+          let m; while ((m = p.exec(T)) !== null){
+            const A = this.normalizeCharName(m[1]);
+            const S = String(m[2] || "").replace(/[.,!?]+$/, "").trim();
+            if (A && S && this.isImportantCharacter(A)) upd("status", A, S);
+          }
+        }
+        // OBLIGATIONS
+        for (let i=0;i<this.patterns.obligations.length;i++){
+          const p = this.patterns.obligations[i]; p.lastIndex = 0;
+          let m; while ((m = p.exec(T)) !== null){
+            const A = this.normalizeCharName(m[1]);
+            const B = this.normalizeCharName(m[2] || "");
+            const D = String(m[3] || "").replace(/[.,!?]+$/, "").trim();
+            if (A && D && this.isImportantCharacter(A)){
+              upd("obligations", A, B ? `${A} owes ${B}: ${D}` : `${A}: ${D}`);
+            }
+          }
+        }
+        // FACTS
+        for (let i=0;i<this.patterns.facts.length;i++){
+          const p = this.patterns.facts[i]; p.lastIndex = 0;
+          let m; while ((m = p.exec(T)) !== null){
+            const F = String(m[1] || "").replace(/[.,!?]+$/, "").trim();
+            if (F.length >= 5){
+              const key = `f_${L.turn}_${Math.random().toString(36).slice(2,6)}`;
+              upd("facts", key, F);
+            }
+          }
+        }
+
+        this.limitCategories(L);
+        L.evergreen.lastUpdate = L.turn;
+      },
+      getCanon(){
+        const L = LC.lcInit();
+        if (!L.evergreen || !L.evergreen.enabled) return "";
+        function pick(obj, n){ const vals = Object.values(obj || {}); return vals.slice(-n); }
+        const n = LC.CONFIG.LIMITS.EVERGREEN_MAX_PER_CATEGORY;
+
+        const rel = pick(L.evergreen.relations, n);
+        const st  = pick(L.evergreen.status, n);
+        const ob  = pick(L.evergreen.obligations, n);
+        const fa  = pick(L.evergreen.facts, n);
+
+        const parts = [];
+        if (rel.length) parts.push(`Relations: ${rel.join("; ")}`);
+        if (st.length)  parts.push(`Status: ${st.join("; ")}`);
+        if (ob.length)  parts.push(`Obligations: ${ob.join("; ")}`);
+        if (fa.length)  parts.push(`Facts: ${fa.join("; ")}`);
+        return parts.join(" | ").slice(0, 600);
+      },
+      getSummary(){
+        const L = LC.lcInit();
+        const E = L.evergreen || {};
+        return [
+          "=== EVERGREEN CANON ===",
+          `Enabled: ${E.enabled ? "Yes" : "No"}`,
+          `Relations: ${Object.keys(E.relations || {}).length}`,
+          `Status: ${Object.keys(E.status || {}).length}`,
+          `Obligations: ${Object.keys(E.obligations || {}).length}`,
+          `Facts: ${Object.keys(E.facts || {}).length}`
+        ].join("\n");
+      },
+      toggle(on){ const L=LC.lcInit(); L.evergreen.enabled=!!on; LC.lcSys(`Evergreen ${on?"enabled":"disabled"}.`); },
+      clear(){
+        const L=LC.lcInit();
+        L.evergreen = { enabled:true, relations:{}, status:{}, obligations:{}, facts:{}, history:[], lastUpdate:L.turn };
+        LC.lcSys("Evergreen storage cleared.");
+      }
+    },
+    capEvergreenHistory(max){
+      const L = this.lcInit();
+      const m = Math.max(0, toNum(max, 0));
+      L.evergreenHistoryCap = m;
+      if (m > 0 && Array.isArray(L.evergreen.history) && L.evergreen.history.length > m) {
+        L.evergreen.history = L.evergreen.history.slice(-m);
+      }
+    },
+
+    // ---------- Events & Recap Scheduler ----------
+    _eventPatterns: {
+      conflict:   [/ударил|ударила|ударили|ссора|крик|плюха|fight|hit|punched/i],
+      romance:    [/поцеловал|поцеловала|kiss|призналс[яа]|dating|together/i],
+      authority:  [/директор|учитель|teacher|principal|detention|выговор/i],
+      achievement:[/побед[аил]|win|успех|трофей|награда|award/i],
+      reveal:     [/секрет|разоблачение|confess|reveal|truth/i],
+      location:   [/кабинет|столовая|коридор|спортзал|cafeteria|hallway|gym/i],
+      timeskip:   [/прошло\s+\d+|через\s+\d+|hours?\s+later|days?\s+later|weeks?\s+later/i]
+    },
+    _pruneEventsWindow(){
+      const L = this.lcInit();
+      const t = L.turn || 0;
+      const W = this.CONFIG.LIMITS.EVENTS_WINDOW_TURNS || 50;
+      if (!Array.isArray(L.events) || L.events.length === 0) return;
+      const minTurn = Math.max(0, t - W);
+      const next = [];
+      for (let i=0;i<L.events.length;i++){
+        const e = L.events[i];
+        if (e && toNum(e.turn, -1) >= minTurn) next.push(e);
+      }
+      if (next.length !== L.events.length) {
+        L.events = next;
+        this.lcDebug(`Events pruned to last ${W} turns (${next.length} kept).`);
+      }
+    },
+    analyzeTextForEvents(text, source){
+      if (!text) return;
+      const L = this.lcInit();
+      const low = toStr(text).toLowerCase();
+      const t = L.turn || 0;
+
+      for (const type in this._eventPatterns){
+        const regs = this._eventPatterns[type];
+        for (let i=0;i<regs.length;i++){
+          if (regs[i].test(low)){
+            const w = CONFIG.RECAP_V2.WEIGHTS[type] || 0.5;
+            let exists = false;
+            for (let j=0;j<(L.events||[]).length;j++){
+              const e = L.events[j];
+              if (e.type === type && e.turn === t){ exists = true; break; }
+            }
+            if (!exists) L.events.push({ type, turn:t, weight:w, src: (source||"output") }); LC.ensureEventsCap(300);
+            break;
+          }
+        }
+      }
+      this._pruneEventsWindow();
+    },
+    computeRecapScore(){
+      this._pruneEventsWindow();
+      const L = this.lcInit();
+      const t = L.turn || 0;
+      const turnsSince = t - (L.lastRecapTurn || 0);
+      let score = turnsSince / (L.cadence || CONFIG.LIMITS.CADENCE.DEFAULT);
+      if (turnsSince > 0 && turnsSince % Math.max(2, Math.floor(L.cadence/2)) === 0) {
+        score += CONFIG.RECAP_V2.BASE_CADENCE_BONUS;
+      }
+      const half = CONFIG.RECAP_V2.DECAY_HALF_LIFE;
+      for (let i=0;i<(L.events||[]).length;i++){
+        const e = L.events[i];
+        const dt = Math.max(0, t - e.turn);
+        const decay = Math.pow(0.5, dt / half);
+        score += (e.weight || 0.5) * decay;
+      }
+      const hot = this.getActiveCharacters(10).filter(c => c.turnsAgo <= 3);
+      if (hot.length > 0) score += CONFIG.RECAP_V2.HOT_NPC_BONUS;
+      return score;
+    },
+    getEventsDiagnostics(n){
+      this._pruneEventsWindow();
+      const L = this.lcInit();
+      const t = L.turn || 0, half = CONFIG.RECAP_V2.DECAY_HALF_LIFE;
+      const src = Array.isArray(L.events) ? L.events.slice(-Math.max(1, toNum(n,10))) : [];
+      const rows = [];
+      let total = 0;
+      for (let i=src.length-1;i>=0;i--){
+        const e = src[i];
+        const dt = Math.max(0, t - (e.turn||t));
+        const decay = Math.pow(0.5, dt / half);
+        const w = toNum(e.weight, 0.5);
+        const contrib = +(w * decay).toFixed(3);
+        total += contrib;
+        rows.push({ type:e.type, turn:e.turn, ago:dt, w:+w.toFixed(2), decay:+decay.toFixed(3), contrib });
+      }
+      return { total:+total.toFixed(3), rows: rows.reverse() };
+    },
+    checkRecapOfferV2(){
+      const L = this.lcInit();
+      if (this.lcGetFlag("isRetry", false) || this.lcGetFlag("isCmd", false)) return false;
+      if (L.recapDraft || L.epochDraft) return false;
+      if (L.turn < (L.recapMuteUntil || 0)) return false;
+
+      if (this.lcGetFlag("wantRecap", false)) {
+        const since = L.turn - (L.tm.wantRecapTurn || L.turn);
+        if (since >= 3) { this.lcSetFlag("wantRecap", false); L.tm.wantRecapTurn = 0; }
+        else return false;
+      }
+
+      const score = this.computeRecapScore();
+      L.tm.lastRecapScore = score;
+
+      const baseCooldown = Math.max(2, Math.floor(L.cadence / 2));
+      const cfgCooldown  = Math.max(1, CONFIG.RECAP_V2.COOLDOWN_TURNS || 0);
+      const sinceLast    = L.turn - (L.lastRecapTurn || 0);
+      const enoughCooldown = sinceLast >= Math.max(baseCooldown, cfgCooldown);
+
+      if (score >= CONFIG.RECAP_V2.SCORE_THRESHOLD && enoughCooldown){
+        this.lcSetFlag("wantRecap", true);
+        L.tm.wantRecapTurn = L.turn;
+        if (L.sysShow) this.lcSys("🤖 Want a recap? Reply: /да, /нет, /позже.");
+        return true;
+      }
+      return false;
+    },
+    checkAutoEpoch(){
+      const L = this.lcInit();
+      if (L && L.recapDraft) return false; // delay auto-epoch while recap draft pending
+      if (this.lcGetFlag("isRetry", false) || this.lcGetFlag("isCmd", false)) return false;
+      if (L.epochDraft) return false;
+
+      const t = L.turn || 0;
+      const win = CONFIG.RECAP_V2.AUTO_EPOCH_WINDOW;
+      let recentRecaps = 0;
+      if (L.tm && Array.isArray(L.tm.recapTurns)) {
+        for (let i=0;i<L.tm.recapTurns.length;i++){
+          if (t - L.tm.recapTurns[i] <= win) recentRecaps++;
+        }
+      }
+      const score = this.computeRecapScore();
+      const high = score >= CONFIG.RECAP_V2.AUTO_EPOCH_SCORE;
+
+      if (recentRecaps >= CONFIG.RECAP_V2.AUTO_EPOCH_MIN_RECAPS || high) {
+        this.lcSetFlag("doEpoch", true);
+        L.visibleNotice = (L.visibleNotice || "🗿 Epoch scheduled for next turn.");
+        if (L.sysShow) this.lcSys("🗿 Epoch scheduled automatically.");
+        return true;
+      }
+      return false;
+    },
+
+    // ---------- Morphology (mini) ----------
+    ruPlural(n, f1, f2, f5){
+      n = Math.abs(n) % 100; const n1 = n % 10;
+      if (n > 10 && n < 20) return f5;
+      if (n1 > 1 && n1 < 5) return f2;
+      if (n1 === 1) return f1;
+      return f5;
+    },
+    ruCase(name, c){
+      const s = String(name || "");
+      if (!s) return s;
+      const low = s.toLowerCase();
+      const map = {
+        "максим": { gen:"Максима", dat:"Максиму", acc:"Максима", ins:"Максимом", pre:"Максиме" },
+        "хлоя":   { gen:"Хлои",   dat:"Хлое",   acc:"Хлою",   ins:"Хлоей",   pre:"Хлое"   },
+        "эшли":   { gen:"Эшли",   dat:"Эшли",   acc:"Эшли",   ins:"Эшли",    pre:"Эшли"   }
+      };
+      const base = map[low];
+      if (!base) return s;
+      switch (c){
+        case "gen": return base.gen;
+        case "dat": return base.dat;
+        case "acc": return base.acc;
+        case "ins": return base.ins;
+        case "pre": return base.pre;
+        default: return s;
+      }
+    },
+    enPlural(word){
+      const w = String(word || "");
+      if (!w) return w;
+      const irr = { child:"children", person:"people", man:"men", woman:"women", mouse:"mice", foot:"feet" };
+      const low = w.toLowerCase();
+      if (irr[low]) return irr[low];
+      if (/[sxz]$|[cs]h$/i.test(w)) return w + "es";
+      if (/[aeiou]y$/i.test(w)) return w + "s";
+      if (/y$/i.test(w)) return w.replace(/y$/i, "ies");
+      return w + "s";
+    },
+
+    // ---------- Recap → story cards ----------
+    syncRecapToStoryCards(text, windowTurns){
+      const s = String(text||"").trim();
+      if (s.length < 60) return 0;
+      const bullets = s
+        .split(/\r?\n|^[•\-–]\s+/m)
+        .map(x=>x.trim())
+        .filter(x=>x.length>25)
+        .slice(0,4);
+      let n=0;
+      for (let i=0;i<bullets.length;i++){
+        this.createStoryCard(bullets[i], windowTurns, "note");
+        n++;
+      }
+      return n;
+    }
+  };
+
+  if (typeof globalThis !== "undefined") globalThis.LC = LC;
+  if (typeof window !== "undefined") window.LC = LC;
+})();
+
+
+// --- TURN UTILS ---
+function turnSet(n) {
+  const L = this.lcInit();
+  const v = Math.max(0, Math.floor(Number(n) || 0));
+  L.turn = v;
+  if (L.lastRecapTurn && L.lastRecapTurn >= v) L.lastRecapTurn = 0;
+  if (L.lastEpochTurn && L.lastEpochTurn >= v) L.lastEpochTurn = 0;
+  if (Array.isArray(L.events)) {
+    L.events = L.events.filter(ev => !(ev && Number(ev.turn) >= v));
+  }
+  L.recapDraft = null;
+  L.epochDraft = null;
+  L.prevOutput = "";
+  L.lastOutput = "";
+  
+      // clear flags on rewind
+    LC.lcSetFlag("wantRecap", false);
+    LC.lcSetFlag("doRecap", false);
+    LC.lcSetFlag("doEpoch", false);
+    this.lcSys(`↩️ Turn set to ${L.turn}.`);
+    return L.turn;
+}
+
+
+function turnUndo(n=1) {
+  const L = this.lcInit();
+  const dec = Math.max(1, Math.floor(Number(n) || 1));
+  const v = Math.max(0, (L.turn || 0) - dec);
+  return this.turnSet(v);
+}
+
+// Export into LC
+LC.turnSet = turnSet;
+LC.turnUndo = turnUndo;
+
+
+  
+
+LC.ensureEventsCap = function(cap) {
+  try {
+    const L = this.lcInit();
+    if (!Array.isArray(L.events)) return;
+    const max = Number(cap || 300) || 300;
+    if (L.events.length > max) {
+      L.events.splice(0, L.events.length - max);
+    }
+  } catch(_) {}
+};
+
+
+LC.migrateState = function(L) {
+  try {
+    if (!L || typeof L !== 'object') return;
+    if (!L.evergreen || typeof L.evergreen !== 'object') L.evergreen = {};
+    if (!Array.isArray(L.evergreen.history)) L.evergreen.history = [];
+    if (!L.tm || typeof L.tm !== 'object') L.tm = {};
+    if (!Array.isArray(L.tm.recapTurns)) L.tm.recapTurns = [];
+    if (this.lcGetFlag) {
+      const norm = (v)=> v === true ? true : false;
+      if (typeof L.wantRecap !== 'undefined') L.wantRecap = norm(L.wantRecap);
+      if (typeof L.doRecap   !== 'undefined') L.doRecap   = norm(L.doRecap);
+      if (typeof L.doEpoch   !== 'undefined') L.doEpoch   = norm(L.doEpoch);
+    }
+  } catch(_) {}
+};
+
+
+LC.selfTest = function() {
+  try {
+    const L = this.lcInit();
+    const lines = [];
+    const ok = (b)=> b ? "✅" : "⚠️";
+    lines.push(`${ok(Array.isArray(L.events))} events: ${Array.isArray(L.events) ? L.events.length : 'N/A'}`);
+    lines.push(`${ok(typeof L.turn === 'number' && L.turn >= 0)} turn: ${L.turn}`);
+    lines.push(`${ok(typeof this.lcGetFlag === 'function')} flags API available`);
+    lines.push(`${ok(!L.recapDraft || typeof L.recapDraft === 'string')} recapDraft type`);
+    lines.push(`${ok(!L.epochDraft || typeof L.epochDraft === 'string')} epochDraft type`);
+    lines.push(`${ok(L.evergreen && Array.isArray(L.evergreen.history))} evergreen.history is array`);
+    const w = this.lcGetFlag ? this.lcGetFlag("wantRecap", false) : !!L.wantRecap;
+    const dr = this.lcGetFlag ? this.lcGetFlag("doRecap", false)   : !!L.doRecap;
+    const de = this.lcGetFlag ? this.lcGetFlag("doEpoch", false)   : !!L.doEpoch;
+    lines.push(`${ok(!(w && de))} flags: not both wantRecap and doEpoch`);
+    return lines.join("\n");
+  } catch(e) {
+    return "⚠️ selfTest exception: " + (e && e.message ? e.message : String(e));
+  }
+};
+
+
+LC.migrateToVersion = function(L, fromV, toV){
+  try {
+    L.offer = L.offer || {};
+    if (!L.offer.recap) L.offer.recap = { active:false, issuedTurn:0, ttl:3 };
+  if (typeof L.lastRecapTurn === "undefined") L.lastRecapTurn = 0;
+  } catch(_){}
+  return true;
+};
+
+
+LC.ctxPreview = function() {
+  try {
+    const L = LC.lcInit();
+    const LIMIT = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) ? LC.CONFIG.LIMITS.CONTEXT_LENGTH : 800;
+    const out = [];
+    out.push(`⟦CONTEXT PREVIEW⟧ turn=${L.turn} limit=${LIMIT}`);
+    if (L.lastIntent) out.push(`INTENT: ${String(L.lastIntent).slice(0,140)}…`);
+    try {
+      const doRecap = LC.lcGetFlag ? LC.lcGetFlag("doRecap", false) : false;
+      const doEpoch = LC.lcGetFlag ? LC.lcGetFlag("doEpoch", false) : false;
+      if (doRecap) out.push("TASK: Recap requested");
+      if (doEpoch) out.push("TASK: Epoch requested");
+    } catch(_){}
+    try {
+      if (LC.autoEvergreen && typeof LC.autoEvergreen.getCanon === "function") {
+        const canon = LC.autoEvergreen.getCanon();
+        if (canon) out.push(`CANON: ${String(canon).slice(0,140)}…`);
+      }
+    } catch(_){}
+    return out.join("\n");
+  } catch(e){
+    return "⟦CONTEXT PREVIEW⟧ error: " + (e && e.message ? e.message : String(e));
+  }
+};

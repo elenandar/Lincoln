@@ -1,0 +1,121 @@
+﻿// === OUTPUT MODIFIER v16.0.7-compat6d ===
+function omBudget(start = Date.now(), ms = 280) { return () => { if (Date.now()-start > ms) throw new Error('OM_TIME_BUDGET'); }; } 
+const modifier = function (text) {
+  if (typeof LC === "undefined") return { text: String(text || "") };
+  const L = LC.lcInit();
+const _notice = (L.visibleNotice || "").trim();
+if (_notice) L.visibleNotice = "";
+
+
+  let out = String(text || "").trim();
+  const clean = LC.lcStripSys(out);
+
+
+// Print critical visible notices (even if sysShow=false)
+try {
+  if (L.visibleNotice) {
+    out = (out ? (out + "\n\n") : "") + String(L.visibleNotice);
+    L.visibleNotice = "";
+  }
+} catch(_) {}
+  const isCmd = LC.lcGetFlag("isCmd", false);
+  const isRetry = LC.lcGetFlag("isRetry", false);
+
+  // Opening — первичный захват
+  if (L.turn === 0 && !L.openingCaptured && !isRetry && clean.length > 20) {
+    LC.captureOpeningFromOutput(clean);
+  }
+
+  // Командный ответ: обработка /continue → SYS
+  if (isCmd) {
+    if (LC.lcGetFlag("acceptDraft", false)) {
+      LC.lcSetFlag("acceptDraft", false);
+      let saved = false;
+
+      if (L.recapDraft) {
+        const id = LC.createStoryCard(L.recapDraft.text, L.recapDraft.window, "recap");
+        LC.lcSys(`✅ Recap saved (ID: ${id}).`);
+        LC.syncRecapToStoryCards(L.recapDraft.text, L.recapDraft.window);
+        L.recapDraft = null; L.lastRecapTurn = L.turn; saved = true;
+      }
+      if (L.epochDraft) {
+        const id = LC.createStoryCard(L.epochDraft.text, L.epochDraft.window, "epoch");
+        LC.lcSys(`✅ Epoch saved (ID: ${id}).`);
+        L.epochDraft = null; L.lastEpochTurn = L.turn; saved = true;
+      }
+      if (!saved) LC.lcSys("ℹ️ No draft to save.");
+    }
+
+    LC.lcSetFlag("isCmd", false);
+    const msgs = LC.lcConsumeMsgs();
+    if (!msgs.length) return { text: LC.CONFIG.CMD_PLACEHOLDER + "\n" };
+    return { text: msgs.join("\n") + "\n" + "=".repeat(40) + "\n" };
+  }
+
+  // Инкремент хода на реальном действии
+  if (LC.shouldIncrementTurn()) {
+    LC.incrementTurn();
+    L.lastOutput = clean;
+  } else {
+    L.lastOutput = clean;
+  }
+
+  // Черновики (Recap/Epoch)
+  if (LC.lcGetFlag("doRecap", false)) {
+    LC.lcSetFlag("doRecap", false);
+    if (clean.length > 50) {
+      L.recapDraft = { text: clean, turn: L.turn, window: [Math.max(0, L.turn - L.cadence), L.turn] };
+      L.tm.recaps = (L.tm.recaps || 0) + 1;
+      L.tm.recapTurns = Array.isArray(L.tm.recapTurns) ? L.tm.recapTurns : [];
+      L.tm.recapTurns.push(L.turn);
+      const win = LC.CONFIG.RECAP_V2.AUTO_EPOCH_WINDOW;
+      L.tm.recapTurns = L.tm.recapTurns.filter(t0 => (L.turn - t0) <= (win*2));
+      LC.lcSys("📋 Recap draft created. Use /continue to save.");
+    } else LC.lcSys("❌ Recap too short.");
+  }
+  if (LC.lcGetFlag("doEpoch", false)) {
+    LC.lcSetFlag("doEpoch", false);
+    if (clean.length > 60) {
+      L.epochDraft = { text: clean, turn: L.turn, window: [L.lastEpochTurn || 0, L.turn] };
+      L.tm.epochs = (L.tm.epochs || 0) + 1;
+      LC.lcSys("🗿 Epoch draft created. Use /continue to save.");
+    } else LC.lcSys("❌ Epoch too short.");
+  }
+
+  // Anti-echo
+  const actionType = L.lastActionType || "";
+  const filtered   = LC.applyAntiEcho(clean, L.prevOutput, actionType);
+  if (!isRetry) L.prevOutput = clean;
+  out = filtered;
+
+  // Пост-анализ (на реальном ходе)
+  if (!isRetry) {
+    try {
+      LC.updateCharacterActivity(out, false);
+      LC.analyzeTextForEvents(out, "output");
+      LC.autoEvergreen.analyze(out, actionType);
+    } catch (e) { LC.lcWarn("Post-analyze error: " + (e && e.message)); }
+  }
+
+  // Авто-оффер recap и авто-epoch
+  if (!isRetry) {
+    try { LC.checkRecapOfferV2(); } catch(e){ LC.lcWarn("RecapOfferV2 error: " + (e && e.message)); }
+    try { LC.checkAutoEpoch(); }   catch(e){ LC.lcWarn("AutoEpoch error: " + (e && e.message)); }
+  }
+
+  // SYS: ВСЕГДА consume; показываем только если sysShow=true и это не retry
+  {
+    const msgs = LC.lcConsumeMsgs();
+    if (!isRetry && L.sysShow && msgs.length) {
+      out = out + "\n\n" + msgs.join("\n");
+    }
+  }
+
+  return { text: out };
+};
+return modifier(text);
+// PATCH (fallback): append notice at end if not returned earlier
+if (typeof out !== "undefined" && _notice) {
+  try { const _s = String(out||""); if (_s.indexOf(_notice)===-1) { out = (_s.trim()? _s.trim()+"\n\n": "") + _notice; } }
+  catch(_e){ out = (out||"") + "\n\n" + _notice; }
+}
