@@ -637,7 +637,62 @@ L.debugMode = toBool(L.debugMode, false);
           "ковальски":"Директор Ковальски","kovalski":"Директор Ковальски","директор":"Директор Ковальски","александр":"Директор Ковальски"
         };
         const low = n.toLowerCase();
-        return aliases[low] || (n.charAt(0).toUpperCase() + n.slice(1));
+        const aliasIndex = { ...aliases };
+
+        const L = LC.lcInit ? LC.lcInit() : null;
+        const displayMap = {
+          "максим":"Максим",
+          "хлоя":"Хлоя",
+          "эшли":"Эшли",
+          "миссис грейсон":"Миссис Грейсон",
+          "директор ковальски":"Директор Ковальски"
+        };
+
+        if (L && L.aliases){
+          for (const key in L.aliases){
+            const canon = String(key || "").trim();
+            if (!canon) continue;
+            displayMap[canon.toLowerCase()] = canon;
+          }
+        }
+
+        function canonDisplay(str){
+          if (!str) return "";
+          if (displayMap[str]) return displayMap[str];
+          let out = str;
+          try {
+            out = str.replace(/\b\p{Ll}/gu, m => m.toUpperCase());
+          } catch(e) {
+            const words = str.split(/\s+/).filter(Boolean);
+            out = words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          }
+          displayMap[str] = out;
+          return out;
+        }
+
+        const aliasMap = LC.getAliasMap ? LC.getAliasMap() : {};
+        for (const canon in aliasMap){
+          const canonLow = canon.toLowerCase();
+          const target = canonDisplay(canonLow);
+          const list = aliasMap[canon] || [];
+          for (let i=0;i<list.length;i++){
+            const item = String(list[i] || "").trim().toLowerCase();
+            if (!item) continue;
+            if (!aliasIndex[item]) aliasIndex[item] = target;
+          }
+          if (!aliasIndex[canonLow]) aliasIndex[canonLow] = target;
+        }
+
+        if (aliasIndex[low]) return aliasIndex[low];
+
+        const tokens = low.split(/\s+/).filter(Boolean);
+        for (let i=0;i<tokens.length;i++){
+          const token = tokens[i];
+          const canon = aliasIndex[token];
+          if (canon) return canon;
+        }
+
+        return n;
       },
       isImportantCharacter(name){
         const core = ["Максим","Хлоя","Эшли","Миссис Грейсон","Директор Ковальски","Maxim","Chloe","Ashley"];
