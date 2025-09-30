@@ -599,7 +599,8 @@ L.debugMode = toBool(L.debugMode, false);
         const ruRecipient = "(?:[\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2}|ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас)";
         const enRecipient = "(?:(?:(?!(?:to|that)\\b)[\\p{L}'-]+(?:\\s+(?!(?:to|that)\\b)[\\p{L}'-]+){0,2})|him|her|them|you|us|me)";
 
-        const okO1 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+должен\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okO1Src = `([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+должн?(?:ен|а|ы|о)\\s+(?:(?:(${ruRecipient})\\s+)?(.+?))(?:[.,!]|$)`;
+        const okO1 = tryPush(P.obligations, okO1Src, "giu");
         const okO2Src = `([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+обещал(?:а)?\\s+(?:(?:(${ruRecipient})\\s+)?(.+?))(?:[.,!]|$)`;
         const okO2 = tryPush(P.obligations, okO2Src, "giu");
         const okO3 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+owes\\s+([\\p{L}'-]+)\\s+(.+?)(?:[.,!]|$)", "giu");
@@ -636,7 +637,7 @@ L.debugMode = toBool(L.debugMode, false);
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)`, "gi"));
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)`, "gi"));
 
-          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+должен\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+должн?(?:ен|а|ы|о)\\s+(?:(?:(${ruRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
           P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+обещал(?:а)?\\s+(?:(?:(${ruRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
           P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+owes\\s+([${LTR}'-]+)\\s+(.+?)(?:[.,!]|$)`, "gi"));
           P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+promised\\s+(?:(?:(${enRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
@@ -863,22 +864,43 @@ L.debugMode = toBool(L.debugMode, false);
             if (captureCount >= 3) {
               rawTarget = m[2] || "";
               rawDesc = m[3] || "";
-            } else {
+            } else if (captureCount === 2) {
               rawDesc = m[2] || "";
+            } else if (captureCount >= 1) {
+              rawDesc = m[captureCount] || "";
             }
             let B = "";
             if (captureCount >= 3) {
-              const trimmedTarget = String(rawTarget || "").trim();
+              let trimmedTarget = String(rawTarget || "").trim();
               if (trimmedTarget) {
-                const pronRegex = /^(?:ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас|him|her|them|you|us|me)$/i;
-                const firstChar = trimmedTarget.charAt(0);
-                const isLetter = firstChar && firstChar.toLowerCase() !== firstChar.toUpperCase();
-                const startsUpper = isLetter && firstChar === firstChar.toUpperCase();
-                const normalizedTarget = this.normalizeCharName(trimmedTarget);
-                if (pronRegex.test(trimmedTarget) || startsUpper || this.isImportantCharacter(normalizedTarget)) {
-                  B = normalizedTarget;
-                } else {
-                  rawDesc = `${trimmedTarget} ${rawDesc}`.trim();
+                const targetParts = trimmedTarget.split(/\s+/).filter(Boolean);
+                if (targetParts.length > 1) {
+                  let cutIndex = targetParts.length;
+                  while (cutIndex > 0) {
+                    const word = targetParts[cutIndex - 1];
+                    const first = word ? word.charAt(0) : "";
+                    const isLetter = first && first.toLowerCase() !== first.toUpperCase();
+                    if (!isLetter || first === first.toUpperCase()) break;
+                    cutIndex--;
+                  }
+                  if (cutIndex < targetParts.length) {
+                    const extra = targetParts.slice(cutIndex).join(" ");
+                    rawDesc = `${extra} ${rawDesc}`.trim();
+                    targetParts.length = cutIndex;
+                    trimmedTarget = targetParts.join(" ");
+                  }
+                }
+                if (trimmedTarget) {
+                  const pronRegex = /^(?:ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас|him|her|them|you|us|me)$/i;
+                  const firstChar = trimmedTarget.charAt(0);
+                  const isLetter = firstChar && firstChar.toLowerCase() !== firstChar.toUpperCase();
+                  const startsUpper = isLetter && firstChar === firstChar.toUpperCase();
+                  const normalizedTarget = this.normalizeCharName(trimmedTarget);
+                  if (pronRegex.test(trimmedTarget) || startsUpper || this.isImportantCharacter(normalizedTarget)) {
+                    B = normalizedTarget;
+                  } else {
+                    rawDesc = `${trimmedTarget} ${rawDesc}`.trim();
+                  }
                 }
               }
             }
