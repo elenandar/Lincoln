@@ -10,6 +10,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   const userText = LC.stripYouWrappers(raw.trim());
 
   function reply(msg){ LC.lcSys(msg); return { text: LC.CONFIG.CMD_PLACEHOLDER }; }
+  function replyStop(msg){ LC.lcSys(msg); return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg }; }
 
   function extractCommand(s){
     let t = (s || "").trim();
@@ -51,13 +52,7 @@ const args   = tokens.slice(1);
     // быстрые ответы на оффер recap
     if (cmd === "/да")   {
       if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
-        try { LC.lcSys('ℹ️ Нет активного оффера рекапа.'); } catch(_){}
-        return {
-          text: (LC.CONFIG?.CMD_PLACEHOLDER !== undefined)
-            ? LC.CONFIG.CMD_PLACEHOLDER
-            : "⟦SYS⟧ Нет активного оффера рекапа.",
-          stop: true
-        };
+        return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn;
       LC.lcSetFlag("doRecap", true);
@@ -65,26 +60,14 @@ const args   = tokens.slice(1);
     }
     if (cmd === "/нет")  {
       if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
-        try { LC.lcSys('ℹ️ Нет активного оффера рекапа.'); } catch(_){}
-        return {
-          text: (LC.CONFIG?.CMD_PLACEHOLDER !== undefined)
-            ? LC.CONFIG.CMD_PLACEHOLDER
-            : "⟦SYS⟧ Нет активного оффера рекапа.",
-          stop: true
-        };
+        return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 5;
       return reply("🚫 Recap postponed for 5 turns.");
     }
     if (cmd === "/позже"){
       if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
-        try { LC.lcSys('ℹ️ Нет активного оффера рекапа.'); } catch(_){}
-        return {
-          text: (LC.CONFIG?.CMD_PLACEHOLDER !== undefined)
-            ? LC.CONFIG.CMD_PLACEHOLDER
-            : "⟦SYS⟧ Нет активного оффера рекапа.",
-          stop: true
-        };
+        return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 3; if (L.tm) L.tm.wantRecapTurn = 0;
       return reply("🕑 Recap later (3 turns).");
