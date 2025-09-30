@@ -1,4 +1,4 @@
-﻿// === INPUT MODIFIER v16.0.7-compat6d ===
+﻿// === INPUT MODIFIER v16.0.8-compat6d ===
 const modifier = function (text) {
   
 if (typeof LC === "undefined") return { text: String(text || "") };

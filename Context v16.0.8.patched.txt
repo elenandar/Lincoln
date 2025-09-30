@@ -1,4 +1,4 @@
-﻿// === CONTEXT MODIFIER v16.0.7-compat6d ===
+﻿// === CONTEXT MODIFIER v16.0.8-compat6d ===
 const modifier = function (text) {
   
   const RETRY_KEEP_CONTEXT = (typeof LC !== 'undefined' && LC.lcGetFlag && (LC.lcGetFlag('RETRY_KEEP_CONTEXT', false) === true)); 
