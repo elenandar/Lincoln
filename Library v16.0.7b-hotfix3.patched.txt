@@ -676,11 +676,15 @@ L.debugMode = toBool(L.debugMode, false);
           "директор ковальски":"Директор Ковальски"
         };
 
+        const userCanonSet = new Set();
+
         if (L && L.aliases){
           for (const key in L.aliases){
             const canon = String(key || "").trim();
             if (!canon) continue;
-            displayMap[canon.toLowerCase()] = canon;
+            const canonLow = canon.toLowerCase();
+            userCanonSet.add(canonLow);
+            displayMap[canonLow] = canon;
           }
         }
 
@@ -701,14 +705,19 @@ L.debugMode = toBool(L.debugMode, false);
         const aliasMap = LC.getAliasMap ? LC.getAliasMap() : {};
         for (const canon in aliasMap){
           const canonLow = canon.toLowerCase();
+          const isUserCanon = userCanonSet.has(canonLow);
           const target = canonDisplay(canonLow);
           const list = aliasMap[canon] || [];
           for (let i=0;i<list.length;i++){
             const item = String(list[i] || "").trim().toLowerCase();
             if (!item) continue;
-            if (!aliasIndex[item]) aliasIndex[item] = target;
+            if (isUserCanon || !Object.prototype.hasOwnProperty.call(aliasIndex, item)) {
+              aliasIndex[item] = target;
+            }
           }
-          if (!aliasIndex[canonLow]) aliasIndex[canonLow] = target;
+          if (isUserCanon || !Object.prototype.hasOwnProperty.call(aliasIndex, canonLow)) {
+            aliasIndex[canonLow] = target;
+          }
         }
 
         if (aliasIndex[low]) return aliasIndex[low];
