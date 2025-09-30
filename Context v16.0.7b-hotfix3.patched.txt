@@ -31,12 +31,18 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   }
 
   // Canon
-  const canon = LC.autoEvergreen.getCanon();
+  const canon = LC.autoEvergreen?.getCanon?.();
   if (canon) priority.push(`⟦CANON⟧ ${canon}`);
 
   // Opening
-  const opening = LC.getOpeningLine();
-  if (opening) normal.push(opening);
+  const opening = LC.getOpeningLine?.();
+  if (opening) {
+    const openingStr = String(opening).trimStart();
+    const normalizedOpening = openingStr.startsWith("⟦OPENING⟧")
+      ? openingStr
+      : `⟦OPENING⟧ ${openingStr}`;
+    normal.push(normalizedOpening);
+  }
 
   // Characters
   const chars = LC.getActiveCharacters(10);
