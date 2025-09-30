@@ -1389,8 +1389,10 @@ LC.selfTest = function() {
     lines.push(`${ok(Array.isArray(L.events))} events: ${Array.isArray(L.events) ? L.events.length : 'N/A'}`);
     lines.push(`${ok(typeof L.turn === 'number' && L.turn >= 0)} turn: ${L.turn}`);
     lines.push(`${ok(typeof this.lcGetFlag === 'function')} flags API available`);
-    lines.push(`${ok(!L.recapDraft || typeof L.recapDraft === 'string')} recapDraft type`);
-    lines.push(`${ok(!L.epochDraft || typeof L.epochDraft === 'string')} epochDraft type`);
+    const recapDraft = L.recapDraft;
+    const epochDraft = L.epochDraft;
+    lines.push(`${ok(!recapDraft || typeof recapDraft === 'string' || typeof recapDraft.text === 'string')} recapDraft text field`);
+    lines.push(`${ok(!epochDraft || typeof epochDraft === 'string' || typeof epochDraft.text === 'string')} epochDraft text field`);
     lines.push(`${ok(L.evergreen && Array.isArray(L.evergreen.history))} evergreen.history is array`);
     const w = this.lcGetFlag ? this.lcGetFlag("wantRecap", false) : !!L.wantRecap;
     const dr = this.lcGetFlag ? this.lcGetFlag("doRecap", false)   : !!L.doRecap;
