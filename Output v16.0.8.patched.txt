@@ -26,9 +26,7 @@ const modifier = function (text) {
   const isCmd = LC.lcGetFlag("isCmd", false);
   const isRetry = LC.lcGetFlag("isRetry", false);
   const wantsRecap = LC.lcGetFlag("doRecap", false);
-  if (wantsRecap) LC.lcSetFlag("doRecap", false);
   const wantsEpoch = LC.lcGetFlag("doEpoch", false);
-  if (wantsEpoch) LC.lcSetFlag("doEpoch", false);
 
   // Opening — первичный захват
   if (L.turn === 0 && !L.openingCaptured && !isRetry && clean.length > 20) {
@@ -60,6 +58,9 @@ const modifier = function (text) {
     if (!msgs.length) return { text: LC.CONFIG.CMD_PLACEHOLDER + "\n" };
     return { text: msgs.join("\n") + "\n" + "=".repeat(40) + "\n" };
   }
+
+  if (wantsRecap) LC.lcSetFlag("doRecap", false);
+  if (wantsEpoch) LC.lcSetFlag("doEpoch", false);
 
   // Инкремент хода на реальном действии
   if (!isRetry && LC.shouldIncrementTurn()) {
