@@ -62,17 +62,18 @@ const modifier = function (text) {
   }
 
   // Инкремент хода на реальном действии
-  if (LC.shouldIncrementTurn()) {
+  if (!isRetry && LC.shouldIncrementTurn()) {
     LC.incrementTurn();
-    L.lastOutput = clean;
-  } else {
-    L.lastOutput = clean;
   }
+  L.lastOutput = clean;
 
   // Anti-echo
   const actionType = L.lastActionType || "";
-  const filtered   = LC.applyAntiEcho(clean, L.prevOutput, actionType);
-  if (!isRetry) L.prevOutput = clean;
+  let filtered = clean;
+  if (!isRetry) {
+    filtered = LC.applyAntiEcho(clean, L.prevOutput, actionType);
+  }
+  L.prevOutput = filtered;
   out = filtered;
 
   // Черновики (Recap/Epoch)
