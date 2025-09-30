@@ -1,4 +1,4 @@
-﻿// === LIBRARY — Lincoln Heights Core v16.0.7-compat6d ===
+﻿// === LIBRARY — Lincoln Heights Core v16.0.8-compat6d ===
 
 (function () {
   // ---------- Utils ----------
@@ -19,8 +19,8 @@
   };
 
   const CONFIG = {
-  VERSION: "16.0.7-compat6d",
-  DATA_VERSION: "16.0.7b-hotfix3",
+  VERSION: "16.0.8-compat6d",
+  DATA_VERSION: "16.0.8",
   CHAR_WINDOW_HOT: 3,
   CHAR_WINDOW_ACTIVE: 10,
   CMD_PLACEHOLDER: "⟦SYS⟧ OK.",

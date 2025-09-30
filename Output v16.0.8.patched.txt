@@ -1,4 +1,4 @@
-﻿// === OUTPUT MODIFIER v16.0.7-compat6d ===
+﻿// === OUTPUT MODIFIER v16.0.8-compat6d ===
 function omBudget(start = Date.now(), ms = 280) { return () => { if (Date.now()-start > ms) throw new Error('OM_TIME_BUDGET'); }; } 
 const modifier = function (text) {
   if (typeof LC === "undefined") return { text: String(text || "") };
