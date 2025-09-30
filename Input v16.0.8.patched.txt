@@ -10,7 +10,18 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   const userText = LC.stripYouWrappers(raw.trim());
 
   function reply(msg){ LC.lcSys(msg); return { text: LC.CONFIG.CMD_PLACEHOLDER }; }
-  function replyStop(msg){ LC.lcSys(msg); return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg }; }
+  function clearCommandFlags(){
+    try {
+      LC.lcSetFlag("isCmd", false);
+      LC.lcSetFlag("isRetry", false);
+      LC.lcSetFlag("isContinue", false);
+    } catch (_) {}
+  }
+  function replyStop(msg){
+    LC.lcSys(msg);
+    clearCommandFlags();
+    return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg };
+  }
 
   function extractCommand(s){
     let t = (s || "").trim();
@@ -38,6 +49,7 @@ const args   = tokens.slice(1);
     if (cmd === "/undo") {
       const n = Number(args[0] || 1);
       try { if (typeof LC !== 'undefined') LC.turnUndo(n); } catch(e) { try { LC.lcSys("⚠️ Undo failed."); } catch(_){} }
+      clearCommandFlags();
       return { text: "", stop: true };
     }
 
@@ -45,6 +57,7 @@ const args   = tokens.slice(1);
     if (cmd === "/turn" && (args[0] || "").toLowerCase() === "set") {
       const n = Number(args[1] || 0);
       try { if (typeof LC !== 'undefined') LC.turnSet(n); } catch(e) { try { LC.lcSys("⚠️ Turn set failed."); } catch(_){} }
+      clearCommandFlags();
       return { text: "", stop: true };
     }
 
