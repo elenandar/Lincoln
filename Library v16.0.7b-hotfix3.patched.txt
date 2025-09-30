@@ -585,10 +585,15 @@ L.debugMode = toBool(L.debugMode, false);
         const okS4 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)", "giu");
         const okS5 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)", "giu");
 
+        const ruRecipient = "(?:[\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2}|ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас)";
+        const enRecipient = "(?:(?:(?!(?:to|that)\\b)[\\p{L}'-]+(?:\\s+(?!(?:to|that)\\b)[\\p{L}'-]+){0,2})|him|her|them|you|us|me)";
+
         const okO1 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+должен\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)", "giu");
-        const okO2 = tryPush(P.obligations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okO2Src = `([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+обещал(?:а)?\\s+(?:(?:(${ruRecipient})\\s+)?(.+?))(?:[.,!]|$)`;
+        const okO2 = tryPush(P.obligations, okO2Src, "giu");
         const okO3 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+owes\\s+([\\p{L}'-]+)\\s+(.+?)(?:[.,!]|$)", "giu");
-        const okO4 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)", "giu");
+        const okO4Src = `([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+promised\\s+(?:(?:(${enRecipient})\\s+)?(.+?))(?:[.,!]|$)`;
+        const okO4 = tryPush(P.obligations, okO4Src, "giu");
 
         const okF1 = tryPush(P.facts, "важно:\\s*(.+?)(?:[.!]|$)", "giu");
         const okF2 = tryPush(P.facts, "запомни:\\s*(.+?)(?:[.!]|$)", "giu");
@@ -599,6 +604,8 @@ L.debugMode = toBool(L.debugMode, false);
         const needFallback = !(okR1 && okR2 && okR3 && okR4 && okS1 && okS2 && okS3 && okS4 && okS5 && okO1 && okO2 && okO3 && okO4 && okF1 && okF2 && okF3 && okF4 && okF5);
         if (needFallback) {
           const LTR = "A-Za-zА-Яа-яЁё";
+          const ruRecipientFallback = `(?:[${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2}|ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас)`;
+          const enRecipientFallback = `(?:(?:(?!(?:to|that)\\b)[${LTR}'-]+(?:\\s+(?!(?:to|that)\\b)[${LTR}'-]+){0,2})|him|her|them|you|us|me)`;
           P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "gi"));
           P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi"));
           P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+and\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)`, "gi"));
@@ -611,9 +618,9 @@ L.debugMode = toBool(L.debugMode, false);
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)`, "gi"));
 
           P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+должен\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(.+?)(?:[.,!]|$)`, "gi"));
-          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+обещал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+обещал(?:а)?\\s+(?:(?:(${ruRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
           P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+owes\\s+([${LTR}'-]+)\\s+(.+?)(?:[.,!]|$)`, "gi"));
-          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+promised\\s+(.+?)(?:[.,!]|$)`, "gi"));
+          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+promised\\s+(?:(?:(${enRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
 
           P.facts.push(/важно:\s*(.+?)(?:[.!]|$)/ig);
           P.facts.push(/запомни:\s*(.+?)(?:[.!]|$)/ig);
@@ -762,8 +769,32 @@ L.debugMode = toBool(L.debugMode, false);
           const p = this.patterns.obligations[i]; p.lastIndex = 0;
           let m; while ((m = p.exec(T)) !== null){
             const A = this.normalizeCharName(m[1]);
-            const B = this.normalizeCharName(m[2] || "");
-            const D = String(m[3] || "").replace(/[.,!?]+$/, "").trim();
+            const captureCount = (m.length || 0) - 1;
+            let rawTarget = "";
+            let rawDesc = "";
+            if (captureCount >= 3) {
+              rawTarget = m[2] || "";
+              rawDesc = m[3] || "";
+            } else {
+              rawDesc = m[2] || "";
+            }
+            let B = "";
+            if (captureCount >= 3) {
+              const trimmedTarget = String(rawTarget || "").trim();
+              if (trimmedTarget) {
+                const pronRegex = /^(?:ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас|him|her|them|you|us|me)$/i;
+                const firstChar = trimmedTarget.charAt(0);
+                const isLetter = firstChar && firstChar.toLowerCase() !== firstChar.toUpperCase();
+                const startsUpper = isLetter && firstChar === firstChar.toUpperCase();
+                const normalizedTarget = this.normalizeCharName(trimmedTarget);
+                if (pronRegex.test(trimmedTarget) || startsUpper || this.isImportantCharacter(normalizedTarget)) {
+                  B = normalizedTarget;
+                } else {
+                  rawDesc = `${trimmedTarget} ${rawDesc}`.trim();
+                }
+              }
+            }
+            const D = String(rawDesc || "").replace(/[.,!?]+$/, "").trim();
             if (A && D && this.isImportantCharacter(A)){
               upd("obligations", A, B ? `${A} owes ${B}: ${D}` : `${A}: ${D}`);
             }
