@@ -25,6 +25,10 @@ const modifier = function (text) {
   } catch(_) {}
   const isCmd = LC.lcGetFlag("isCmd", false);
   const isRetry = LC.lcGetFlag("isRetry", false);
+  const wantsRecap = LC.lcGetFlag("doRecap", false);
+  if (wantsRecap) LC.lcSetFlag("doRecap", false);
+  const wantsEpoch = LC.lcGetFlag("doEpoch", false);
+  if (wantsEpoch) LC.lcSetFlag("doEpoch", false);
 
   // Opening — первичный захват
   if (L.turn === 0 && !L.openingCaptured && !isRetry && clean.length > 20) {
@@ -65,11 +69,17 @@ const modifier = function (text) {
     L.lastOutput = clean;
   }
 
+  // Anti-echo
+  const actionType = L.lastActionType || "";
+  const filtered   = LC.applyAntiEcho(clean, L.prevOutput, actionType);
+  if (!isRetry) L.prevOutput = clean;
+  out = filtered;
+
   // Черновики (Recap/Epoch)
-  if (LC.lcGetFlag("doRecap", false)) {
-    LC.lcSetFlag("doRecap", false);
-    if (clean.length > 50) {
-      L.recapDraft = { text: clean, turn: L.turn, window: [Math.max(0, L.turn - L.cadence), L.turn] };
+  const draftSource = out;
+  if (wantsRecap) {
+    if (draftSource.length > 50) {
+      L.recapDraft = { text: draftSource, turn: L.turn, window: [Math.max(0, L.turn - L.cadence), L.turn] };
       L.tm.recaps = (L.tm.recaps || 0) + 1;
       L.tm.recapTurns = Array.isArray(L.tm.recapTurns) ? L.tm.recapTurns : [];
       L.tm.recapTurns.push(L.turn);
@@ -78,20 +88,13 @@ const modifier = function (text) {
       LC.lcSys("📋 Recap draft created. Use /continue to save.");
     } else LC.lcSys("❌ Recap too short.");
   }
-  if (LC.lcGetFlag("doEpoch", false)) {
-    LC.lcSetFlag("doEpoch", false);
-    if (clean.length > 60) {
-      L.epochDraft = { text: clean, turn: L.turn, window: [L.lastEpochTurn || 0, L.turn] };
+  if (wantsEpoch) {
+    if (draftSource.length > 60) {
+      L.epochDraft = { text: draftSource, turn: L.turn, window: [L.lastEpochTurn || 0, L.turn] };
       L.tm.epochs = (L.tm.epochs || 0) + 1;
       LC.lcSys("🗿 Epoch draft created. Use /continue to save.");
     } else LC.lcSys("❌ Epoch too short.");
   }
-
-  // Anti-echo
-  const actionType = L.lastActionType || "";
-  const filtered   = LC.applyAntiEcho(clean, L.prevOutput, actionType);
-  if (!isRetry) L.prevOutput = clean;
-  out = filtered;
 
   // Пост-анализ (на реальном ходе)
   if (!isRetry) {
