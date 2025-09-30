@@ -755,7 +755,11 @@ L.debugMode = toBool(L.debugMode, false);
           const act = String(action || "").trim();
           const rawStr = String(raw || "").trim();
           const subjText = String(options.subjectText || options.subjectRaw || subject || "").trim() || subj;
-          const objText = String(options.objectText || options.objectRaw || object || "").trim() || obj;
+          const objTextBase = String(options.objectText || options.objectRaw || object || "").trim() || obj;
+          const reverse = !!options.reverse;
+          const originSubject = String(options.originSubject || "").trim();
+          const originSubjectText = String(options.originSubjectText || options.originSubjectRaw || "").trim();
+          const agentText = reverse ? (originSubjectText || objTextBase || originSubject || obj) : objTextBase;
           if (!subj) return "";
 
           const actLower = act.toLowerCase();
@@ -773,20 +777,122 @@ L.debugMode = toBool(L.debugMode, false);
             "enemies": "is enemies with"
           };
 
+          function guessGender(name, fallback){
+            const low = String(name || "").trim().toLowerCase();
+            const map = {
+              "максим":"m","maxim":"m","макс":"m","bergman":"m","бергман":"m",
+              "директор ковальски":"m","ковальски":"m",
+              "хлоя":"f","chloe":"f","харпер":"f",
+              "эшли":"f","ashley":"f","ash":"f",
+              "миссис грейсон":"f","grayson":"f","teacher":"f",
+              "рейчел":"f","рэйчел":"f","rachel":"f"
+            };
+            if (map[low]) return map[low];
+            const fb = String(fallback || "").trim().toLowerCase();
+            if (fb && map[fb]) return map[fb];
+            if (/\b(?:миссис)\b/.test(low)) return "f";
+            if (/[ая]$/.test(low)) return "f";
+            return "";
+          }
+
+          function ruBeForm(g){
+            if (g === "f") return "была";
+            if (g === "pl") return "были";
+            if (g === "n") return "было";
+            return "был";
+          }
+
+          function buildRuPassive(subjName, actionWord, agent, genderGuess){
+            const actKey = (()=>{
+              let key = actionWord.toLowerCase();
+              if (/^поцеловал/.test(key)) return "поцеловал";
+              if (/^обнял/.test(key)) return "обнял";
+              if (/^ударил/.test(key)) return "ударил";
+              if (/^предал/.test(key)) return "предал";
+              if (/^простил/.test(key)) return "простил";
+              if (/^бросил/.test(key)) return "бросил";
+              return key;
+            })();
+            const gender = genderGuess || guessGender(subjName, subjText);
+            const be = ruBeForm(gender);
+            const templates = {
+              "любит": { part:{ m:"любим", f:"любима", n:"любимо", pl:"любимы" } },
+              "ненавидит": { part:{ m:"ненавидим", f:"ненавидима", n:"ненавидимо", pl:"ненавидимы" } },
+              "ревнует": {
+                custom(g){
+                  const base = g === "f" ? "стала" : g === "pl" ? "стали" : g === "n" ? "стало" : "стал";
+                  const agentPart = agent ? ` у ${agent}` : "";
+                  return `${subjText} ${base} объектом ревности${agentPart}`.trim();
+                }
+              },
+              "поцеловал": { part:{ m:"поцелован", f:"поцелована", n:"поцеловано", pl:"поцелованы" } },
+              "обнял": { part:{ m:"обнят", f:"обнята", n:"обнято", pl:"обняты" } },
+              "ударил": { part:{ m:"ударен", f:"ударена", n:"ударено", pl:"ударены" } },
+              "предал": { part:{ m:"предан", f:"предана", n:"предано", pl:"преданы" } },
+              "простил": { part:{ m:"прощён", f:"прощена", n:"прощено", pl:"прощены" } },
+              "бросил": { part:{ m:"брошен", f:"брошена", n:"брошено", pl:"брошены" } }
+            };
+            const tpl = templates[actKey];
+            if (tpl){
+              if (typeof tpl.custom === "function") return tpl.custom(gender);
+              const part = (tpl.part && (tpl.part[gender] || tpl.part.m)) || "";
+              const agentPart = agent ? ` ${agent}` : "";
+              return `${subjText} ${be} ${part}${agentPart}`.trim();
+            }
+            if (actionWord){
+              const agentPart = agent ? ` ${agent}` : "";
+              return `${subjText} ${be} ${actionWord}${agentPart}`.trim();
+            }
+            if (agent){
+              return `${subjText} ${be} ${agent}`.trim();
+            }
+            return subjText;
+          }
+
+          function buildEnPassive(actionWord, agent){
+            const key = actionWord.toLowerCase();
+            const templates = {
+              "loves": { be:"is", part:"loved" },
+              "hates": { be:"is", part:"hated" },
+              "kissed": { be:"was", part:"kissed" },
+              "hugged": { be:"was", part:"hugged" }
+            };
+            const tpl = templates[key];
+            if (tpl){
+              const agentPart = agent ? ` by ${agent}` : "";
+              return `${subjText} ${tpl.be} ${tpl.part}${agentPart}`.trim();
+            }
+            if (actionWord){
+              const agentPart = agent ? ` by ${agent}` : "";
+              return `${subjText} was ${actionWord}${agentPart}`.trim();
+            }
+            return subjText;
+          }
+
           let phrase = "";
-          if ((patternType === "pairRu" || patternType === "pairEn") && !act) {
-            phrase = rawStr ? `${subjText} ${rawStr}` : subjText;
-          } else if (ruPairMap[actLower]) {
-            phrase = `${subjText} ${ruPairMap[actLower]}${objText ? ` ${objText}` : ""}`;
-          } else if (enPairMap[actLower]) {
-            const link = enPairMap[actLower];
-            phrase = `${subjText} ${link}${objText ? ` ${objText}` : ""}`;
-          } else if (act) {
-            phrase = `${subjText} ${act}${objText ? ` ${objText}` : ""}`;
-          } else if (obj) {
-            phrase = `${subjText} ${objText}`;
-          } else {
-            phrase = rawStr || subjText;
+          if (reverse && act) {
+            if (patternType === "verbRu") {
+              phrase = buildRuPassive(subj, act, agentText, guessGender(subj, subjText));
+            } else if (patternType === "verbEn") {
+              phrase = buildEnPassive(act, agentText);
+            }
+          }
+
+          if (!phrase){
+            if ((patternType === "pairRu" || patternType === "pairEn") && !act) {
+              phrase = rawStr ? `${subjText} ${rawStr}` : subjText;
+            } else if (ruPairMap[actLower]) {
+              phrase = `${subjText} ${ruPairMap[actLower]}${agentText ? ` ${agentText}` : ""}`;
+            } else if (enPairMap[actLower]) {
+              const link = enPairMap[actLower];
+              phrase = `${subjText} ${link}${agentText ? ` ${agentText}` : ""}`;
+            } else if (act) {
+              phrase = `${subjText} ${act}${agentText ? ` ${agentText}` : ""}`;
+            } else if (agentText) {
+              phrase = `${subjText} ${agentText}`;
+            } else {
+              phrase = rawStr || subjText;
+            }
           }
 
           return phrase.replace(/\s+/g, " ").trim();
@@ -839,7 +945,13 @@ L.debugMode = toBool(L.debugMode, false);
               if (relationTextA) upd("relations", subject, relationTextA);
             }
             if (importantCounterpart) {
-              const relationTextB = formatRelation(counterpart, action, subject, m[0], patternType, { subjectText: counterpart, objectText: subjectRaw });
+              const relationTextB = formatRelation(counterpart, action, subject, m[0], patternType, {
+                subjectText: counterpartRaw || counterpart,
+                objectText: subjectRaw,
+                reverse: true,
+                originSubject: subject,
+                originSubjectText: subjectRaw
+              });
               if (relationTextB) upd("relations", counterpart, relationTextB);
             }
           }
