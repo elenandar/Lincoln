@@ -18,6 +18,13 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     } catch (_) {}
   }
   function replyStop(msg){
+    let state;
+    try { state = LC.lcInit(); } catch (_) {}
+    if (state) {
+      const prev = (state.visibleNotice || "").trim();
+      state.visibleNotice = prev ? `${prev}\n${msg}` : msg;
+      if (state !== L) L.visibleNotice = state.visibleNotice;
+    }
     LC.lcSys(msg);
     clearCommandFlags();
     return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg };
