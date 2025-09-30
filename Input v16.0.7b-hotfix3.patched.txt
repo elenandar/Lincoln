@@ -26,8 +26,12 @@ const args   = tokens.slice(1);
 
   // ==== Команды ====
   if (cmd) {
-    
-    
+    LC.lcSetFlag("isCmd", true);
+    LC.lcSetFlag("isRetry", false);
+    LC.lcSetFlag("isContinue", false);
+    L.lastActionType = "command";
+
+
     const wantRecap = LC.lcGetFlag("wantRecap", false);
 // /undo [N]
     if (cmd === "/undo") {
@@ -42,12 +46,8 @@ const args   = tokens.slice(1);
       try { if (typeof LC !== 'undefined') LC.turnSet(n); } catch(e) { try { LC.lcSys("⚠️ Turn set failed."); } catch(_){} }
       return { text: "", stop: true };
     }
-LC.lcSetFlag("isCmd", true);
-    LC.lcSetFlag("isRetry", false);
-    LC.lcSetFlag("isContinue", false);
-    L.lastActionType = "command";
 
-    
+
     // быстрые ответы на оффер recap
     if (cmd === "/да")   {
       if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
