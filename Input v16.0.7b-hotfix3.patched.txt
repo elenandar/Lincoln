@@ -73,7 +73,7 @@ const args   = tokens.slice(1);
           stop: true
         };
       }
-      LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 5; L.lastRecapTurn = L.turn;
+      LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 5;
       return reply("🚫 Recap postponed for 5 turns.");
     }
     if (cmd === "/позже"){
