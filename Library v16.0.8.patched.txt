@@ -1188,7 +1188,8 @@ L.debugMode = toBool(L.debugMode, false);
         const decay = Math.pow(0.5, dt / half);
         score += (e.weight || 0.5) * decay;
       }
-      const hot = this.getActiveCharacters(10).filter(c => c.turnsAgo <= 3);
+      const hotWindow = (this.CONFIG?.CHAR_WINDOW_HOT ?? 3);
+      const hot = this.getActiveCharacters(10).filter(c => c.turnsAgo <= hotWindow);
       if (hot.length > 0) score += CONFIG.RECAP_V2.HOT_NPC_BONUS;
       return score;
     },
