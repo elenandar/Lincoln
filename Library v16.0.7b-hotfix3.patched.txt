@@ -1088,6 +1088,32 @@ L.debugMode = toBool(L.debugMode, false);
         LC.lcSys("Evergreen storage cleared.");
       }
     },
+    evergreenManualSet(L, category, key, value){
+      const state = L || this.lcInit();
+      if (!state || !state.evergreen || !category) return;
+      const allowed = ["relations","status","obligations","facts"];
+      const cat = String(category || "").toLowerCase();
+      if (allowed.indexOf(cat) === -1) return;
+      const val = String(value || "").trim();
+      if (!val) return;
+      const entryKey = key ? String(key) : `u_${Date.now().toString(36)}`;
+      if (!entryKey) return;
+      const box = (state.evergreen[cat] = state.evergreen[cat] || {});
+      const prev = Object.prototype.hasOwnProperty.call(box, entryKey) ? box[entryKey] : undefined;
+      box[entryKey] = val;
+      state.evergreen.history = Array.isArray(state.evergreen.history) ? state.evergreen.history : [];
+      const record = { turn: state.turn, category: cat, new: val, key: entryKey };
+      record.old = prev !== undefined ? prev : "";
+      state.evergreen.history.push(record);
+      const cap = Math.max(0, toNum(state.evergreenHistoryCap, 0));
+      if (cap > 0 && state.evergreen.history.length > cap) {
+        state.evergreen.history = state.evergreen.history.slice(-cap);
+      }
+      state.evergreen.lastUpdate = state.turn;
+      if (LC.autoEvergreen && typeof LC.autoEvergreen.limitCategories === "function") {
+        LC.autoEvergreen.limitCategories(state);
+      }
+    },
     capEvergreenHistory(max){
       const L = this.lcInit();
       const m = Math.max(0, toNum(max, 0));
