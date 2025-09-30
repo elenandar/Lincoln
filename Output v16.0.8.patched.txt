@@ -72,8 +72,9 @@ const modifier = function (text) {
   let filtered = clean;
   if (!isRetry) {
     filtered = LC.applyAntiEcho(clean, L.prevOutput, actionType);
+    // Only update the anti-echo baseline when not retrying.
+    L.prevOutput = filtered;
   }
-  L.prevOutput = filtered;
   out = filtered;
 
   // Черновики (Recap/Epoch)
