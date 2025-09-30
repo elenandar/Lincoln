@@ -226,9 +226,8 @@ const args   = tokens.slice(1);
           let val = m[2].trim().replace(/\s+/g, " ").slice(0, 240);
           const allowed = ["facts","status","relations","obligations"];
           const target = allowed.indexOf(cat) === -1 ? "facts" : cat;
-          L.evergreen[target] = L.evergreen[target] || {};
           const key = `u_${Date.now().toString(36)}`;
-          L.evergreen[target][key] = val;
+          LC.evergreenManualSet(L, target, key, val);
           return reply(`Evergreen[${target}] += ${val.slice(0,80)}`);
         }
         return reply(LC.autoEvergreen.getSummary());
