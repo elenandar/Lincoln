@@ -152,6 +152,17 @@ L.debugMode = toBool(L.debugMode, false);
     lcError(m)  { this.lcSys("❌ " + m); const L=this.lcInit(); L.tm.errors=(L.tm.errors||0)+1; },
     lcDebug(m)  { const L=this.lcInit(); if (L.debugMode) this.lcSys("🔍 " + m); },
     lcConsumeMsgs(){ const L=this.lcInit(); const a=L.sysMsgs.slice(); L.sysMsgs=[]; return a; },
+    pushNotice(msg){
+      const text = toStr(msg).trim();
+      if (!text) return;
+      let L = this.lcInit ? this.lcInit() : null;
+      if (!L){
+        const st = getState();
+        L = st.lincoln = st.lincoln || {};
+      }
+      const current = toStr(L.visibleNotice).trim();
+      L.visibleNotice = [current, text].filter(Boolean).join("\n");
+    },
 
     // ---------- FLAGS ----------
     lcSetFlag(k,v){ const L=this.lcInit(); L.flags[toStr(k)] = v; },
@@ -1258,7 +1269,7 @@ L.debugMode = toBool(L.debugMode, false);
 
       if (recentRecaps >= CONFIG.RECAP_V2.AUTO_EPOCH_MIN_RECAPS || high) {
         this.lcSetFlag("doEpoch", true);
-        L.visibleNotice = (L.visibleNotice || "🗿 Epoch scheduled for next turn.");
+        this.pushNotice("🗿 Epoch scheduled for next turn.");
         if (L.sysShow) this.lcSys("🗿 Epoch scheduled automatically.");
         return true;
       }
