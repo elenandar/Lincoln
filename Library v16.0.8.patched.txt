@@ -1258,7 +1258,8 @@ L.debugMode = toBool(L.debugMode, false);
 
       if (recentRecaps >= CONFIG.RECAP_V2.AUTO_EPOCH_MIN_RECAPS || high) {
         this.lcSetFlag("doEpoch", true);
-        L.visibleNotice = (L.visibleNotice || "🗿 Epoch scheduled for next turn.");
+        const noticeParts = [L.visibleNotice, "🗿 Epoch scheduled for next turn."];
+        L.visibleNotice = noticeParts.filter(Boolean).join("\n");
         if (L.sysShow) this.lcSys("🗿 Epoch scheduled automatically.");
         return true;
       }
