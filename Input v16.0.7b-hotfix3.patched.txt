@@ -472,9 +472,7 @@ const args   = tokens.slice(1);
     `SCENE: ${r.parts.SCENE||0}`,
     `META: ${r.parts.META||0}`
   ];
-  const sample = String(r.overlay).split("
-").slice(0,8).join("
-");
+  const sample = String(r.overlay).split(/\r?\n/).slice(0,8).join("\n");
 return reply("=== CONTEXT INSPECTOR ===\n" + lines.join(" | ") + "\n---\n" + sample);
       }
 
