@@ -87,7 +87,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   uniq.sort((a,b)=> weight(b) - weight(a));
 
   // 800-лимит
-  const MAX = LC.CONFIG.LIMITS.CONTEXT_LENGTH || 800;
+  const MAX = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) || 800;
   let overlay = "";
   for (let i=0;i<uniq.length;i++){
     const line = uniq[i];
