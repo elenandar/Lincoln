@@ -572,12 +572,23 @@ L.debugMode = toBool(L.debugMode, false);
     autoEvergreen: {
       _buildPatterns(){
         const P = { relations:[], status:[], obligations:[], facts:[] };
-        const tryPush = (arr, src, flags) => { try { arr.push(new RegExp(src, flags)); return true; } catch(e){ return false; } };
+        const tryPush = (arr, src, flags, meta) => {
+          try {
+            const re = new RegExp(src, flags);
+            if (meta && typeof meta === "object") {
+              Object.assign(re, meta);
+            }
+            arr.push(re);
+            return true;
+          } catch(e){
+            return false;
+          }
+        };
 
-        const okR1 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+и\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)", "giu");
-        const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu");
-        const okR3 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+and\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)", "giu");
-        const okR4 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu");
+        const okR1 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+и\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)", "giu", { _relPattern: "pairRu" });
+        const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu", { _relPattern: "verbRu" });
+        const okR3 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+and\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)", "giu", { _relPattern: "pairEn" });
+        const okR4 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu", { _relPattern: "verbEn" });
 
         const okS1 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)", "giu");
         const okS2 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
@@ -606,10 +617,18 @@ L.debugMode = toBool(L.debugMode, false);
           const LTR = "A-Za-zА-Яа-яЁё";
           const ruRecipientFallback = `(?:[${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2}|ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас)`;
           const enRecipientFallback = `(?:(?:(?!(?:to|that)\\b)[${LTR}'-]+(?:\\s+(?!(?:to|that)\\b)[${LTR}'-]+){0,2})|him|her|them|you|us|me)`;
-          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "gi"));
-          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi"));
-          P.relations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+and\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)`, "gi"));
-          P.relations.push(new RegExp(`([${LTR}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi"));
+          const fbR1 = new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "gi");
+          fbR1._relPattern = "pairRu";
+          P.relations.push(fbR1);
+          const fbR2 = new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi");
+          fbR2._relPattern = "verbRu";
+          P.relations.push(fbR2);
+          const fbR3 = new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+and\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)`, "gi");
+          fbR3._relPattern = "pairEn";
+          P.relations.push(fbR3);
+          const fbR4 = new RegExp(`([${LTR}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi");
+          fbR4._relPattern = "verbEn";
+          P.relations.push(fbR4);
 
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)`, "gi"));
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "gi"));
@@ -638,7 +657,8 @@ L.debugMode = toBool(L.debugMode, false);
         if (!n) return "";
         const aliases = {
           "макс":"Максим","max":"Максим","maxim":"Максим","бергман":"Максим","bergman":"Максим",
-          "хлои":"Хлоя","хлое":"Хлоя","chloe":"Хлоя","харпер":"Хлоя","harper":"Хлоя",
+          "максима":"Максим","максиму":"Максим","максиме":"Максим","максимом":"Максим",
+          "хлои":"Хлоя","хлое":"Хлоя","хлою":"Хлоя","хлоей":"Хлоя","chloe":"Хлоя","харпер":"Хлоя","harper":"Хлоя",
           "эш":"Эшли","ash":"Эшли","ashley":"Эшли",
           "грейсон":"Миссис Грейсон","grayson":"Миссис Грейсон","учительница":"Миссис Грейсон","teacher":"Миссис Грейсон",
           "ковальски":"Директор Ковальски","kovalski":"Директор Ковальски","директор":"Директор Ковальски","александр":"Директор Ковальски"
@@ -728,6 +748,49 @@ L.debugMode = toBool(L.debugMode, false);
         if (!L.evergreen || !L.evergreen.enabled || actionType === "retry" || !text) return;
         const T = String(text);
 
+        const formatRelation = (subject, action, object, raw, patternType, options={})=>{
+          const subj = String(subject || "").trim();
+          const obj = String(object || "").trim();
+          const act = String(action || "").trim();
+          const rawStr = String(raw || "").trim();
+          const subjText = String(options.subjectText || options.subjectRaw || subject || "").trim() || subj;
+          const objText = String(options.objectText || options.objectRaw || object || "").trim() || obj;
+          if (!subj) return "";
+
+          const actLower = act.toLowerCase();
+          const ruPairMap = {
+            "вместе": "теперь вместе с",
+            "пара": "теперь пара с",
+            "расстались": "теперь расстались с",
+            "друзья": "теперь друзья с",
+            "враги": "теперь враги с"
+          };
+          const enPairMap = {
+            "dating": "is dating",
+            "together": "is together with",
+            "friends": "is friends with",
+            "enemies": "is enemies with"
+          };
+
+          let phrase = "";
+          if ((patternType === "pairRu" || patternType === "pairEn") && !act) {
+            phrase = rawStr ? `${subjText} ${rawStr}` : subjText;
+          } else if (ruPairMap[actLower]) {
+            phrase = `${subjText} ${ruPairMap[actLower]}${objText ? ` ${objText}` : ""}`;
+          } else if (enPairMap[actLower]) {
+            const link = enPairMap[actLower];
+            phrase = `${subjText} ${link}${objText ? ` ${objText}` : ""}`;
+          } else if (act) {
+            phrase = `${subjText} ${act}${objText ? ` ${objText}` : ""}`;
+          } else if (obj) {
+            phrase = `${subjText} ${objText}`;
+          } else {
+            phrase = rawStr || subjText;
+          }
+
+          return phrase.replace(/\s+/g, " ").trim();
+        };
+
         function upd(cat, key, val){
           if (!val || val.length < 2) return;
           const box = (L.evergreen[cat] = L.evergreen[cat] || {});
@@ -747,11 +810,36 @@ L.debugMode = toBool(L.debugMode, false);
         for (let i=0;i<this.patterns.relations.length;i++){
           const p = this.patterns.relations[i]; p.lastIndex = 0;
           let m; while ((m = p.exec(T)) !== null){
-            const A = this.normalizeCharName(m[1]);
-            const B = this.normalizeCharName(m[2]);
-            const ACT = String(m[3] || "").trim();
-            if (A && B && ACT && this.isImportantCharacter(A)) {
-              upd("relations", A, `${A} ${ACT} ${B}`);
+            const patternType = p._relPattern || "";
+            let subjectRaw = "";
+            let counterpartRaw = "";
+            let actionRaw = "";
+            if (patternType === "verbRu" || patternType === "verbEn") {
+              subjectRaw = String(m[1] || "").trim();
+              actionRaw = String(m[2] || "").trim();
+              counterpartRaw = String(m[3] || "").trim();
+            } else {
+              subjectRaw = String(m[1] || "").trim();
+              counterpartRaw = String(m[2] || "").trim();
+              actionRaw = String(m[3] || "").trim();
+            }
+
+            const subject = this.normalizeCharName(subjectRaw);
+            const counterpart = this.normalizeCharName(counterpartRaw);
+            const action = actionRaw;
+
+            if (!subject || !counterpart) continue;
+            const importantSubject = this.isImportantCharacter(subject);
+            const importantCounterpart = this.isImportantCharacter(counterpart);
+            if (!importantSubject && !importantCounterpart) continue;
+
+            if (importantSubject) {
+              const relationTextA = formatRelation(subject, action, counterpart, m[0], patternType, { subjectText: subjectRaw, objectText: counterpartRaw });
+              if (relationTextA) upd("relations", subject, relationTextA);
+            }
+            if (importantCounterpart) {
+              const relationTextB = formatRelation(counterpart, action, subject, m[0], patternType, { subjectText: counterpart, objectText: subjectRaw });
+              if (relationTextB) upd("relations", counterpart, relationTextB);
             }
           }
         }
