@@ -110,10 +110,10 @@ const args   = tokens.slice(1);
         priority.push("⟦TASK⟧ NOW WRITE AN EPOCH: Compress multiple recaps into 5–7 sentences with major consequences and status changes.");
       }
 
-      const canon = LC.autoEvergreen.getCanon();
+      const canon = LC.autoEvergreen?.getCanon?.() || "";
       if (canon) priority.push(`⟦CANON⟧ ${canon}`);
 
-      const opening = LC.getOpeningLine();
+      const opening = LC.getOpeningLine?.() || "";
       if (opening) normal.push(opening);
 
       const chars = LC.getActiveCharacters(10);
