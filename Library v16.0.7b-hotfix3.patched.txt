@@ -984,6 +984,7 @@ L.debugMode = toBool(L.debugMode, false);
             let B = "";
             if (captureCount >= 3) {
               let trimmedTarget = String(rawTarget || "").trim();
+              const originalTarget = trimmedTarget;
               if (trimmedTarget) {
                 const targetParts = trimmedTarget.split(/\s+/).filter(Boolean);
                 if (targetParts.length > 1) {
@@ -1004,12 +1005,16 @@ L.debugMode = toBool(L.debugMode, false);
                 }
                 if (trimmedTarget) {
                   const pronRegex = /^(?:ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас|him|her|them|you|us|me)$/i;
-                  const firstChar = trimmedTarget.charAt(0);
-                  const isLetter = firstChar && firstChar.toLowerCase() !== firstChar.toUpperCase();
-                  const startsUpper = isLetter && firstChar === firstChar.toUpperCase();
                   const normalizedTarget = this.normalizeCharName(trimmedTarget);
-                  if (pronRegex.test(trimmedTarget) || startsUpper || this.isImportantCharacter(normalizedTarget)) {
-                    B = normalizedTarget;
+                  let hasUppercase = false;
+                  try {
+                    hasUppercase = /[\p{Lu}]/u.test(trimmedTarget);
+                  } catch (_) {
+                    hasUppercase = /[A-ZА-ЯЁ]/.test(trimmedTarget);
+                  }
+                  const displayTarget = normalizedTarget || originalTarget;
+                  if (pronRegex.test(trimmedTarget) || hasUppercase) {
+                    B = displayTarget;
                   } else {
                     rawDesc = `${trimmedTarget} ${rawDesc}`.trim();
                   }
