@@ -506,7 +506,8 @@ const args   = tokens.slice(1);
         ];
         const mods = (L && L._modsSeen) || {};
         const modList = Object.entries(mods).map(([k,v]) => `${k}:${v}`).join(", ");
-        out.push(`versions=[${modList}]`);
+        const modSummary = modList || "n/a";
+        out.push(`versions=[${modSummary}]`);
         const flagsReset = (() => {
           try {
             if (LC.Flags?.clearCmd) {
