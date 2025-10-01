@@ -1482,6 +1482,12 @@ L.debugMode = toBool(L.debugMode, false);
     queueEpoch(){ LC.lcSetFlag?.("doEpoch", true); },
   };
 
+  LC.Turns = LC.Turns || {
+    incIfNeeded(){ if (!LC.lcGetFlag?.("isCmd") && !LC.lcGetFlag?.("isRetry")) { const L=LC.lcInit(); L.turn=(L.turn|0)+1; } },
+    set(n){ LC.turnSet?.(n); },
+    undo(n){ LC.turnUndo?.(n); },
+  };
+
   if (typeof globalThis !== "undefined") globalThis.LC = LC;
   if (typeof window !== "undefined") window.LC = LC;
 })();
