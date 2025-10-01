@@ -877,6 +877,7 @@ L.debugMode = toBool(L.debugMode, false);
         const L = LC.lcInit();
         if (!this.patterns) this.patterns = this._buildPatterns();
         if (!L.evergreen || !L.evergreen.enabled || actionType === "retry" || !text) return;
+        const originalText = String(text || "");
         const T = LC._normUCached?.(text) ?? LC._normU(text);
 
         const formatRelation = (subject, action, object, raw, patternType, options={})=>{
@@ -1116,9 +1117,11 @@ L.debugMode = toBool(L.debugMode, false);
         // OBLIGATIONS
         for (let i=0;i<this.patterns.obligations.length;i++){
           const p = this.patterns.obligations[i]; p.lastIndex = 0;
+          const rawPattern = new RegExp(p.source, p.flags);
+          rawPattern.lastIndex = 0;
           let m;
           try {
-            while ((m = p.exec(T)) !== null){
+            while ((m = rawPattern.exec(originalText)) !== null){
               const A = this.normalizeCharName(m[1]);
               const captureCount = (m.length || 0) - 1;
               let rawTarget = "";
@@ -1162,8 +1165,12 @@ L.debugMode = toBool(L.debugMode, false);
                     } catch (_) {
                       hasUppercase = /[A-ZА-ЯЁ]/.test(trimmedTarget);
                     }
-                    const displayTarget = normalizedTarget || originalTarget;
-                    if (pronRegex.test(trimmedTarget) || hasUppercase) {
+                    const displayTarget = originalTarget || normalizedTarget;
+                    if (pronRegex.test(trimmedTarget)) {
+                      B = displayTarget;
+                    } else if (normalizedTarget) {
+                      B = normalizedTarget;
+                    } else if (hasUppercase) {
                       B = displayTarget;
                     } else {
                       rawDesc = `${trimmedTarget} ${rawDesc}`.trim();
