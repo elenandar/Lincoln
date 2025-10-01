@@ -21,15 +21,19 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   const raw = String(text || "");
   const userText = LC.stripYouWrappers(raw.trim());
 
-  function reply(msg){ LC.lcSys(msg); return { text: LC.CONFIG.CMD_PLACEHOLDER }; }
+  function reply(msg){
+    LC.lcSys(msg);
+    return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK." };
+  }
   function clearCommandFlags(){
     try {
       LC.Flags?.clearCmd?.();
     } catch (_) {}
   }
   function replyStop(msg){
-    let state;
-    try { state = LC.lcInit(__SCRIPT_SLOT__); } catch (_) {}
+    const state = (L && typeof L === "object") ? L : (() => {
+      try { return LC.lcInit(__SCRIPT_SLOT__); } catch (_) { return null; }
+    })();
     if (state) {
       LC.pushNotice?.(msg);
     }
