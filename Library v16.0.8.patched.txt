@@ -1,6 +1,8 @@
 ﻿// === LIBRARY — Lincoln Heights Core v16.0.8-compat6d ===
 
 (function () {
+  const __SCRIPT_SLOT__ = "Library";
+
   // ---------- Utils ----------
   const getState = () => (typeof state !== "undefined" ? state : {});
   const toNum  = (x, d=0)    => (typeof x === "number" && !isNaN(x)) ? x : (Number(x) || d);
@@ -20,7 +22,7 @@
 
   const CONFIG = {
   VERSION: "16.0.8-compat6d",
-  DATA_VERSION: "16.0.8",
+  DATA_VERSION: "16.0.8-compat6d",
   CHAR_WINDOW_HOT: 3,
   CHAR_WINDOW_ACTIVE: 10,
   CMD_PLACEHOLDER: "⟦SYS⟧ OK.",
@@ -60,10 +62,28 @@
 
   const LC = {
     CONFIG,
+    DATA_VERSION: "16.0.8-compat6d",
 
-    lcInit() {
+    lcInit(slot = __SCRIPT_SLOT__) {
       const st = getState();
       const L = (st.lincoln = st.lincoln || {});
+      const scriptSlot = toStr(slot || __SCRIPT_SLOT__ || "Library");
+      const seen = (L._modsSeen = L._modsSeen || {});
+      seen[scriptSlot] = LC.DATA_VERSION;
+      if (!L._versionCheckDone) {
+        const entries = Object.entries(seen).filter(([, v]) => v);
+        if (entries.length > 1) {
+          const baseVersion = entries[0][1];
+          const hasMismatch = entries.some(([, v]) => v !== baseVersion);
+          if (hasMismatch) {
+            const summary = entries.map(([name, v]) => `${name}=${v}`).join(", ");
+            const msg = `⚠️ Lincoln module data versions differ: ${summary}`;
+            const current = toStr(L.visibleNotice || "").trim();
+            L.visibleNotice = [current, msg].filter(Boolean).join("\n");
+            L._versionCheckDone = true;
+          }
+        }
+      }
       L.version = CONFIG.VERSION;
       // echo cache auto-flush on new session
       try { if ((L.turn|0) <= 0) { this._echoCache = {}; this._echoOrder = []; } } catch(_) {}

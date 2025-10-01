@@ -1,9 +1,13 @@
 ﻿// === CONTEXT MODIFIER v16.0.8-compat6d ===
+const __SCRIPT_SLOT__ = "Context";
+if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
+
 const modifier = function (text) {
   
   const RETRY_KEEP_CONTEXT = (typeof LC !== 'undefined' && LC.lcGetFlag && (LC.lcGetFlag('RETRY_KEEP_CONTEXT', false) === true)); 
 if (typeof LC === "undefined") return { text: String(text || "") };
-  const L = LC.lcInit();
+  LC.DATA_VERSION = "16.0.8-compat6d";
+  const L = LC.lcInit(__SCRIPT_SLOT__);
 
   const isRetry = LC.lcGetFlag("isRetry", false);
   if (isRetry && !RETRY_KEEP_CONTEXT) return { text: String(text || "") };

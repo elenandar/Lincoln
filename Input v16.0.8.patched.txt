@@ -1,8 +1,12 @@
 ﻿// === INPUT MODIFIER v16.0.8-compat6d ===
+const __SCRIPT_SLOT__ = "Input";
+if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
+
 const modifier = function (text) {
   
 if (typeof LC === "undefined") return { text: String(text || "") };
-  const L = LC.lcInit();
+  LC.DATA_VERSION = "16.0.8-compat6d";
+  const L = LC.lcInit(__SCRIPT_SLOT__);
 
   if (L.turn === 0 && !L.openingCaptured) LC.captureOpeningFromHistory();
 
@@ -19,7 +23,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   }
   function replyStop(msg){
     let state;
-    try { state = LC.lcInit(); } catch (_) {}
+    try { state = LC.lcInit(__SCRIPT_SLOT__); } catch (_) {}
     if (state) {
       const prev = (state.visibleNotice || "").trim();
       state.visibleNotice = prev ? `${prev}\n${msg}` : msg;
