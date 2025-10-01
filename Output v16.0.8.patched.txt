@@ -1,8 +1,12 @@
 ﻿// === OUTPUT MODIFIER v16.0.8-compat6d ===
+const __SCRIPT_SLOT__ = "Output";
+if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
+
 function omBudget(start = Date.now(), ms = 280) { return () => { if (Date.now()-start > ms) throw new Error('OM_TIME_BUDGET'); }; } 
 const modifier = function (text) {
   if (typeof LC === "undefined") return { text: String(text || "") };
-  const L = LC.lcInit();
+  LC.DATA_VERSION = "16.0.8-compat6d";
+  const L = LC.lcInit(__SCRIPT_SLOT__);
   const notices = [];
   const _notice = (L.visibleNotice || "").trim();
   if (_notice) {
