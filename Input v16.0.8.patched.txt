@@ -517,7 +517,8 @@ const args   = tokens.slice(1);
           } catch (_) {}
           return !LC.lcGetFlag("isCmd", false) && !LC.lcGetFlag("isRetry", false) && !LC.lcGetFlag("isContinue", false);
         })();
-        out.push(`flagsReset=${flagsReset}`);
+        const flagsResetStatus = flagsReset ? "ok" : "warn";
+        out.push(`flagsReset=${flagsResetStatus}`);
         out.push(`echoCache=${LC._echoOrder?.length ?? 0}`);
         const ever = (L && L.evergreen) || {};
         out.push(`evHist=${ever.history?.length ?? 0}`);
