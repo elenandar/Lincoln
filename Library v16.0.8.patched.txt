@@ -20,6 +20,27 @@ Contract:
   const _NORM_CACHE_MAX = 64;
   const _normCache = new Map();
 
+  const _globalScope =
+    (typeof globalThis !== "undefined" && globalThis) ||
+    (typeof self !== "undefined" && self) ||
+    (typeof window !== "undefined" && window) ||
+    (typeof global !== "undefined" && global) ||
+    {};
+
+  const _existingLC = _globalScope?.LC;
+  const _preparedConfig = _existingLC?.CONFIG ?? {};
+  if (_existingLC && !_existingLC.CONFIG) {
+    _existingLC.CONFIG = _preparedConfig;
+  }
+
+  const _preparedLimits = (_preparedConfig.LIMITS ??= {});
+  _preparedLimits.CONTEXT_LENGTH ??= 800;
+  _preparedLimits.ANTI_ECHO ??= { CACHE_MAX: 256, MIN_LENGTH: 200, SOFT_PRUNE_80: true };
+  _preparedConfig.CHAR_WINDOW_HOT ??= 3;
+  _preparedConfig.CHAR_WINDOW_ACTIVE ??= 10;
+  _preparedLimits.EVERGREEN_HISTORY_CAP ??= 400;
+  _preparedConfig.FEATURES ??= { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true };
+
   // FNV-1a 32-bit (умножение на prime через сумму сдвигов — эквивалент Math.imul(h, 0x01000193))
   const FNV1A = (str) => {
     let h = 0x811c9dc5 >>> 0;
@@ -55,6 +76,7 @@ Contract:
     EXTENDED_STORE_CAP: 120,
     EVENTS_WINDOW_TURNS: 50
   },
+  FEATURES: { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true },
   RECAP_V2: {
     SCORE_THRESHOLD: 1.0,
     COOLDOWN_TURNS: 3,
@@ -72,20 +94,6 @@ Contract:
 };
 
   CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
-
-  // overlay defaults
-  LC.CONFIG ||= {};
-  LC.CONFIG.LIMITS ||= {};
-  LC.CONFIG.LIMITS.CONTEXT_LENGTH ??= 800;
-  // anti-echo defaults
-  LC.CONFIG.LIMITS.ANTI_ECHO ??= { CACHE_MAX: 256, MIN_LENGTH: 200, SOFT_PRUNE_80: true };
-  // character window defaults
-  LC.CONFIG.CHAR_WINDOW_HOT ??= 3;
-  LC.CONFIG.CHAR_WINDOW_ACTIVE ??= 10;
-  // evergreen history limits
-  LC.CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
-  // feature toggles
-  LC.CONFIG.FEATURES ??= { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true };
 
   const LC = {
     CONFIG,
@@ -1473,6 +1481,46 @@ L.debugMode = toBool(L.debugMode, false);
       return n;
     }
   };
+
+  const _mergedConfig = {
+    ...CONFIG,
+    ..._preparedConfig,
+    LIMITS: {
+      ...CONFIG.LIMITS,
+      ...(_preparedConfig.LIMITS || {}),
+      CADENCE: {
+        ...CONFIG.LIMITS.CADENCE,
+        ...(_preparedConfig.LIMITS?.CADENCE || {})
+      },
+      ANTI_ECHO: {
+        ...CONFIG.LIMITS.ANTI_ECHO,
+        ...(_preparedConfig.LIMITS?.ANTI_ECHO || {}),
+        CONTINUE_THRESHOLD_MULT: {
+          ...CONFIG.LIMITS.ANTI_ECHO.CONTINUE_THRESHOLD_MULT,
+          ...(_preparedConfig.LIMITS?.ANTI_ECHO?.CONTINUE_THRESHOLD_MULT || {})
+        }
+      }
+    },
+    FEATURES: {
+      ...CONFIG.FEATURES,
+      ...(_preparedConfig.FEATURES || {})
+    },
+    RECAP_V2: {
+      ...CONFIG.RECAP_V2,
+      ...(_preparedConfig.RECAP_V2 || {}),
+      WEIGHTS: {
+        ...CONFIG.RECAP_V2.WEIGHTS,
+        ...(_preparedConfig.RECAP_V2?.WEIGHTS || {})
+      }
+    }
+  };
+
+  LC.CONFIG = _mergedConfig;
+  if (typeof globalThis !== "undefined") {
+    globalThis.LC = LC;
+  } else if (_globalScope && typeof _globalScope === "object") {
+    _globalScope.LC = LC;
+  }
 
   // ===== Flags API (non-breaking) =====
   LC.Flags = LC.Flags || {
