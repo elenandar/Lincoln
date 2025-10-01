@@ -107,9 +107,22 @@ const modifier = function (text) {
   if (!isRetry) {
     try {
       LC.updateCharacterActivity(out, false);
+    } catch (e) {
+      LC.lcWarn("Post-analyze updateCharacterActivity error: " + (e && e.message));
+    }
+    try {
       LC.analyzeTextForEvents(out, "output");
-      LC.autoEvergreen.analyze(out, actionType);
-    } catch (e) { LC.lcWarn("Post-analyze error: " + (e && e.message)); }
+    } catch (e) {
+      LC.lcWarn("Post-analyze analyzeTextForEvents error: " + (e && e.message));
+    }
+    const autoEvergreen = LC.autoEvergreen;
+    if (autoEvergreen?.analyze) {
+      try {
+        autoEvergreen.analyze(out, actionType);
+      } catch (e) {
+        LC.lcWarn("Post-analyze autoEvergreen error: " + (e && e.message));
+      }
+    }
   }
 
   // Авто-оффер recap и авто-epoch
