@@ -62,6 +62,20 @@
 
   CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
 
+  // overlay defaults
+  LC.CONFIG ||= {};
+  LC.CONFIG.LIMITS ||= {};
+  LC.CONFIG.LIMITS.CONTEXT_LENGTH ??= 800;
+  // anti-echo defaults
+  LC.CONFIG.LIMITS.ANTI_ECHO ??= { CACHE_MAX: 256, MIN_LENGTH: 200, SOFT_PRUNE_80: true };
+  // character window defaults
+  LC.CONFIG.CHAR_WINDOW_HOT ??= 3;
+  LC.CONFIG.CHAR_WINDOW_ACTIVE ??= 10;
+  // evergreen history limits
+  LC.CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
+  // feature toggles
+  LC.CONFIG.FEATURES ??= { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true };
+
   const LC = {
     CONFIG,
     DATA_VERSION: "16.0.8-compat6d",
