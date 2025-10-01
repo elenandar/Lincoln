@@ -466,21 +466,32 @@ const args   = tokens.slice(1);
       }
 
       case "/ctx": {
-        try { if (typeof LC !== "undefined" && LC.ctxPreview) { return replyStop(LC.ctxPreview()); } } catch(_){/* fallback */}
+        let r;
+        try {
+          if (typeof LC !== "undefined") {
+            const built = LC.buildCtxPreview?.(LC.lcInit?.());
+            if (built && typeof built === "object") r = built;
+          }
+        } catch (_) {/* fallback */}
 
-        // Fallback to local preview builder
-        const r = (typeof buildContextPreview === "function") ? buildContextPreview() : { overlay:"", max:800, parts:{} };
+        if (!r || typeof r !== "object") {
+          // Fallback to local preview builder
+          r = (typeof buildContextPreview === "function") ? buildContextPreview() : { overlay:"", max:800, parts:{} };
+        }
+        const overlay = (typeof r.overlay === "string") ? r.overlay : String(r.overlay || "");
+        const max = (typeof r.max === "number" && isFinite(r.max)) ? r.max : 800;
+        const parts = (r.parts && typeof r.parts === "object") ? r.parts : {};
         const lines = [
-          `LEN: ${r.overlay.length}/${r.max}`,
-          `GUIDE: ${r.parts.GUIDE||0}`,
-          `INTENT: ${r.parts.INTENT||0}`,
-          `TASK: ${r.parts.TASK||0}`,
-          `CANON: ${r.parts.CANON||0}`,
-          `OPENING: ${r.parts.OPENING||0}`,
-          `SCENE: ${r.parts.SCENE||0}`,
-          `META: ${r.parts.META||0}`
+          `LEN: ${overlay.length}/${max}`,
+          `GUIDE: ${parts.GUIDE||0}`,
+          `INTENT: ${parts.INTENT||0}`,
+          `TASK: ${parts.TASK||0}`,
+          `CANON: ${parts.CANON||0}`,
+          `OPENING: ${parts.OPENING||0}`,
+          `SCENE: ${parts.SCENE||0}`,
+          `META: ${parts.META||0}`
         ];
-        const sample = String(r.overlay).split(/\r?\n/).slice(0,8).join("\n");
+        const sample = overlay.split(/\r?\n/).slice(0,8).join("\n");
         return replyStop("=== CONTEXT INSPECTOR ===\n" + lines.join(" | ") + "\n---\n" + sample);
       }
 
