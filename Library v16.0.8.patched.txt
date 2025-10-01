@@ -9,6 +9,9 @@
   const toStr  = (x)         => String(x == null ? "" : x);
   const toBool = (x, d=false)=> (x == null ? d : !!x);
 
+  const _NORM_CACHE_MAX = 64;
+  const _normCache = new Map();
+
   // FNV-1a 32-bit (умножение на prime через сумму сдвигов — эквивалент Math.imul(h, 0x01000193))
   const FNV1A = (str) => {
     let h = 0x811c9dc5 >>> 0;
@@ -229,22 +232,24 @@ L.debugMode = toBool(L.debugMode, false);
         return src.replace(/[^\w\s]+/g, " ").replace(/\s+/g, " ").trim();
       }
     },
-    _normUCache: Object.create(null),
-    _normUCacheOrder: [],
     _normUCached(s){
+      const normFn = (this && typeof this._normU === "function") ? this._normU.bind(this) : LC._normU.bind(LC);
+      if (!LC.CONFIG?.FEATURES?.USE_NORM_CACHE) {
+        return normFn(s);
+      }
       const key = toStr(s);
-      const cache = this._normUCache || (this._normUCache = Object.create(null));
-      if (Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
-      const value = (this && typeof this._normU === "function") ? this._normU(key) : key;
-      cache[key] = value;
-      const order = this._normUCacheOrder || (this._normUCacheOrder = []);
-      order.push(key);
-      const MAX = 2048;
-      if (order.length > MAX) {
-        const pruneCount = Math.max(1, Math.floor(MAX * 0.1));
-        for (let i = 0; i < pruneCount; i++) {
-          const oldKey = order.shift();
-          if (oldKey !== undefined) delete cache[oldKey];
+      if (_normCache.has(key)) {
+        const cached = _normCache.get(key);
+        _normCache.delete(key);
+        _normCache.set(key, cached);
+        return cached;
+      }
+      const value = normFn(key);
+      _normCache.set(key, value);
+      if (_normCache.size > _NORM_CACHE_MAX) {
+        const oldestKey = _normCache.keys().next().value;
+        if (oldestKey !== undefined) {
+          _normCache.delete(oldestKey);
         }
       }
       return value;
