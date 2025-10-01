@@ -552,7 +552,23 @@ L.debugMode = toBool(L.debugMode, false);
       this._echoCache[cacheKey] = res;
       this._echoOrder.push(cacheKey);
 
-      const max = CONFIG.LIMITS.ANTI_ECHO.CACHE_MAX;
+      const MAX = this.CONFIG?.LIMITS?.ANTI_ECHO?.CACHE_MAX ?? 256;
+      const softCap = Math.floor(MAX * 0.8);
+      if (this._echoOrder.length > softCap) {
+        const pruneCount = Math.max(1, Math.floor(this._echoOrder.length * 0.3));
+        const removedKeys = this._echoOrder.splice(0, pruneCount);
+        for (let i = 0; i < removedKeys.length; i++) {
+          const oldKey = removedKeys[i];
+          if (oldKey && this._echoCache[oldKey] !== undefined) {
+            delete this._echoCache[oldKey];
+          }
+        }
+        if (L.debugMode) {
+          this.lcDebug(`antiEcho: soft prune (-${removedKeys.length}, size=${this._echoOrder.length})`);
+        }
+      }
+
+      const max = MAX;
       if (this._echoOrder.length > max) {
         const toRemove = Math.floor(max / 2);
         for (let i=0;i<toRemove;i++){
