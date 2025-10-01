@@ -23,9 +23,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     let state;
     try { state = LC.lcInit(__SCRIPT_SLOT__); } catch (_) {}
     if (state) {
-      const prev = (state.visibleNotice || "").trim();
-      state.visibleNotice = prev ? `${prev}\n${msg}` : msg;
-      if (state !== L) L.visibleNotice = state.visibleNotice;
+      LC.pushNotice?.(msg);
     }
     LC.lcSys(msg);
     clearCommandFlags();
