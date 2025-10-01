@@ -862,7 +862,7 @@ L.debugMode = toBool(L.debugMode, false);
         const L = LC.lcInit();
         if (!this.patterns) this.patterns = this._buildPatterns();
         if (!L.evergreen || !L.evergreen.enabled || actionType === "retry" || !text) return;
-        const T = String(text);
+        const T = LC._normUCached?.(text) ?? LC._normU(text);
 
         const formatRelation = (subject, action, object, raw, patternType, options={})=>{
           const subj = String(subject || "").trim();
