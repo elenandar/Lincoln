@@ -489,14 +489,68 @@ return reply("=== CONTEXT INSPECTOR ===\n" + lines.join(" | ") + "\n---\n" + sam
     (L.antiEchoMode || "soft"),
     `@${L.antiEchoSensitivity ?? 85}%`
   ].join(" ");
-  return reply([
+  let modsSeenInfo = "n/a";
+  try {
+    const modsSeen = (L && typeof L === "object") ? L._modsSeen : undefined;
+    if (modsSeen !== undefined && modsSeen !== null) {
+      if (Array.isArray(modsSeen)) {
+        modsSeenInfo = modsSeen.length ? modsSeen.map(v => String(v)).join(", ") : "∅";
+      } else if (typeof modsSeen?.forEach === "function" && typeof modsSeen?.size === "number") {
+        const tmp = [];
+        modsSeen.forEach(v => tmp.push(String(v)));
+        modsSeenInfo = tmp.length ? tmp.join(", ") : "∅";
+      } else if (typeof modsSeen === "object") {
+        const keys = Object.keys(modsSeen);
+        modsSeenInfo = keys.length ? keys.join(", ") : "∅";
+      } else {
+        modsSeenInfo = String(modsSeen);
+      }
+    }
+  } catch (_) {}
+
+  const probe = replyStop("probe");
+
+  let flagsReset = false;
+  try {
+    const isCmd = !!LC.lcGetFlag("isCmd", false);
+    const isRetry = !!LC.lcGetFlag("isRetry", false);
+    const isContinue = !!LC.lcGetFlag("isContinue", false);
+    flagsReset = !isCmd && !isRetry && !isContinue;
+  } catch (_) {}
+
+  let echoCacheSize = 0;
+  try {
+    if (Array.isArray(LC._echoOrder)) {
+      echoCacheSize = LC._echoOrder.length;
+    } else if (LC._echoCache && typeof LC._echoCache === "object") {
+      echoCacheSize = Object.keys(LC._echoCache).length;
+    }
+  } catch (_) {}
+
+  let evergreenHistorySize = 0;
+  try {
+    evergreenHistorySize = Array.isArray(L?.evergreen?.history) ? L.evergreen.history.length : 0;
+  } catch (_) {}
+
+  const lines = [
     "=== SELFTEST ===",
     `Version: ${cfg.VERSION || "n/a"}`,
     `Data: ${cfg.DATA_VERSION || "n/a"}`,
     `Cadence: ${L.cadence} (muteUntil=${L.recapMuteUntil ?? "-"}, sinceRecap=${(L.turn - (L.lastRecapTurn || 0)) || 0})`,
     `Anti-echo: ${anti}`,
-    `Flags: isCmd=${LC.lcGetFlag("isCmd",false)}, isRetry=${LC.lcGetFlag("isRetry",false)}, isContinue=${LC.lcGetFlag("isContinue",false)}, RETRY_KEEP_CONTEXT=${LC.lcGetFlag("RETRY_KEEP_CONTEXT",false)}`
-  ].join("\n"));
+    `Flags: isCmd=${LC.lcGetFlag("isCmd",false)}, isRetry=${LC.lcGetFlag("isRetry",false)}, isContinue=${LC.lcGetFlag("isContinue",false)}, RETRY_KEEP_CONTEXT=${LC.lcGetFlag("RETRY_KEEP_CONTEXT",false)}`,
+    `Mods seen: ${modsSeenInfo}`,
+    `flagsReset=${flagsReset}`,
+    `Echo cache size: ${echoCacheSize}`,
+    `Evergreen history size: ${evergreenHistorySize}`
+  ];
+
+  const response = { text: lines.join("\n") };
+  if (probe && typeof probe === "object") {
+    if (probe.stop !== undefined) response.stop = probe.stop;
+    if (probe._sys !== undefined) response._sys = probe._sys;
+  }
+  return response;
 }
 
 
