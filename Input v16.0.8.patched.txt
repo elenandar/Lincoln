@@ -491,14 +491,24 @@ const args   = tokens.slice(1);
           (L.antiEchoMode || "soft"),
           `@${L.antiEchoSensitivity ?? 85}%`
         ].join(" ");
-        return replyStop([
+        const out = [
           "=== SELFTEST ===",
           `Version: ${cfg.VERSION || "n/a"}`,
           `Data: ${cfg.DATA_VERSION || "n/a"}`,
           `Cadence: ${L.cadence} (muteUntil=${L.recapMuteUntil ?? "-"}, sinceRecap=${(L.turn - (L.lastRecapTurn || 0)) || 0})`,
           `Anti-echo: ${anti}`,
           `Flags: isCmd=${LC.lcGetFlag("isCmd",false)}, isRetry=${LC.lcGetFlag("isRetry",false)}, isContinue=${LC.lcGetFlag("isContinue",false)}, RETRY_KEEP_CONTEXT=${LC.lcGetFlag("RETRY_KEEP_CONTEXT",false)}`
-        ].join("\n"));
+        ];
+        const mods = (L && L._modsSeen) || {};
+        const modList = Object.entries(mods).map(([k,v]) => `${k}:${v}`).join(", ");
+        out.push(`versions=[${modList}]`);
+        clearCommandFlags();
+        const flagsReset = !LC.lcGetFlag("isCmd", false) && !LC.lcGetFlag("isRetry", false) && !LC.lcGetFlag("isContinue", false);
+        out.push(`flagsReset=${flagsReset}`);
+        out.push(`echoCache=${LC._echoOrder?.length ?? 0}`);
+        const ever = (L && L.evergreen) || {};
+        out.push(`evHist=${ever.history?.length ?? 0}`);
+        return replyStop(out.join("\n"));
       }
 
 
