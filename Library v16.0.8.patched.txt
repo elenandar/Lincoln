@@ -58,6 +58,8 @@
   }
 };
 
+  CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
+
   const LC = {
     CONFIG,
 
@@ -138,7 +140,16 @@ L.debugMode = toBool(L.debugMode, false);
         history: [], lastUpdate: 0
       };
       L.evergreen.history = Array.isArray(L.evergreen.history) ? L.evergreen.history : [];
-      L.evergreenHistoryCap = toNum(L.evergreenHistoryCap, 0); // 0 = без капа
+      const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
+      const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
+      const evergreenCapDefault = Number.isFinite(defaultEvergreenCapNum) ? defaultEvergreenCapNum : 0;
+      const evergreenCapNum = Number(L.evergreenHistoryCap);
+      if (L.evergreenHistoryCap == null || Number.isNaN(evergreenCapNum)) {
+        L.evergreenHistoryCap = evergreenCapDefault;
+      } else {
+        L.evergreenHistoryCap = evergreenCapNum;
+      }
+      // 0 = без капа
 
       return L;
     },
@@ -930,13 +941,16 @@ L.debugMode = toBool(L.debugMode, false);
           const box = (L.evergreen[cat] = L.evergreen[cat] || {});
           const prev = box[key];
           if (prev !== val){
-            if (prev) L.evergreen.history.push({ turn:L.turn, category:cat, old:prev, new:val });
-            box[key] = val;
-            // кап истории по флагу
-            const cap = toNum(L.evergreenHistoryCap, 0);
-            if (cap > 0 && Array.isArray(L.evergreen.history) && L.evergreen.history.length > cap) {
-              L.evergreen.history = L.evergreen.history.slice(-cap);
+            if (prev) {
+              L.evergreen.history.push({ turn:L.turn, category:cat, old:prev, new:val });
+              const capNum = Number(L.evergreenHistoryCap);
+              const cap = Number.isFinite(capNum) ? capNum : 0;
+              if (cap > 0 && Array.isArray(L.evergreen.history) && L.evergreen.history.length > cap) {
+                const overflow = L.evergreen.history.length - cap;
+                if (overflow > 0) L.evergreen.history.splice(0, overflow);
+              }
             }
+            box[key] = val;
           }
         }
 
@@ -1123,9 +1137,19 @@ L.debugMode = toBool(L.debugMode, false);
       const record = { turn: state.turn, category: cat, new: val, key: entryKey };
       record.old = prev !== undefined ? prev : "";
       state.evergreen.history.push(record);
-      const cap = Math.max(0, toNum(state.evergreenHistoryCap, 0));
+      const defaultCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
+      const defaultCapNum = Number(defaultCapRaw);
+      const evergreenDefaultCap = Number.isFinite(defaultCapNum) ? defaultCapNum : 0;
+      let manualCap = state.evergreenHistoryCap;
+      if (manualCap == null) {
+        manualCap = evergreenDefaultCap;
+      }
+      const manualCapNum = Number(manualCap);
+      const cap = Number.isFinite(manualCapNum) ? manualCapNum : evergreenDefaultCap;
+      state.evergreenHistoryCap = cap;
       if (cap > 0 && state.evergreen.history.length > cap) {
-        state.evergreen.history = state.evergreen.history.slice(-cap);
+        const overflow = state.evergreen.history.length - cap;
+        if (overflow > 0) state.evergreen.history.splice(0, overflow);
       }
       state.evergreen.lastUpdate = state.turn;
       if (LC.autoEvergreen && typeof LC.autoEvergreen.limitCategories === "function") {
