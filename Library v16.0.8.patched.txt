@@ -17,9 +17,6 @@ Contract:
   const toStr  = (x)         => String(x == null ? "" : x);
   const toBool = (x, d=false)=> (x == null ? d : !!x);
 
-  const _NORM_CACHE_MAX = 64;
-  const _normCache = new Map();
-
   const _globalScope =
     (typeof globalThis !== "undefined" && globalThis) ||
     (typeof self !== "undefined" && self) ||
@@ -40,6 +37,99 @@ Contract:
   _preparedConfig.CHAR_WINDOW_ACTIVE ??= 10;
   _preparedLimits.EVERGREEN_HISTORY_CAP ??= 400;
   _preparedConfig.FEATURES ??= { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true };
+
+  const LC = (typeof globalThis !== "undefined" ? (globalThis.LC ||= {}) : (_globalScope.LC ||= {}));
+
+  // RF-T1: CONFIG sweep + unified utils (idempotent guards)
+  LC.CONFIG ||= {};
+  LC.CONFIG.LIMITS ||= {};
+  LC.CONFIG.LIMITS.CONTEXT_LENGTH ??= 800;
+  LC.CONFIG.LIMITS.ANTI_ECHO ??= { CACHE_MAX: 256, MIN_LENGTH: 200, SOFT_PRUNE_80: true };
+  LC.CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
+  LC.CONFIG.CHAR_WINDOW_HOT ??= 3;
+  LC.CONFIG.CHAR_WINDOW_ACTIVE ??= 10;
+  LC.CONFIG.FEATURES ??= { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true, STRICT_CMD_BYPASS: true };
+
+  // Notices (centralized)
+  LC.pushNotice ??= (msg) => {
+    if (!msg) return;
+    const L = LC.lcInit ? LC.lcInit() : (globalThis.state?.shared || {});
+    L.visibleNotice = [L.visibleNotice, String(msg)].filter(Boolean).join("\n");
+  };
+  LC.consumeNotices ??= () => {
+    const L = LC.lcInit ? LC.lcInit() : (globalThis.state?.shared || {});
+    const out = L.visibleNotice || "";
+    L.visibleNotice = "";
+    return out;
+  };
+
+  // Flags facade
+  LC.Flags ??= {
+    setCmd(){ LC.lcSetFlag?.("isCmd", true); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
+    clearCmd(){ LC.lcSetFlag?.("isCmd", false); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); }
+  };
+
+  // Turns facade (тонкая обёртка)
+  LC.Turns ??= {
+    incIfNeeded(){ if (!LC.lcGetFlag?.("isCmd") && !LC.lcGetFlag?.("isRetry")) { const L=LC.lcInit(); L.turn=(L.turn|0)+1; } },
+    set(n){ LC.turnSet?.(n); },
+    undo(n){ LC.turnUndo?.(n); },
+  };
+
+  // Unified context preview
+  LC.buildCtxPreview ??= function(stateOrOpts, opts = {}) {
+    const limitDefault = LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800;
+    const options = {};
+    if (stateOrOpts && typeof stateOrOpts === "object" && !Array.isArray(stateOrOpts)) {
+      const maybeState = stateOrOpts;
+      const hasOverlayKeys = ["limit", "allowPartial", "preview", "text", "parts", "max"].some((k) => k in maybeState);
+      if (hasOverlayKeys) {
+        Object.assign(options, maybeState);
+      } else {
+        options.state = maybeState;
+      }
+    }
+    if (opts && typeof opts === "object") {
+      Object.assign(options, opts);
+    }
+    if (!("limit" in options)) options.limit = limitDefault;
+    try {
+      const result = LC.composeContextOverlay?.(options);
+      if (result && typeof result === "object") {
+        return {
+          overlay: typeof result.text === "string" ? result.text : String(result.text || ""),
+          parts: result.parts || {},
+          max: result.max,
+          error: result.error
+        };
+      }
+      const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 0;
+      return {
+        overlay: typeof result === "string" ? result : "",
+        parts: {},
+        max: limit,
+        error: result && typeof result !== "string" ? "Unexpected preview result" : undefined
+      };
+    } catch (e) {
+      const message = e && e.message ? e.message : String(e);
+      LC.lcWarn?.(`buildCtxPreview failed: ${message}`);
+      const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 0;
+      return { overlay: "", parts: {}, max: limit, error: message };
+    }
+  };
+
+  // Norm cache (opt-in)
+  const __NU_CACHE = (globalThis.__NU_CACHE ||= new Map());
+  LC._normUCached ??= function(s){
+    if (!s) return s;
+    const normFn = typeof LC._normU === "function" ? LC._normU.bind(LC) : (typeof _normU === "function" ? _normU : (x) => x);
+    if (!LC.CONFIG?.FEATURES?.USE_NORM_CACHE) return normFn(s);
+    if (__NU_CACHE.has(s)) { const v=__NU_CACHE.get(s); __NU_CACHE.delete(s); __NU_CACHE.set(s,v); return v; }
+    const v = normFn(s);
+    __NU_CACHE.set(s, v);
+    if (__NU_CACHE.size > 64) __NU_CACHE.delete(__NU_CACHE.keys().next().value);
+    return v;
+  };
 
   // FNV-1a 32-bit (умножение на prime через сумму сдвигов — эквивалент Math.imul(h, 0x01000193))
   const FNV1A = (str) => {
@@ -95,7 +185,7 @@ Contract:
 
   CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
 
-  const LC = {
+  Object.assign(LC, {
     CONFIG,
     DATA_VERSION: "16.0.8-compat6d",
 
@@ -215,25 +305,6 @@ L.debugMode = toBool(L.debugMode, false);
     lcError(m)  { this.lcSys("❌ " + m); const L=this.lcInit(); L.tm.errors=(L.tm.errors||0)+1; },
     lcDebug(m)  { const L=this.lcInit(); if (L.debugMode) this.lcSys("🔍 " + m); },
     lcConsumeMsgs(){ const L=this.lcInit(); const a=L.sysMsgs.slice(); L.sysMsgs=[]; return a; },
-    pushNotice(msg){
-      const text = toStr(msg).trim();
-      if (!text) return;
-      let L;
-      try {
-        L = this.lcInit();
-      } catch (err) {
-        try {
-          const st = getState();
-          L = st.lincoln = st.lincoln || {};
-        } catch (_) {
-          L = (typeof state !== "undefined" ? state.lincoln : null);
-        }
-      }
-      if (!L) return;
-      const current = toStr(L.visibleNotice || "").trim();
-      L.visibleNotice = [current, text].filter(Boolean).join("\n");
-    },
-
     // ---------- FLAGS ----------
     lcSetFlag(k,v){ const L=this.lcInit(); L.flags[toStr(k)] = v; },
     lcGetFlag(k,def){ const L=this.lcInit(); return (k in L.flags) ? L.flags[k] : def; },
@@ -246,28 +317,6 @@ L.debugMode = toBool(L.debugMode, false);
       } catch(e) {
         return src.replace(/[^\w\s]+/g, " ").replace(/\s+/g, " ").trim();
       }
-    },
-    _normUCached(s){
-      const normFn = (this && typeof this._normU === "function") ? this._normU.bind(this) : LC._normU.bind(LC);
-      if (!LC.CONFIG?.FEATURES?.USE_NORM_CACHE) {
-        return normFn(s);
-      }
-      const key = toStr(s);
-      if (_normCache.has(key)) {
-        const cached = _normCache.get(key);
-        _normCache.delete(key);
-        _normCache.set(key, cached);
-        return cached;
-      }
-      const value = normFn(key);
-      _normCache.set(key, value);
-      if (_normCache.size > _NORM_CACHE_MAX) {
-        const oldestKey = _normCache.keys().next().value;
-        if (oldestKey !== undefined) {
-          _normCache.delete(oldestKey);
-        }
-      }
-      return value;
     },
     lcStripSys(text){ return toStr(text).replace(/⟦[A-Z]+⟧[^\n]*\n?/g, "").trim(); },
     stripYouWrappers(s){
@@ -1487,7 +1536,7 @@ L.debugMode = toBool(L.debugMode, false);
       }
       return n;
     }
-  };
+  });
 
   const _mergedConfig = {
     ...CONFIG,
@@ -1530,12 +1579,12 @@ L.debugMode = toBool(L.debugMode, false);
   }
 
   // ===== Flags API (non-breaking) =====
-  LC.Flags = LC.Flags || {
+  LC.Flags = Object.assign({
     setCmd(){ LC.lcSetFlag?.("isCmd", true); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
     clearCmd(){ LC.lcSetFlag?.("isCmd", false); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
     queueRecap(){ LC.lcSetFlag?.("doRecap", true); },
     queueEpoch(){ LC.lcSetFlag?.("doEpoch", true); },
-  };
+  }, LC.Flags || {});
 
   LC.Turns = LC.Turns || {
     incIfNeeded(){ if (!LC.lcGetFlag?.("isCmd") && !LC.lcGetFlag?.("isRetry")) { const L=LC.lcInit(); L.turn=(L.turn|0)+1; } },
@@ -1695,21 +1744,6 @@ LC.composeContextOverlay = function(options) {
     return { text:"", parts:{}, max:0, error:err };
   }
 };
-
-LC.buildCtxPreview = function(options) {
-  const result = LC.composeContextOverlay?.(options);
-  if (result && typeof result === "object") {
-    return {
-      overlay: typeof result.text === "string" ? result.text : String(result.text || ""),
-      parts: result.parts || {},
-      max: result.max,
-      error: result.error
-    };
-  }
-  return { overlay:"", parts:{}, max:0 };
-};
-
-
 
 LC.ensureEventsCap = function(cap) {
   try {
