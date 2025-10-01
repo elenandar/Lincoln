@@ -96,8 +96,17 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   for (let i=0;i<uniq.length;i++){
     const line = uniq[i];
     const nl = overlay ? "\n" : "";
-    if ((overlay.length + line.length + nl.length) > MAX) continue;
-    overlay += nl + line;
+    const currentLength = overlay.length + nl.length;
+    const remaining = MAX - currentLength;
+    if (remaining <= 0) break;
+    if (line.length <= remaining) {
+      overlay += nl + line;
+      continue;
+    }
+    if (remaining >= 40) {
+      overlay += nl + line.slice(0, remaining);
+      break;
+    }
   }
 
   return { text: overlay };
