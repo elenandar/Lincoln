@@ -16,9 +16,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   function reply(msg){ LC.lcSys(msg); return { text: LC.CONFIG.CMD_PLACEHOLDER }; }
   function clearCommandFlags(){
     try {
-      LC.lcSetFlag("isCmd", false);
-      LC.lcSetFlag("isRetry", false);
-      LC.lcSetFlag("isContinue", false);
+      LC.Flags?.clearCmd?.();
     } catch (_) {}
   }
   function replyStop(msg){
@@ -49,9 +47,7 @@ const args   = tokens.slice(1);
 
   // ==== Команды ====
   if (cmd) {
-    LC.lcSetFlag("isCmd", true);
-    LC.lcSetFlag("isRetry", false);
-    LC.lcSetFlag("isContinue", false);
+    LC.Flags?.setCmd?.();
     L.lastActionType = "command";
 
 
