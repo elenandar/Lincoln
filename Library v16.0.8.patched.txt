@@ -1448,6 +1448,14 @@ L.debugMode = toBool(L.debugMode, false);
     }
   };
 
+  // ===== Flags API (non-breaking) =====
+  LC.Flags = LC.Flags || {
+    setCmd(){ LC.lcSetFlag?.("isCmd", true); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
+    clearCmd(){ LC.lcSetFlag?.("isCmd", false); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
+    queueRecap(){ LC.lcSetFlag?.("doRecap", true); },
+    queueEpoch(){ LC.lcSetFlag?.("doEpoch", true); },
+  };
+
   if (typeof globalThis !== "undefined") globalThis.LC = LC;
   if (typeof window !== "undefined") window.LC = LC;
 })();
