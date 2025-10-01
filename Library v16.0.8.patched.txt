@@ -993,126 +993,146 @@ L.debugMode = toBool(L.debugMode, false);
         // RELATIONS
         for (let i=0;i<this.patterns.relations.length;i++){
           const p = this.patterns.relations[i]; p.lastIndex = 0;
-          let m; while ((m = p.exec(T)) !== null){
-            const patternType = p._relPattern || "";
-            let subjectRaw = "";
-            let counterpartRaw = "";
-            let actionRaw = "";
-            if (patternType === "verbRu" || patternType === "verbEn") {
-              subjectRaw = String(m[1] || "").trim();
-              actionRaw = String(m[2] || "").trim();
-              counterpartRaw = String(m[3] || "").trim();
-            } else {
-              subjectRaw = String(m[1] || "").trim();
-              counterpartRaw = String(m[2] || "").trim();
-              actionRaw = String(m[3] || "").trim();
-            }
+          let m;
+          try {
+            while ((m = p.exec(T)) !== null){
+              const patternType = p._relPattern || "";
+              let subjectRaw = "";
+              let counterpartRaw = "";
+              let actionRaw = "";
+              if (patternType === "verbRu" || patternType === "verbEn") {
+                subjectRaw = String(m[1] || "").trim();
+                actionRaw = String(m[2] || "").trim();
+                counterpartRaw = String(m[3] || "").trim();
+              } else {
+                subjectRaw = String(m[1] || "").trim();
+                counterpartRaw = String(m[2] || "").trim();
+                actionRaw = String(m[3] || "").trim();
+              }
 
-            const subject = this.normalizeCharName(subjectRaw);
-            const counterpart = this.normalizeCharName(counterpartRaw);
-            const action = actionRaw;
+              const subject = this.normalizeCharName(subjectRaw);
+              const counterpart = this.normalizeCharName(counterpartRaw);
+              const action = actionRaw;
 
-            if (!subject || !counterpart) continue;
-            const importantSubject = this.isImportantCharacter(subject);
-            const importantCounterpart = this.isImportantCharacter(counterpart);
-            if (!importantSubject && !importantCounterpart) continue;
+              if (!subject || !counterpart) continue;
+              const importantSubject = this.isImportantCharacter(subject);
+              const importantCounterpart = this.isImportantCharacter(counterpart);
+              if (!importantSubject && !importantCounterpart) continue;
 
-            if (importantSubject) {
-              const relationTextA = formatRelation(subject, action, counterpart, m[0], patternType, { subjectText: subjectRaw, objectText: counterpartRaw });
-              if (relationTextA) upd("relations", subject, relationTextA);
+              if (importantSubject) {
+                const relationTextA = formatRelation(subject, action, counterpart, m[0], patternType, { subjectText: subjectRaw, objectText: counterpartRaw });
+                if (relationTextA) upd("relations", subject, relationTextA);
+              }
+              if (importantCounterpart) {
+                const relationTextB = formatRelation(counterpart, action, subject, m[0], patternType, {
+                  subjectText: counterpartRaw || counterpart,
+                  objectText: subjectRaw,
+                  reverse: true,
+                  originSubject: subject,
+                  originSubjectText: subjectRaw
+                });
+                if (relationTextB) upd("relations", counterpart, relationTextB);
+              }
             }
-            if (importantCounterpart) {
-              const relationTextB = formatRelation(counterpart, action, subject, m[0], patternType, {
-                subjectText: counterpartRaw || counterpart,
-                objectText: subjectRaw,
-                reverse: true,
-                originSubject: subject,
-                originSubjectText: subjectRaw
-              });
-              if (relationTextB) upd("relations", counterpart, relationTextB);
-            }
+          } catch (err) {
+            LC.lcWarn(`Regex engine issue: ${err && err.message ? err.message : err}`);
           }
         }
         // STATUS
         for (let i=0;i<this.patterns.status.length;i++){
           const p = this.patterns.status[i]; p.lastIndex = 0;
-          let m; while ((m = p.exec(T)) !== null){
-            const A = this.normalizeCharName(m[1]);
-            const S = String(m[2] || "").replace(/[.,!?]+$/, "").trim();
-            if (A && S && this.isImportantCharacter(A)) upd("status", A, S);
+          let m;
+          try {
+            while ((m = p.exec(T)) !== null){
+              const A = this.normalizeCharName(m[1]);
+              const S = String(m[2] || "").replace(/[.,!?]+$/, "").trim();
+              if (A && S && this.isImportantCharacter(A)) upd("status", A, S);
+            }
+          } catch (err) {
+            LC.lcWarn(`Regex engine issue: ${err && err.message ? err.message : err}`);
           }
         }
         // OBLIGATIONS
         for (let i=0;i<this.patterns.obligations.length;i++){
           const p = this.patterns.obligations[i]; p.lastIndex = 0;
-          let m; while ((m = p.exec(T)) !== null){
-            const A = this.normalizeCharName(m[1]);
-            const captureCount = (m.length || 0) - 1;
-            let rawTarget = "";
-            let rawDesc = "";
-            if (captureCount >= 3) {
-              rawTarget = m[2] || "";
-              rawDesc = m[3] || "";
-            } else if (captureCount === 2) {
-              rawDesc = m[2] || "";
-            } else if (captureCount >= 1) {
-              rawDesc = m[captureCount] || "";
-            }
-            let B = "";
-            if (captureCount >= 3) {
-              let trimmedTarget = String(rawTarget || "").trim();
-              const originalTarget = trimmedTarget;
-              if (trimmedTarget) {
-                const targetParts = trimmedTarget.split(/\s+/).filter(Boolean);
-                if (targetParts.length > 1) {
-                  let cutIndex = targetParts.length;
-                  while (cutIndex > 0) {
-                    const word = targetParts[cutIndex - 1];
-                    const first = word ? word.charAt(0) : "";
-                    const isLetter = first && first.toLowerCase() !== first.toUpperCase();
-                    if (!isLetter || first === first.toUpperCase()) break;
-                    cutIndex--;
-                  }
-                  if (cutIndex < targetParts.length) {
-                    const extra = targetParts.slice(cutIndex).join(" ");
-                    rawDesc = `${extra} ${rawDesc}`.trim();
-                    targetParts.length = cutIndex;
-                    trimmedTarget = targetParts.join(" ");
-                  }
-                }
+          let m;
+          try {
+            while ((m = p.exec(T)) !== null){
+              const A = this.normalizeCharName(m[1]);
+              const captureCount = (m.length || 0) - 1;
+              let rawTarget = "";
+              let rawDesc = "";
+              if (captureCount >= 3) {
+                rawTarget = m[2] || "";
+                rawDesc = m[3] || "";
+              } else if (captureCount === 2) {
+                rawDesc = m[2] || "";
+              } else if (captureCount >= 1) {
+                rawDesc = m[captureCount] || "";
+              }
+              let B = "";
+              if (captureCount >= 3) {
+                let trimmedTarget = String(rawTarget || "").trim();
+                const originalTarget = trimmedTarget;
                 if (trimmedTarget) {
-                  const pronRegex = /^(?:ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас|him|her|them|you|us|me)$/i;
-                  const normalizedTarget = this.normalizeCharName(trimmedTarget);
-                  let hasUppercase = false;
-                  try {
-                    hasUppercase = /[\p{Lu}]/u.test(trimmedTarget);
-                  } catch (_) {
-                    hasUppercase = /[A-ZА-ЯЁ]/.test(trimmedTarget);
+                  const targetParts = trimmedTarget.split(/\s+/).filter(Boolean);
+                  if (targetParts.length > 1) {
+                    let cutIndex = targetParts.length;
+                    while (cutIndex > 0) {
+                      const word = targetParts[cutIndex - 1];
+                      const first = word ? word.charAt(0) : "";
+                      const isLetter = first && first.toLowerCase() !== first.toUpperCase();
+                      if (!isLetter || first === first.toUpperCase()) break;
+                      cutIndex--;
+                    }
+                    if (cutIndex < targetParts.length) {
+                      const extra = targetParts.slice(cutIndex).join(" ");
+                      rawDesc = `${extra} ${rawDesc}`.trim();
+                      targetParts.length = cutIndex;
+                      trimmedTarget = targetParts.join(" ");
+                    }
                   }
-                  const displayTarget = normalizedTarget || originalTarget;
-                  if (pronRegex.test(trimmedTarget) || hasUppercase) {
-                    B = displayTarget;
-                  } else {
-                    rawDesc = `${trimmedTarget} ${rawDesc}`.trim();
+                  if (trimmedTarget) {
+                    const pronRegex = /^(?:ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас|him|her|them|you|us|me)$/i;
+                    const normalizedTarget = this.normalizeCharName(trimmedTarget);
+                    let hasUppercase = false;
+                    try {
+                      hasUppercase = /[\p{Lu}]/u.test(trimmedTarget);
+                    } catch (_) {
+                      hasUppercase = /[A-ZА-ЯЁ]/.test(trimmedTarget);
+                    }
+                    const displayTarget = normalizedTarget || originalTarget;
+                    if (pronRegex.test(trimmedTarget) || hasUppercase) {
+                      B = displayTarget;
+                    } else {
+                      rawDesc = `${trimmedTarget} ${rawDesc}`.trim();
+                    }
                   }
                 }
               }
+              const D = String(rawDesc || "").replace(/[.,!?]+$/, "").trim();
+              if (A && D && this.isImportantCharacter(A)){
+                upd("obligations", A, B ? `${A} owes ${B}: ${D}` : `${A}: ${D}`);
+              }
             }
-            const D = String(rawDesc || "").replace(/[.,!?]+$/, "").trim();
-            if (A && D && this.isImportantCharacter(A)){
-              upd("obligations", A, B ? `${A} owes ${B}: ${D}` : `${A}: ${D}`);
-            }
+          } catch (err) {
+            LC.lcWarn(`Regex engine issue: ${err && err.message ? err.message : err}`);
           }
         }
         // FACTS
         for (let i=0;i<this.patterns.facts.length;i++){
           const p = this.patterns.facts[i]; p.lastIndex = 0;
-          let m; while ((m = p.exec(T)) !== null){
-            const F = String(m[1] || "").replace(/[.,!?]+$/, "").trim();
-            if (F.length >= 5){
-              const key = `f_${L.turn}_${Math.random().toString(36).slice(2,6)}`;
-              upd("facts", key, F);
+          let m;
+          try {
+            while ((m = p.exec(T)) !== null){
+              const F = String(m[1] || "").replace(/[.,!?]+$/, "").trim();
+              if (F.length >= 5){
+                const key = `f_${L.turn}_${Math.random().toString(36).slice(2,6)}`;
+                upd("facts", key, F);
+              }
             }
+          } catch (err) {
+            LC.lcWarn(`Regex engine issue: ${err && err.message ? err.message : err}`);
           }
         }
 
