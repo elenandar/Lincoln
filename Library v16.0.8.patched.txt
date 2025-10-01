@@ -97,8 +97,7 @@
           if (hasMismatch) {
             const summary = entries.map(([name, v]) => `${name}=${v}`).join(", ");
             const msg = `⚠️ Lincoln module data versions differ: ${summary}`;
-            const current = toStr(L.visibleNotice || "").trim();
-            L.visibleNotice = [current, msg].filter(Boolean).join("\n");
+            LC.pushNotice?.(msg);
             L._versionCheckDone = true;
           }
         }
