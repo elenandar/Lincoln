@@ -215,6 +215,26 @@ L.debugMode = toBool(L.debugMode, false);
         return src.replace(/[^\w\s]+/g, " ").replace(/\s+/g, " ").trim();
       }
     },
+    _normUCache: Object.create(null),
+    _normUCacheOrder: [],
+    _normUCached(s){
+      const key = toStr(s);
+      const cache = this._normUCache || (this._normUCache = Object.create(null));
+      if (Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
+      const value = (this && typeof this._normU === "function") ? this._normU(key) : key;
+      cache[key] = value;
+      const order = this._normUCacheOrder || (this._normUCacheOrder = []);
+      order.push(key);
+      const MAX = 2048;
+      if (order.length > MAX) {
+        const pruneCount = Math.max(1, Math.floor(MAX * 0.1));
+        for (let i = 0; i < pruneCount; i++) {
+          const oldKey = order.shift();
+          if (oldKey !== undefined) delete cache[oldKey];
+        }
+      }
+      return value;
+    },
     lcStripSys(text){ return toStr(text).replace(/⟦[A-Z]+⟧[^\n]*\n?/g, "").trim(); },
     stripYouWrappers(s){
       let x = toStr(s).trim();
@@ -729,7 +749,7 @@ L.debugMode = toBool(L.debugMode, false);
           "грейсон":"Миссис Грейсон","grayson":"Миссис Грейсон","учительница":"Миссис Грейсон","учительницу":"Миссис Грейсон","учительнице":"Миссис Грейсон","учительницей":"Миссис Грейсон","teacher":"Миссис Грейсон",
           "ковальски":"Директор Ковальски","kovalski":"Директор Ковальски","директор":"Директор Ковальски","директора":"Директор Ковальски","директору":"Директор Ковальски","директором":"Директор Ковальски","директоре":"Директор Ковальски","александр":"Директор Ковальски"
         };
-        const low = n.toLowerCase();
+        const low = (LC && typeof LC._normUCached === "function") ? LC._normUCached(n) : n.toLowerCase();
         const aliasIndex = { ...aliases };
 
         const L = LC.lcInit ? LC.lcInit() : null;
@@ -747,7 +767,7 @@ L.debugMode = toBool(L.debugMode, false);
           for (const key in L.aliases){
             const canon = String(key || "").trim();
             if (!canon) continue;
-            const canonLow = canon.toLowerCase();
+            const canonLow = (LC && typeof LC._normUCached === "function") ? LC._normUCached(canon) : canon.toLowerCase();
             userCanonSet.add(canonLow);
             displayMap[canonLow] = canon;
           }
@@ -769,12 +789,14 @@ L.debugMode = toBool(L.debugMode, false);
 
         const aliasMap = LC.getAliasMap ? LC.getAliasMap() : {};
         for (const canon in aliasMap){
-          const canonLow = canon.toLowerCase();
+          const canonLow = (LC && typeof LC._normUCached === "function") ? LC._normUCached(canon) : canon.toLowerCase();
           const isUserCanon = userCanonSet.has(canonLow);
           const target = canonDisplay(canonLow);
           const list = aliasMap[canon] || [];
           for (let i=0;i<list.length;i++){
-            const item = String(list[i] || "").trim().toLowerCase();
+            const rawItem = String(list[i] || "").trim();
+            if (!rawItem) continue;
+            const item = (LC && typeof LC._normUCached === "function") ? LC._normUCached(rawItem) : rawItem.toLowerCase();
             if (!item) continue;
             if (isUserCanon || !Object.prototype.hasOwnProperty.call(aliasIndex, item)) {
               aliasIndex[item] = target;
@@ -852,7 +874,12 @@ L.debugMode = toBool(L.debugMode, false);
           };
 
           function guessGender(name, fallback){
-            const low = String(name || "").trim().toLowerCase();
+            const normInput = (value) => {
+              const str = String(value || "").trim();
+              if (!str) return "";
+              return (LC && typeof LC._normUCached === "function") ? LC._normUCached(str) : str.toLowerCase();
+            };
+            const low = normInput(name);
             const map = {
               "максим":"m","maxim":"m","макс":"m","bergman":"m","бергман":"m",
               "директор ковальски":"m","ковальски":"m",
@@ -862,7 +889,7 @@ L.debugMode = toBool(L.debugMode, false);
               "рейчел":"f","рэйчел":"f","rachel":"f"
             };
             if (map[low]) return map[low];
-            const fb = String(fallback || "").trim().toLowerCase();
+            const fb = normInput(fallback);
             if (fb && map[fb]) return map[fb];
             if (/\b(?:миссис)\b/.test(low)) return "f";
             if (/[ая]$/.test(low)) return "f";
