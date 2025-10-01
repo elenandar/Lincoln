@@ -502,8 +502,16 @@ const args   = tokens.slice(1);
         const mods = (L && L._modsSeen) || {};
         const modList = Object.entries(mods).map(([k,v]) => `${k}:${v}`).join(", ");
         out.push(`versions=[${modList}]`);
-        clearCommandFlags();
-        const flagsReset = !LC.lcGetFlag("isCmd", false) && !LC.lcGetFlag("isRetry", false) && !LC.lcGetFlag("isContinue", false);
+        const flagsReset = (() => {
+          try {
+            if (LC.Flags?.clearCmd) {
+              LC.Flags.clearCmd();
+            } else {
+              clearCommandFlags();
+            }
+          } catch (_) {}
+          return !LC.lcGetFlag("isCmd", false) && !LC.lcGetFlag("isRetry", false) && !LC.lcGetFlag("isContinue", false);
+        })();
         out.push(`flagsReset=${flagsReset}`);
         out.push(`echoCache=${LC._echoOrder?.length ?? 0}`);
         const ever = (L && L.evergreen) || {};
