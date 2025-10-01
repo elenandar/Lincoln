@@ -408,6 +408,7 @@ const args   = tokens.slice(1);
         const max = (typeof r?.max === "number" && isFinite(r.max)) ? r.max : limit;
         const parts = (r.parts && typeof r.parts === "object") ? r.parts : {};
         const overlay = overlayRaw.length > limit ? overlayRaw.slice(0, limit) : overlayRaw;
+        const buildContextPreview = () => overlay.split(/\r?\n/).slice(0,8).join("\n");
         const lines = [
           `LEN: ${overlay.length}/${max}`,
           `GUIDE: ${parts.GUIDE||0}`,
@@ -418,7 +419,21 @@ const args   = tokens.slice(1);
           `SCENE: ${parts.SCENE||0}`,
           `META: ${parts.META||0}`
         ];
-        const sample = overlay.split(/\r?\n/).slice(0,8).join("\n");
+        let sample = "";
+        try {
+          const preview = LC.buildCtxPreview?.(LC.lcInit?.());
+          if (typeof preview === "string") {
+            sample = preview;
+          } else if (preview && typeof preview === "object") {
+            if (typeof preview.preview === "string") {
+              sample = preview.preview;
+            } else if (typeof preview.overlay === "string") {
+              sample = preview.overlay;
+            }
+          }
+        } catch (_) {}
+        if (!sample) sample = buildContextPreview(); // временный фоллбэк
+        else sample = String(sample).split(/\r?\n/).slice(0,8).join("\n");
         return replyStop("=== CONTEXT INSPECTOR ===\n" + lines.join(" | ") + "\n---\n" + sample);
       }
 
