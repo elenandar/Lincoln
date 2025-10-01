@@ -1,4 +1,12 @@
-﻿// === OUTPUT MODIFIER v16.0.8-compat6d ===
+﻿/* 
+Module: Output (Lincoln v16.0.8-compat6d)
+Contract:
+- Reads flags: ...; Writes flags: ...
+- Entry points: ...
+- Invariants: recap/epoch flags reset only on non-command path; retry baseline preserved; ...
+- Config keys used: CONTEXT_LENGTH, CHAR_WINDOW_*, LIMITS.ANTI_ECHO, FEATURES.*
+*/
+// === OUTPUT MODIFIER v16.0.8-compat6d ===
 const __SCRIPT_SLOT__ = "Output";
 if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
 
