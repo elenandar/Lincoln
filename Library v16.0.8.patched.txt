@@ -1599,7 +1599,8 @@ LC.turnUndo = turnUndo;
 
 
 
-LC.buildCtxPreview = function() {
+LC.composeContextOverlay = function(options) {
+  const opts = (options && typeof options === "object") ? options : {};
   try {
     const L = LC.lcInit();
     const priority = [];
@@ -1664,22 +1665,48 @@ LC.buildCtxPreview = function() {
     }
     uniq.sort((a,b)=> weight(b) - weight(a));
 
-    const MAX = LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800;
-    let overlay = "";
+    const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
+    let text = "";
     const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, OPENING:0, SCENE:0, META:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
-      const nl = overlay ? "\n" : "";
-      if ((overlay.length + line.length + nl.length) > MAX) continue;
-      overlay += nl + line;
+      const nl = text ? "\n" : "";
+      const projectedLength = text.length + nl.length + line.length;
+      if (projectedLength > MAX) {
+        if (!opts.allowPartial) continue;
+        const currentLength = text.length + nl.length;
+        const remaining = MAX - currentLength;
+        if (remaining <= 0) break;
+        if (remaining >= 40) {
+          const slice = line.slice(0, remaining);
+          text += nl + slice;
+          const tag = (line.match(/^⟦([A-Z]+)⟧/)||[])[1] || "GUIDE";
+          parts[tag] = (parts[tag]||0) + nl.length + slice.length;
+        }
+        break;
+      }
+      text += nl + line;
       const tag = (line.match(/^⟦([A-Z]+)⟧/)||[])[1] || "GUIDE";
       parts[tag] = (parts[tag]||0) + line.length + nl.length;
     }
-    return { overlay, parts, max:MAX };
+    return { text, parts, max:MAX };
   } catch(e) {
     const err = e && e.message ? e.message : String(e);
-    return { overlay:"", parts:{}, max:0, error:err };
+    return { text:"", parts:{}, max:0, error:err };
   }
+};
+
+LC.buildCtxPreview = function(options) {
+  const result = LC.composeContextOverlay?.(options);
+  if (result && typeof result === "object") {
+    return {
+      overlay: typeof result.text === "string" ? result.text : String(result.text || ""),
+      parts: result.parts || {},
+      max: result.max,
+      error: result.error
+    };
+  }
+  return { overlay:"", parts:{}, max:0 };
 };
 
 
