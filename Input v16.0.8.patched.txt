@@ -201,7 +201,7 @@ const args   = tokens.slice(1);
           const target = allowed.indexOf(cat) === -1 ? "facts" : cat;
           const key = `u_${Date.now().toString(36)}`;
           LC.evergreenManualSet(L, target, key, val);
-          return reply(`Evergreen[${target}] += ${val.slice(0,80)}`);
+          return replyStop(`Evergreen[${target}] += ${val.slice(0,80)}`);
         }
         return replyStop(LC.autoEvergreen.getSummary());
       }
