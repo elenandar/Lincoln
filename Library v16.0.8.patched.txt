@@ -132,7 +132,7 @@ Contract:
     return v;
   };
 
-  // RF-T5: Commands registry (minimal start)
+  // RF-T5: Commands registry (minimal start, safe replies)
   LC.Commands ??= new Map();
 
   // Безопасный вызов stop-ответа: сначала пробуем экспорт из Input, иначе — локальный fallback-объект
