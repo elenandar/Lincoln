@@ -102,7 +102,7 @@ const args   = tokens.slice(1);
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn;
       LC.lcSetFlag("doRecap", true);
       LC.Flags?.clearCmd?.(); // важно: снять isCmd до Context
-      return reply("📋 Recap will be generated.");
+      return replyStop("📋 Recap will be generated.");
     }
     if (cmd === "/нет")  {
       if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
@@ -382,14 +382,14 @@ const args   = tokens.slice(1);
           const entry = m ? m[1].trim() : "";
           if (!entry || entry.length < 10) return replyStop("Usage: /story add <текст карточки (≥10 символов)>");
           const id = LC.createStoryCard(entry, [Math.max(0, L.turn - L.cadence), L.turn], "note");
-          return reply(`📝 Card saved — ID: ${id}`);
+          return replyStop(`📝 Card saved — ID: ${id}`);
         }
         if (/^\/story\s+del\s+/i.test(cmdRaw)) {
           const m = cmdRaw.match(/^\/story\s+del\s+(\S+)/i);
           if (!m) return replyStop("Usage: /story del <id>");
           const id = m[1].trim();
           const ok = LC.removeStoryCardById(id);
-          return reply(ok ? `🗑️ Card ${id} removed.` : `🔎 Card ${id} not found (removed from registry if present).`);
+          return replyStop(ok ? `🗑️ Card ${id} removed.` : `🔎 Card ${id} not found (removed from registry if present).`);
         }
         return replyStop("Usage: /story add <text> | /story del <id>");
       }
