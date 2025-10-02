@@ -410,20 +410,17 @@ const args   = tokens.slice(1);
 
       case "/ctx": {
         const limit = LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800;
-        let r;
+        let preview = {};
         try {
-          r = LC.composeContextOverlay?.({ limit, allowPartial: true });
+          const result = LC.buildCtxPreview?.({ limit, allowPartial: true });
+          if (result && typeof result === "object") preview = result;
         } catch (_) {/* ignore */}
-        if (!r || typeof r !== "object") {
-          r = LC.buildCtxPreview?.({ limit, allowPartial: true });
-        }
-        const overlayRaw = (r && typeof r.text === "string") ? r.text
-          : (typeof r?.overlay === "string") ? r.overlay
-          : String(r?.text ?? r?.overlay ?? "");
-        const max = (typeof r?.max === "number" && isFinite(r.max)) ? r.max : limit;
-        const parts = (r.parts && typeof r.parts === "object") ? r.parts : {};
+        const overlayRaw = typeof preview.overlay === "string"
+          ? preview.overlay
+          : String(preview.text ?? preview.overlay ?? "");
         const overlay = overlayRaw.length > limit ? overlayRaw.slice(0, limit) : overlayRaw;
-        const buildContextPreview = () => overlay.split(/\r?\n/).slice(0,8).join("\n");
+        const max = (typeof preview?.max === "number" && isFinite(preview.max)) ? preview.max : limit;
+        const parts = (preview.parts && typeof preview.parts === "object") ? preview.parts : {};
         const lines = [
           `LEN: ${overlay.length}/${max}`,
           `GUIDE: ${parts.GUIDE||0}`,
@@ -434,21 +431,12 @@ const args   = tokens.slice(1);
           `SCENE: ${parts.SCENE||0}`,
           `META: ${parts.META||0}`
         ];
-        let sample = "";
-        try {
-          const preview = LC.buildCtxPreview?.(LC.lcInit?.());
-          if (typeof preview === "string") {
-            sample = preview;
-          } else if (preview && typeof preview === "object") {
-            if (typeof preview.preview === "string") {
-              sample = preview.preview;
-            } else if (typeof preview.overlay === "string") {
-              sample = preview.overlay;
-            }
-          }
-        } catch (_) {}
-        if (!sample) sample = buildContextPreview(); // временный фоллбэк
-        else sample = String(sample).split(/\r?\n/).slice(0,8).join("\n");
+        if (preview.error) lines.push(`ERROR: ${preview.error}`);
+        let sampleSource = typeof preview.preview === "string"
+          ? preview.preview
+          : (typeof preview.overlay === "string" ? preview.overlay : overlay);
+        if (typeof sampleSource !== "string") sampleSource = "";
+        const sample = sampleSource.split(/\r?\n/).slice(0,8).join("\n");
         return replyStop("=== CONTEXT INSPECTOR ===\n" + lines.join(" | ") + "\n---\n" + sample);
       }
 
