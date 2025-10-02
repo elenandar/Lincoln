@@ -98,14 +98,14 @@ const args   = tokens.slice(1);
         return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 5;
-      return reply("🚫 Recap postponed for 5 turns.");
+      return replyStop("🚫 Recap postponed for 5 turns.");
     }
     if (cmd === "/позже"){
       if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
         return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 3; if (L.tm) L.tm.wantRecapTurn = 0;
-      return reply("🕑 Recap later (3 turns).");
+      return replyStop("🕑 Recap later (3 turns).");
     }
 
     // Сначала пробуем registry
