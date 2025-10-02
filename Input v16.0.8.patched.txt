@@ -151,13 +151,25 @@ const args   = tokens.slice(1);
         ].join("\n"));
 
       case "/ui":
-        if (/\/ui\s+on/i.test(cmdRaw))  { L.sysShow = true;  return replyStop("✅ UI enabled."); }
-        if (/\/ui\s+off/i.test(cmdRaw)) { L.sysShow = false; return replyStop("⚫ UI disabled."); }
+        if (/\/ui\s+on/i.test(cmdRaw)) {
+          L.sysShow = true;
+          return replyStop("✅ UI enabled.");
+        }
+        if (/\/ui\s+off/i.test(cmdRaw)) {
+          L.sysShow = false;
+          return replyStop("⚫ UI disabled.");
+        }
         return replyStop(`UI is ${L.sysShow ? "on" : "off"}.`);
 
       case "/debug":
-        if (/\/debug\s+on/i.test(cmdRaw))  { L.debugMode = true;  return replyStop("🔍 Debug ON."); }
-        if (/\/debug\s+off/i.test(cmdRaw)) { L.debugMode = false; return replyStop("🔍 Debug OFF."); }
+        if (/\/debug\s+on/i.test(cmdRaw)) {
+          L.debugMode = true;
+          return replyStop("🔍 Debug ON.");
+        }
+        if (/\/debug\s+off/i.test(cmdRaw)) {
+          L.debugMode = false;
+          return replyStop("🔍 Debug OFF.");
+        }
         return replyStop(`Debug is ${L.debugMode ? "on" : "off"}.`);
 
       case "/recap":
@@ -173,9 +185,18 @@ const args   = tokens.slice(1);
         return replyStop("❌ No draft to save.");
 
       case "/evergreen": {
-        if (/\/evergreen\s+clear/i.test(cmdRaw)) { LC.autoEvergreen.clear(); return replyStop("🧹 Evergreen storage cleared."); }
-        if (/\/evergreen\s+on/i.test(cmdRaw))    { LC.autoEvergreen.toggle(true);  return replyStop("🌿 Evergreen enabled."); }
-        if (/\/evergreen\s+off/i.test(cmdRaw))   { LC.autoEvergreen.toggle(false); return replyStop("🌿 Evergreen disabled."); }
+        if (/\/evergreen\s+clear/i.test(cmdRaw)) {
+          LC.autoEvergreen.clear();
+          return replyStop("🧹 Evergreen storage cleared.");
+        }
+        if (/\/evergreen\s+on/i.test(cmdRaw)) {
+          LC.autoEvergreen.toggle(true);
+          return replyStop("🌿 Evergreen enabled.");
+        }
+        if (/\/evergreen\s+off/i.test(cmdRaw)) {
+          LC.autoEvergreen.toggle(false);
+          return replyStop("🌿 Evergreen disabled.");
+        }
         if (/\/evergreen\s+summary/i.test(cmdRaw)) { return replyStop(LC.autoEvergreen.getSummary()); }
         const m = cmdRaw.match(/\/evergreen\s+set\s+([\w-]+):\s*(.+)$/i);
         if (m) {
@@ -201,7 +222,8 @@ const args   = tokens.slice(1);
           ].join("\n"));
         }
         if (/\/antiecho\s+flush/i.test(cmdRaw)) {
-          LC.antiEchoFlush(); return replyStop("Anti-echo cache flushed.");
+          LC.antiEchoFlush();
+          return replyStop("Anti-echo cache flushed.");
         }
         if (/\/antiecho\s+on/i.test(cmdRaw))  { L.antiEchoEnabled = true;  return reply("✅ Anti-echo enabled."); }
         if (/\/antiecho\s+off/i.test(cmdRaw)) { L.antiEchoEnabled = false; return reply("⚫ Anti-echo disabled."); }
@@ -298,27 +320,25 @@ const args   = tokens.slice(1);
       case "/opening":
         return replyStop(LC.getOpeningLine() || "No opening captured yet.");
 
-      case "/retry":
-        
-{
-  if (/\/retry\s+keep/i.test(cmdRaw)) {
-    LC.lcSetFlag("RETRY_KEEP_CONTEXT", true);
-    return replyStop("🔁 Retry: keep context = ON.");
-  }
-  if (/\/retry\s+clear/i.test(cmdRaw)) {
-    LC.lcSetFlag("RETRY_KEEP_CONTEXT", false);
-    return replyStop("🔁 Retry: keep context = OFF.");
-  }
-  const keep = LC.lcGetFlag("RETRY_KEEP_CONTEXT", false);
-  return replyStop([
-    "=== RETRY ===",
-    `Consecutive: ${L.consecutiveRetries || 0}`,
-    `Total: ${L.tm?.retries || 0}`,
-    `Turn: ${L.turn}, LastProcessed: ${L.lastProcessedTurn}`,
-    `isRetry=${LC.lcGetFlag("isRetry", false)}, isContinue=${LC.lcGetFlag("isContinue", false)}`,
-    `Keep context: ${keep ? "ON" : "OFF"}`
-  ].join("\n"));
-}
+      case "/retry": {
+        if (/\/retry\s+keep/i.test(cmdRaw)) {
+          LC.lcSetFlag("RETRY_KEEP_CONTEXT", true);
+          return replyStop("🔁 Retry: keep context = ON.");
+        }
+        if (/\/retry\s+clear/i.test(cmdRaw)) {
+          LC.lcSetFlag("RETRY_KEEP_CONTEXT", false);
+          return replyStop("🔁 Retry: keep context = OFF.");
+        }
+        const keep = LC.lcGetFlag("RETRY_KEEP_CONTEXT", false);
+        return replyStop([
+          "=== RETRY ===",
+          `Consecutive: ${L.consecutiveRetries || 0}`,
+          `Total: ${L.tm?.retries || 0}`,
+          `Turn: ${L.turn}, LastProcessed: ${L.lastProcessedTurn}`,
+          `isRetry=${LC.lcGetFlag("isRetry", false)}, isContinue=${LC.lcGetFlag("isContinue", false)}`,
+          `Keep context: ${keep ? "ON" : "OFF"}`
+        ].join("\n"));
+      }
 
 
       case "/stats": {
