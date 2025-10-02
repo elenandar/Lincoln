@@ -161,20 +161,20 @@ const args   = tokens.slice(1);
 
       case "/recap":
         LC.lcSetFlag("doRecap", true);
-        return reply("📋 Recap requested. Next output → draft.");
+        return replyStop("📋 Recap requested. Next output → draft.");
 
       case "/epoch":
         LC.lcSetFlag("doEpoch", true);
-        return reply("🗿 Epoch requested. Next output → draft.");
+        return replyStop("🗿 Epoch requested. Next output → draft.");
 
       case "/continue":
         if (L.recapDraft || L.epochDraft) { LC.lcSetFlag("acceptDraft", true); return reply("✅ Draft will be saved now."); }
         return replyStop("❌ No draft to save.");
 
       case "/evergreen": {
-        if (/\/evergreen\s+clear/i.test(cmdRaw)) { LC.autoEvergreen.clear(); return reply("🧹 Evergreen storage cleared."); }
-        if (/\/evergreen\s+on/i.test(cmdRaw))    { LC.autoEvergreen.toggle(true);  return reply("🌿 Evergreen enabled."); }
-        if (/\/evergreen\s+off/i.test(cmdRaw))   { LC.autoEvergreen.toggle(false); return reply("🌿 Evergreen disabled."); }
+        if (/\/evergreen\s+clear/i.test(cmdRaw)) { LC.autoEvergreen.clear(); return replyStop("🧹 Evergreen storage cleared."); }
+        if (/\/evergreen\s+on/i.test(cmdRaw))    { LC.autoEvergreen.toggle(true);  return replyStop("🌿 Evergreen enabled."); }
+        if (/\/evergreen\s+off/i.test(cmdRaw))   { LC.autoEvergreen.toggle(false); return replyStop("🌿 Evergreen disabled."); }
         if (/\/evergreen\s+summary/i.test(cmdRaw)) { return replyStop(LC.autoEvergreen.getSummary()); }
         const m = cmdRaw.match(/\/evergreen\s+set\s+([\w-]+):\s*(.+)$/i);
         if (m) {
@@ -200,7 +200,7 @@ const args   = tokens.slice(1);
           ].join("\n"));
         }
         if (/\/antiecho\s+flush/i.test(cmdRaw)) {
-          LC.antiEchoFlush(); return reply("Anti-echo cache flushed.");
+          LC.antiEchoFlush(); return replyStop("Anti-echo cache flushed.");
         }
         if (/\/antiecho\s+on/i.test(cmdRaw))  { L.antiEchoEnabled = true;  return reply("✅ Anti-echo enabled."); }
         if (/\/antiecho\s+off/i.test(cmdRaw)) { L.antiEchoEnabled = false; return reply("⚫ Anti-echo disabled."); }
@@ -302,11 +302,11 @@ const args   = tokens.slice(1);
 {
   if (/\/retry\s+keep/i.test(cmdRaw)) {
     LC.lcSetFlag("RETRY_KEEP_CONTEXT", true);
-    return reply("🔁 Retry: keep context = ON.");
+    return replyStop("🔁 Retry: keep context = ON.");
   }
   if (/\/retry\s+clear/i.test(cmdRaw)) {
     LC.lcSetFlag("RETRY_KEEP_CONTEXT", false);
-    return reply("🔁 Retry: keep context = OFF.");
+    return replyStop("🔁 Retry: keep context = OFF.");
   }
   const keep = LC.lcGetFlag("RETRY_KEEP_CONTEXT", false);
   return replyStop([
@@ -390,7 +390,7 @@ const args   = tokens.slice(1);
         if (!m) return replyStop("Usage: /pin <id>");
         const id = m[1];
         if (L.pinnedWorldInfoIds.indexOf(id) === -1) L.pinnedWorldInfoIds.push(id);
-        return reply(`📌 Pseudo-pin set for ${id}.`);
+        return replyStop(`📌 Pseudo-pin set for ${id}.`);
       }
 
       case "/unpin": {
@@ -399,7 +399,7 @@ const args   = tokens.slice(1);
         const id = m[1];
         const p = L.pinnedWorldInfoIds.indexOf(id);
         if (p !== -1) L.pinnedWorldInfoIds.splice(p,1);
-        return reply(`📌 Pseudo-pin removed for ${id}.`);
+        return replyStop(`📌 Pseudo-pin removed for ${id}.`);
       }
 
       case "/del": {
@@ -409,7 +409,7 @@ const args   = tokens.slice(1);
         const p = L.pinnedWorldInfoIds.indexOf(id);
         if (p !== -1) L.pinnedWorldInfoIds.splice(p,1);
         const ok = LC.removeStoryCardById(id);
-        return reply(ok ? `🗑️ Card ${id} removed.` : `🔎 Card ${id} not found (removed from registry if present).`);
+        return replyStop(ok ? `🗑️ Card ${id} removed.` : `🔎 Card ${id} not found (removed from registry if present).`);
       }
 
       case "/ctx": {
