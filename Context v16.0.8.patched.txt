@@ -14,6 +14,8 @@ if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
 const modifier = function (text) {
   
   if (typeof LC === "undefined") return { text: String(text || "") };
+
+  // Run LC initialization before checking retry flags for clarity.
   LC.lcInit?.();
   const RETRY_KEEP_CONTEXT = (LC.lcGetFlag?.('RETRY_KEEP_CONTEXT', false) === true);
   LC.DATA_VERSION = "16.0.8-compat6d";
