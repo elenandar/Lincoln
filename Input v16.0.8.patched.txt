@@ -37,11 +37,11 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     } catch (_) {}
   }
 function replyStop(msg){
-  // Командные ответы: только SYS (без notice), чтобы не было дублей на следующем ходе
+  // Командные ответы: только SYS (без notice) + немедленный вывод текста
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  LC.lcSys(msg);
-  clearCommandFlags();
-  return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg };
+  LC.lcSys(msg);              // лог/SYS-лента
+  clearCommandFlags();        // сбросить isCmd/isRetry/isContinue
+  return { text: `⟦SYS⟧ ${String(msg || "")}`, stop: true };
 }
   // Экспорт для registry (Library)
   LC.replyStop = replyStop;
