@@ -15,26 +15,10 @@ const modifier = function (text) {
   if (typeof LC === "undefined") return { text: String(text || "") };
   LC.DATA_VERSION = "16.0.8-compat6d";
   const L = LC.lcInit(__SCRIPT_SLOT__);
-  const notices = [];
-  const _notice = (L.visibleNotice || "").trim();
-  if (_notice) {
-    notices.push(_notice);
-    L.visibleNotice = "";
-  }
-
-
   let out = String(text || "").trim();
   const clean = LC.lcStripSys(out);
 
 
-  // Print critical visible notices (even if sysShow=false)
-  try {
-    const pendingNotice = (L.visibleNotice || "").trim();
-    if (pendingNotice) {
-      notices.push(pendingNotice);
-      L.visibleNotice = "";
-    }
-  } catch(_) {}
   const isCmd = LC.lcGetFlag("isCmd", false);
   const isRetry = LC.lcGetFlag("isRetry", false);
   const wantsRecap = LC.lcGetFlag("doRecap", false);
@@ -66,9 +50,8 @@ const modifier = function (text) {
     }
 
     LC.lcSetFlag("isCmd", false);
-    const msgs = LC.lcConsumeMsgs();
-    if (!msgs.length) return { text: LC.CONFIG.CMD_PLACEHOLDER + "\n" };
-    return { text: msgs.join("\n") + "\n" + "=".repeat(40) + "\n" };
+    const msgs = LC.lcConsumeMsgs?.() || [];
+    return { text: (msgs.length ? msgs.join("\n") + "\n" + "=".repeat(40) + "\n" : (LC.CONFIG.CMD_PLACEHOLDER || "⟦SYS⟧ OK.") + "\n") };
   }
 
   if (wantsRecap) LC.lcSetFlag("doRecap", false);
@@ -140,40 +123,12 @@ const modifier = function (text) {
   }
 
   // SYS: ВСЕГДА consume; показываем только если sysShow=true и это не retry
-  {
-    const msgs = LC.lcConsumeMsgs();
-    if (!isRetry && L.sysShow && msgs.length) {
-      out = out + "\n\n" + msgs.join("\n");
-    }
-  }
-
-  // Capture notices that may have been set during processing (e.g., auto-epoch)
-  {
-    const postNotice = (L.visibleNotice || "").trim();
-    if (postNotice) {
-      notices.push(postNotice);
-      L.visibleNotice = "";
-    }
-  }
-
-  // Append any pending visible notices (including pre-cleared ones)
-  if (notices.length) {
-    try {
-      for (const note of notices) {
-        const trimmed = String(note || "").trim();
-        if (!trimmed) continue;
-        if (out.indexOf(trimmed) !== -1) continue;
-        out = out ? out + "\n\n" + trimmed : trimmed;
-      }
-    } catch (_) {
-      const fallback = notices.filter(n => n && String(n).trim());
-      if (fallback.length) {
-        const suffix = fallback.map(n => String(n).trim()).join("\n\n");
-        out = out ? out + "\n\n" + suffix : suffix;
-      }
-    }
-  }
-
-  return { text: out };
+  const notices = LC.consumeNotices?.() || "";
+  const consumedMsgs = LC.lcConsumeMsgs?.() || [];
+  const msgs = (!isRetry && L.sysShow) ? consumedMsgs : [];
+  let final = out;
+  if (msgs.length) final = msgs.join("\n") + "\n" + "=".repeat(40) + "\n" + final;
+  if (notices) final = notices + "\n\n" + final;
+  return { text: final };
 };
 return modifier(text);
