@@ -29,6 +29,42 @@ const modifier = function (text) {
   const wantsRecap = LC.lcGetFlag("doRecap", false);
   const wantsEpoch = LC.lcGetFlag("doEpoch", false);
 
+  // T1: Accept drafts requested by /continue
+  try {
+    const wantAccept = LC.lcGetFlag?.("acceptDraft", false);
+    if (wantAccept) {
+      LC.lcSetFlag?.("acceptDraft", false);
+
+      // Recap draft
+      if (L.recapDraft && L.recapDraft.text) {
+        try {
+          let savedCount = 0;
+          if (typeof LC.syncRecapToStoryCards === "function") {
+            savedCount = LC.syncRecapToStoryCards(L.recapDraft.text, L.recapDraft.window) | 0;
+          }
+          L.lastRecapTurn = L.recapDraft.turn || L.turn;
+          L.recapDraft = null;
+          LC.lcSys?.(`✅ Recap saved${savedCount ? ` (${savedCount} card${savedCount===1?'':'s'})` : ""}.`);
+        } catch (e) {
+          LC.lcWarn?.("Recap save failed: " + (e && e.message));
+        }
+      }
+
+      // Epoch draft
+      if (L.epochDraft && L.epochDraft.text) {
+        try {
+          L.lastEpochTurn = L.epochDraft.turn || L.turn;
+          L.epochDraft = null;
+          LC.lcSys?.("✅ Epoch accepted.");
+        } catch (e) {
+          LC.lcWarn?.("Epoch accept failed: " + (e && e.message));
+        }
+      }
+    }
+  } catch (e) {
+    LC.lcWarn?.("AcceptDraft handling failed: " + (e && e.message));
+  }
+
   // Opening — первичный захват
   if (L.turn === 0 && !L.openingCaptured && !isRetry && clean.length > 20) {
     LC.captureOpeningFromOutput(clean);
