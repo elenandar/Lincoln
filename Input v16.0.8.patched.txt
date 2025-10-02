@@ -43,6 +43,12 @@ function replyStop(msg){
   clearCommandFlags();        // сбросить isCmd/isRetry/isContinue
   return { text: `⟦SYS⟧ ${String(msg || "")}`, stop: true };
 }
+function replyStopSilent(){
+  // Без текста и без SYS-префикса — просто остановить генерацию и сбросить флаги
+  try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
+  clearCommandFlags();
+  return { text: "", stop: true };
+}
   // Экспорт для registry (Library)
   LC.replyStop = replyStop;
   LC.reply = reply;
@@ -176,7 +182,7 @@ const args   = tokens.slice(1);
         return replyStop("🗿 Epoch requested. Next output → draft.");
 
       case "/continue":
-        if (L.recapDraft || L.epochDraft) { LC.lcSetFlag("acceptDraft", true); return reply("✅ Draft will be saved now."); }
+        if (L.recapDraft || L.epochDraft) { LC.lcSetFlag("acceptDraft", true); return replyStopSilent(); }
         return replyStop("❌ No draft to save.");
 
       case "/evergreen": {
