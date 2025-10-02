@@ -36,25 +36,6 @@ const modifier = function (text) {
 
   // Командный ответ: обработка /continue → SYS
   if (isCmd) {
-    if (LC.lcGetFlag("acceptDraft", false)) {
-      LC.lcSetFlag("acceptDraft", false);
-      let saved = false;
-
-      if (L.recapDraft) {
-        const id = LC.createStoryCard(L.recapDraft.text, L.recapDraft.window, "recap");
-        LC.lcSys(`✅ Recap saved (ID: ${id}).`);
-        LC.syncRecapToStoryCards(L.recapDraft.text, L.recapDraft.window);
-        L.recapDraft = null; L.lastRecapTurn = L.turn; saved = true;
-      }
-      if (L.epochDraft) {
-        const id = LC.createStoryCard(L.epochDraft.text, L.epochDraft.window, "epoch");
-        LC.lcSys(`✅ Epoch saved (ID: ${id}).`);
-        L.epochDraft = null; L.lastEpochTurn = L.turn; saved = true;
-      }
-      if (!saved) LC.lcSys("ℹ️ No draft to save.");
-    }
-
-    LC.lcSetFlag("isCmd", false);
     const msgs = LC.lcConsumeMsgs?.() || [];
     return { text: (msgs.length ? msgs.join("\n") + "\n" + "=".repeat(40) + "\n" : (LC.CONFIG.CMD_PLACEHOLDER || "⟦SYS⟧ OK.") + "\n") };
   }
@@ -128,14 +109,13 @@ const modifier = function (text) {
   }
 
   // SYS: ВСЕГДА consume; показываем только если sysShow=true и это не retry
+  const budget = omBudget(t0, LC.CONFIG?.LIMITS?.OUTPUT_BUDGET_MS ?? 3500);
+  if (budget.over) LC.lcWarn?.(`Output budget exceeded: ${budget.dt}ms`);
   const notices = LC.consumeNotices?.() || "";
-  const consumedMsgs = LC.lcConsumeMsgs?.() || [];
-  const msgs = (!isRetry && L.sysShow) ? consumedMsgs : [];
+  const msgs = LC.lcConsumeMsgs?.() || [];
   let final = out;
   if (msgs.length) final = msgs.join("\n") + "\n" + "=".repeat(40) + "\n" + final;
   if (notices) final = notices + "\n\n" + final;
-  const budget = omBudget(t0, LC.CONFIG?.LIMITS?.OUTPUT_BUDGET_MS ?? 3500);
-  if (budget.over) LC.lcWarn?.(`Output budget exceeded: ${budget.dt}ms`);
   return { text: final };
 };
 return modifier(text);
