@@ -365,8 +365,8 @@ const args   = tokens.slice(1);
           const req = parseInt(m[1], 10);
           const v = Math.max(LC.CONFIG.LIMITS.CADENCE.MIN, Math.min(LC.CONFIG.LIMITS.CADENCE.MAX, req));
           L.cadence = v;
-          if (req !== v) return reply(`⏱️ Recap cadence: requested ${req} → applied ${v} (range ${LC.CONFIG.LIMITS.CADENCE.MIN}-${LC.CONFIG.LIMITS.CADENCE.MAX}).`);
-          return reply(`⏱️ Recap cadence → ${v} turns.`);
+          if (req !== v) return replyStop(`⏱️ Recap cadence: requested ${req} → applied ${v} (range ${LC.CONFIG.LIMITS.CADENCE.MIN}-${LC.CONFIG.LIMITS.CADENCE.MAX}).`);
+          return replyStop(`⏱️ Recap cadence → ${v} turns.`);
         }
         return replyStop(`Current cadence: ${L.cadence} turns.`);
       }
