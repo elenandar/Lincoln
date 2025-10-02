@@ -29,6 +29,10 @@ const modifier = function (text) {
   const wantsRecap = LC.lcGetFlag("doRecap", false);
   const wantsEpoch = LC.lcGetFlag("doEpoch", false);
 
+  if (LC.lcGetFlag?.("isCmd", false) && (LC.lcGetFlag?.("doRecap", false) || LC.lcGetFlag?.("doEpoch", false))) {
+    LC.lcWarn?.("Command+TASK collision: check /да handler clears isCmd before Context.");
+  }
+
   // T1: Accept drafts requested by /continue
   try {
     const wantAccept = LC.lcGetFlag?.("acceptDraft", false);
