@@ -49,7 +49,11 @@ Contract:
   LC.CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
   LC.CONFIG.CHAR_WINDOW_HOT ??= 3;
   LC.CONFIG.CHAR_WINDOW_ACTIVE ??= 10;
-  LC.CONFIG.FEATURES ??= { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true, STRICT_CMD_BYPASS: true };
+  LC.CONFIG.FEATURES ??= {
+    USE_NORM_CACHE: false,
+    ANALYZE_RELATIONS: true,
+    STRICT_CMD_BYPASS: true
+  };
 
   // Notices (centralized)
   LC.pushNotice ??= (msg) => {
@@ -1591,6 +1595,13 @@ L.debugMode = toBool(L.debugMode, false);
   };
 
   LC.CONFIG = _mergedConfig;
+  // Ensure STRICT_CMD_BYPASS survives any merge order
+  try {
+    if (!LC.CONFIG.FEATURES) LC.CONFIG.FEATURES = {};
+    if (typeof LC.CONFIG.FEATURES.STRICT_CMD_BYPASS === "undefined") {
+      LC.CONFIG.FEATURES.STRICT_CMD_BYPASS = true;
+    }
+  } catch(_) {}
   if (typeof globalThis !== "undefined") {
     globalThis.LC = LC;
   } else if (_globalScope && typeof _globalScope === "object") {
