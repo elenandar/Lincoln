@@ -1,10 +1,11 @@
-﻿/* 
-Module: Library (Lincoln v16.0.8-compat6d)
+/*
+Module: Library — Lincoln v16.0.8-compat6d
 Contract:
-- Reads flags: ...; Writes flags: ...
+- Reads flags: ...
+- Writes flags: ...
 - Entry points: ...
-- Invariants: recap/epoch flags reset only on non-command path; retry baseline preserved; ...
-- Config keys used: CONTEXT_LENGTH, CHAR_WINDOW_*, LIMITS.ANTI_ECHO, FEATURES.*
+- Invariants: recap/epoch reset only on non-command path; retry baseline preserved; command bypass on marked handlers.
+- Config: LIMITS.*, CHAR_WINDOW_*, FEATURES.*, OUTPUT_BUDGET_MS (optional)
 */
 // === LIBRARY — Lincoln Heights Core v16.0.8-compat6d ===
 
