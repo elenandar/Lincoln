@@ -23,8 +23,12 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   const userText = LC.stripYouWrappers(raw.trim());
 
   function reply(msg){
+    try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
+    // команды, идущие через reply (не stop), всё равно должны снять isCmd,
+    // иначе следующий этап воспримет ход как «командный»
+    LC.Flags?.clearCmd?.();
     LC.lcSys(msg);
-    return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK." };
+    return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: false };
   }
   function clearCommandFlags(){
     try {
