@@ -50,6 +50,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   // Экспорт хелперов для registry в Library
   LC.replyStop = replyStop;
   LC.reply = reply;
+  // Обновляем ссылки при каждом запуске, чтобы registry всегда получал актуальные хелперы.
 
   function extractCommand(s){
     let t = (s || "").trim();
