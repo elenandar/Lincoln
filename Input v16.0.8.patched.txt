@@ -78,7 +78,7 @@ const args   = tokens.slice(1);
       const n = Number(args[0] || 1);
       try { if (typeof LC !== 'undefined') LC.turnUndo(n); } catch(e) { try { LC.lcSys("⚠️ Undo failed."); } catch(_){} }
       clearCommandFlags();
-      return { text: "", stop: true };
+      return replyStop(`↩️ Undid ${n|0} turn${(n|0)===1?"":"s"}.`);
     }
 
     // /turn set N
@@ -86,7 +86,7 @@ const args   = tokens.slice(1);
       const n = Number(args[1] || 0);
       try { if (typeof LC !== 'undefined') LC.turnSet(n); } catch(e) { try { LC.lcSys("⚠️ Turn set failed."); } catch(_){} }
       clearCommandFlags();
-      return { text: "", stop: true };
+      return replyStop(`↩️ Turn set to ${n|0}.`);
     }
 
 
