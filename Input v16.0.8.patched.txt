@@ -179,10 +179,16 @@ const args   = tokens.slice(1);
         return replyStop(`Debug is ${L.debugMode ? "on" : "off"}.`);
 
       case "/recap":
+        LC.lcSetFlag("wantRecap", false);
+        L.tm = L.tm || {};
+        L.tm.wantRecapTurn = 0;
         LC.lcSetFlag("doRecap", true);
         return replyStop("📋 Recap requested. Next output → draft.");
 
       case "/epoch":
+        LC.lcSetFlag("wantRecap", false);
+        L.tm = L.tm || {};
+        L.tm.wantRecapTurn = 0;
         LC.lcSetFlag("doEpoch", true);
         return replyStop("🗿 Epoch requested. Next output → draft.");
 
