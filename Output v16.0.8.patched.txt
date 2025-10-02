@@ -150,7 +150,7 @@ const modifier = function (text) {
   const notices = LC.consumeNotices?.() || "";
   const msgs = LC.lcConsumeMsgs?.() || [];
   let final = out;
-  if (L.sysShow) {
+  if (L.sysShow && !isRetry) {
     if (msgs.length) final = msgs.join("\n") + "\n" + "=".repeat(40) + "\n" + final;
     if (notices) final = notices + "\n\n" + final;
   }
