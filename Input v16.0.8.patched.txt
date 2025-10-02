@@ -57,6 +57,80 @@ function replyStopSilent(){
   LC.replyStop = replyStop;
   LC.reply = reply;
 
+  function buildHelpMessage(currentL = L) {
+    const version = LC?.CONFIG?.VERSION ?? "";
+    return [
+      `=== COMMANDS ${version} ===`,
+      "/recap — create recap draft next output",
+      "/epoch — create epoch draft",
+      "/continue — accept and save draft",
+      "/evergreen on|off|clear|summary|set <cat>: <value>",
+      "/antiecho on|off|sensitivity N (1-100)|mode soft|hard|stats|flush",
+      "/events [N] — list recent events with score contribution",
+      "/alias add <Name>=a,b,c | /alias del <Name> | /alias list",
+      "/evhist cap <N> | /evhist last <N> | /evhist clear",
+      "/characters — list active NPCs",
+      "/opening — show captured opening",
+      "/ui on|off — toggle UI messages",
+      "/debug on|off — toggle debug mode",
+      "/stats — show statistics",
+      "/retry — show retry info",
+      "/cadence N — set recap cadence (6-24)",
+      "/story add <text> | /story del <id>",
+      "/cards — list managed cards",
+      "/pin <id> /unpin <id> — pseudo-pin for cleanup",
+      "/del <id> — remove card by id (if possible)",
+      "/ctx — inspect context overlay composition"
+    ].join("\n");
+  }
+
+  function buildStatsMessage(currentL = L) {
+    const activeL = currentL || LC?.lcInit?.(__SCRIPT_SLOT__) || {};
+    const tm = activeL.tm || {};
+    const lastRecapScore = tm.lastRecapScore;
+    const score = (lastRecapScore == null) ? "n/a" : Number(lastRecapScore).toFixed(2);
+    const turn = activeL.turn ?? 0;
+    const lastRecap = activeL.lastRecapTurn ?? 0;
+    const lastEpoch = activeL.lastEpochTurn ?? 0;
+    const cadence = activeL.cadence ?? "n/a";
+    const worldInfoIds = Array.isArray(activeL.worldInfoIds) ? activeL.worldInfoIds : [];
+    const pinnedWorldInfoIds = Array.isArray(activeL.pinnedWorldInfoIds) ? activeL.pinnedWorldInfoIds : [];
+    const characters = activeL.characters ? Object.keys(activeL.characters).length : 0;
+    const echoHits = tm.echoHits || 0;
+    const retryHits = tm.retries || 0;
+    const errors = tm.errors || 0;
+    const version = LC?.CONFIG?.VERSION ?? "";
+    return [
+      `=== STATISTICS ${version} ===`,
+      `Turn: ${turn}`,
+      `Since recap: ${turn - lastRecap}`,
+      `Since epoch: ${turn - lastEpoch}`,
+      `Cadence: ${cadence}`,
+      `Cards: ${worldInfoIds.length} (pinned ${pinnedWorldInfoIds.length})`,
+      `Characters: ${characters}`,
+      `Echo hits: ${echoHits}`,
+      `Retry hits: ${retryHits}`,
+      `Errors: ${errors}`,
+      `Last recap score: ${score}`
+    ].join("\n");
+  }
+
+  function ensureSharedCommand(cmdName, builder) {
+    if (!LC?.Commands) return;
+    const existing = LC.Commands.get(cmdName);
+    if (existing && !existing.bypass && typeof existing.handler === "function") {
+      return;
+    }
+    LC.Commands.set(cmdName, {
+      handler() {
+        const ctx = LC?.lcInit?.(__SCRIPT_SLOT__) || LC?.lcInit?.() || L;
+        const message = builder(ctx);
+        if (typeof LC.replyStop === "function") return LC.replyStop(message);
+        return { text: `⟦SYS⟧ ${String(message ?? "")}`, stop: true };
+      }
+    });
+  }
+
   function extractCommand(s){
     let t = (s || "").trim();
     if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) t = t.slice(1, -1).trim();
@@ -77,6 +151,9 @@ const args   = tokens.slice(1);
 
 
     const wantRecap = LC.lcGetFlag("wantRecap", false);
+
+    ensureSharedCommand("/help", buildHelpMessage);
+    ensureSharedCommand("/stats", buildStatsMessage);
 // /undo [N]
     if (cmd === "/undo") {
       const n = Number(args[0] || 1);
@@ -123,7 +200,12 @@ const args   = tokens.slice(1);
     try {
       const reg = LC.Commands?.get(cmd);
       if (reg && typeof reg.handler === "function") {
-        return reg.handler(args, text);
+        if (reg.bypass) {
+          // заглушка — позволяем продолжить обработку локально
+        } else {
+          const result = reg.handler(args, text);
+          if (typeof result !== "undefined") return result;
+        }
       }
     } catch (e) {
       return replyStop(`Command failed: ${e?.message || e}`);
@@ -132,29 +214,7 @@ const args   = tokens.slice(1);
     switch ((cmd.split(" ")[0])) {
       case "/help":
       case "/h":
-        return replyStop([
-          `=== COMMANDS ${LC.CONFIG.VERSION} ===`,
-          "/recap — create recap draft next output",
-          "/epoch — create epoch draft",
-          "/continue — accept and save draft",
-          "/evergreen on|off|clear|summary|set <cat>: <value>",
-          "/antiecho on|off|sensitivity N (1-100)|mode soft|hard|stats|flush",
-          "/events [N] — list recent events with score contribution",
-          "/alias add <Name>=a,b,c | /alias del <Name> | /alias list",
-          "/evhist cap <N> | /evhist last <N> | /evhist clear",
-          "/characters — list active NPCs",
-          "/opening — show captured opening",
-          "/ui on|off — toggle UI messages",
-          "/debug on|off — toggle debug mode",
-          "/stats — show statistics",
-          "/retry — show retry info",
-          "/cadence N — set recap cadence (6-24)",
-          "/story add <text> | /story del <id>",
-          "/cards — list managed cards",
-          "/pin <id> /unpin <id> — pseudo-pin for cleanup",
-          "/del <id> — remove card by id (if possible)",
-          "/ctx — inspect context overlay composition"
-        ].join("\n"));
+        return replyStop(buildHelpMessage(L));
 
       case "/ui":
         if (/\/ui\s+on/i.test(cmdRaw)) {
@@ -348,20 +408,7 @@ const args   = tokens.slice(1);
 
 
       case "/stats": {
-        const s = (L.tm.lastRecapScore == null) ? "n/a" : Number(L.tm.lastRecapScore).toFixed(2);
-        return replyStop([
-          `=== STATISTICS ${LC.CONFIG.VERSION} ===`,
-          `Turn: ${L.turn}`,
-          `Since recap: ${L.turn - (L.lastRecapTurn || 0)}`,
-          `Since epoch: ${L.turn - (L.lastEpochTurn || 0)}`,
-          `Cadence: ${L.cadence}`,
-          `Cards: ${L.worldInfoIds.length} (pinned ${L.pinnedWorldInfoIds.length})`,
-          `Characters: ${Object.keys(L.characters).length}`,
-          `Echo hits: ${L.tm.echoHits || 0}`,
-          `Retry hits: ${L.tm.retries || 0}`,
-          `Errors: ${L.tm.errors || 0}`,
-          `Last recap score: ${s}`
-        ].join("\n"));
+        return replyStop(buildStatsMessage(L));
       }
 
       case "/cadence": {
