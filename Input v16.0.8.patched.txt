@@ -113,14 +113,14 @@ const args   = tokens.slice(1);
       return reply("🕑 Recap later (3 turns).");
     }
 
-    // Registry first
+    // Сначала пробуем registry
     try {
       const reg = LC.Commands?.get(cmd);
       if (reg && typeof reg.handler === "function") {
         return reg.handler(args, text);
       }
-    } catch(e) {
-      return replyStop(`Command failed: ${e?.message||e}`);
+    } catch (e) {
+      return replyStop(`Command failed: ${e?.message || e}`);
     }
 
     switch ((cmd.split(" ")[0])) {
