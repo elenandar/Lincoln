@@ -97,6 +97,7 @@ const args   = tokens.slice(1);
       }
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn;
       LC.lcSetFlag("doRecap", true);
+      LC.Flags?.clearCmd?.(); // важно: снять isCmd до Context
       return reply("📋 Recap will be generated.");
     }
     if (cmd === "/нет")  {
