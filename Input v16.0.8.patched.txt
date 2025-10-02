@@ -47,10 +47,9 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     clearCommandFlags();
     return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg };
   }
-  // Экспорт хелперов для registry в Library
+  // Экспорт для registry (Library)
   LC.replyStop = replyStop;
   LC.reply = reply;
-  // Обновляем ссылки при каждом запуске, чтобы registry всегда получал актуальные хелперы.
 
   function extractCommand(s){
     let t = (s || "").trim();
