@@ -136,13 +136,13 @@ const args   = tokens.slice(1);
         ].join("\n"));
 
       case "/ui":
-        if (/\/ui\s+on/i.test(cmdRaw))  { L.sysShow = true;  return reply("✅ UI enabled."); }
-        if (/\/ui\s+off/i.test(cmdRaw)) { L.sysShow = false; return reply("⚫ UI disabled."); }
+        if (/\/ui\s+on/i.test(cmdRaw))  { L.sysShow = true;  return replyStop("✅ UI enabled."); }
+        if (/\/ui\s+off/i.test(cmdRaw)) { L.sysShow = false; return replyStop("⚫ UI disabled."); }
         return replyStop(`UI is ${L.sysShow ? "on" : "off"}.`);
 
       case "/debug":
-        if (/\/debug\s+on/i.test(cmdRaw))  { L.debugMode = true;  return reply("🔍 Debug ON."); }
-        if (/\/debug\s+off/i.test(cmdRaw)) { L.debugMode = false; return reply("🔍 Debug OFF."); }
+        if (/\/debug\s+on/i.test(cmdRaw))  { L.debugMode = true;  return replyStop("🔍 Debug ON."); }
+        if (/\/debug\s+off/i.test(cmdRaw)) { L.debugMode = false; return replyStop("🔍 Debug OFF."); }
         return replyStop(`Debug is ${L.debugMode ? "on" : "off"}.`);
 
       case "/recap":
