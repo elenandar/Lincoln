@@ -10,8 +10,12 @@ Contract:
 const __SCRIPT_SLOT__ = "Output";
 if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
 
-function omBudget(start = Date.now(), ms = 280) { return () => { if (Date.now()-start > ms) throw new Error('OM_TIME_BUDGET'); }; } 
+function omBudget(start, maxMs = 3500) {
+  const dt = Date.now() - start;
+  return { over: dt > maxMs, dt };
+}
 const modifier = function (text) {
+  const t0 = Date.now();
   if (typeof LC === "undefined") return { text: String(text || "") };
   LC.DATA_VERSION = "16.0.8-compat6d";
   const L = LC.lcInit(__SCRIPT_SLOT__);
@@ -129,6 +133,8 @@ const modifier = function (text) {
   let final = out;
   if (msgs.length) final = msgs.join("\n") + "\n" + "=".repeat(40) + "\n" + final;
   if (notices) final = notices + "\n\n" + final;
+  const budget = omBudget(t0, LC.CONFIG?.LIMITS?.OUTPUT_BUDGET_MS ?? 3500);
+  if (budget.over) LC.lcWarn?.(`Output budget exceeded: ${budget.dt}ms`);
   return { text: final };
 };
 return modifier(text);
