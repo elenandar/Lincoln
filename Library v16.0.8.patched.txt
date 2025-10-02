@@ -135,7 +135,7 @@ Contract:
   // RF-T5: Commands registry (minimal start, safe replies)
   LC.Commands ??= new Map();
 
-  // Безопасный вызов stop-ответа: сначала пробуем экспорт из Input, иначе — локальный fallback-объект
+  // Безопасный stop-ответ: пробуем экспорт из Input, иначе — локальный fallback
   function _safeCmd(msg){
     if (typeof LC !== "undefined" && typeof LC.replyStop === "function") {
       return LC.replyStop(msg);
