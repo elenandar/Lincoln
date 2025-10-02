@@ -285,7 +285,7 @@ const args   = tokens.slice(1);
         if (/\/evhist\s+cap\s+(\d+)/i.test(cmdRaw)) {
           const cap = Math.max(0, parseInt(cmdRaw.match(/cap\s+(\d+)/i)[1],10));
           LC.capEvergreenHistory(cap);
-          return reply(`Evergreen history cap = ${cap || "no cap"}.`);
+          return replyStop(`Evergreen history cap = ${cap || "no cap"}.`);
         }
         if (/\/evhist\s+last\s+(\d+)/i.test(cmdRaw)) {
           const n = Math.max(1, parseInt(cmdRaw.match(/last\s+(\d+)/i)[1],10));
@@ -300,7 +300,7 @@ const args   = tokens.slice(1);
         }
         if (/\/evhist\s+clear/i.test(cmdRaw)) {
           if (L.evergreen) L.evergreen.history = [];
-          return reply("Evergreen history cleared.");
+          return replyStop("Evergreen history cleared.");
         }
         return replyStop("Usage: /evhist cap <N> | /evhist last <N> | /evhist clear");
       }
