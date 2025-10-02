@@ -30,6 +30,11 @@ if (typeof LC === "undefined") return { text: String(text || "") };
       LC.Flags?.clearCmd?.();
     } catch (_) {}
   }
+  function setCommandMode(){
+    try {
+      LC.Flags?.setCmd?.();
+    } catch (_) {}
+  }
   function replyStop(msg){
     const state = (L && typeof L === "object") ? L : (() => {
       try { return LC.lcInit(__SCRIPT_SLOT__); } catch (_) { return null; }
@@ -57,7 +62,7 @@ const args   = tokens.slice(1);
 
   // ==== Команды ====
   if (cmd) {
-    LC.Flags?.setCmd?.();
+    setCommandMode();
     L.lastActionType = "command";
 
 
@@ -458,11 +463,7 @@ const args   = tokens.slice(1);
         out.push(`versions=[${modSummary}]`);
         const flagsReset = (() => {
           try {
-            if (LC.Flags?.clearCmd) {
-              LC.Flags.clearCmd();
-            } else {
-              clearCommandFlags();
-            }
+            clearCommandFlags();
           } catch (_) {}
           return !LC.lcGetFlag("isCmd", false) && !LC.lcGetFlag("isRetry", false) && !LC.lcGetFlag("isContinue", false);
         })();
