@@ -13,8 +13,9 @@ if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
 
 const modifier = function (text) {
   
-  const RETRY_KEEP_CONTEXT = (typeof LC !== 'undefined' && LC.lcGetFlag && (LC.lcGetFlag('RETRY_KEEP_CONTEXT', false) === true)); 
-if (typeof LC === "undefined") return { text: String(text || "") };
+  if (typeof LC === "undefined") return { text: String(text || "") };
+  LC.lcInit?.();
+  const RETRY_KEEP_CONTEXT = (LC.lcGetFlag?.('RETRY_KEEP_CONTEXT', false) === true);
   LC.DATA_VERSION = "16.0.8-compat6d";
   const L = LC.lcInit(__SCRIPT_SLOT__);
 
