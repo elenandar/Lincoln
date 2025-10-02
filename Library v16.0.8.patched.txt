@@ -131,6 +131,11 @@ Contract:
     return v;
   };
 
+  // RF-T5: Commands registry (minimal start)
+  LC.Commands ??= new Map();
+  if (!LC.Commands.has("/help"))  LC.Commands.set("/help",  { bypass: true, handler: () => replyStop("Help shown.") });
+  if (!LC.Commands.has("/stats")) LC.Commands.set("/stats", { bypass: true, handler: () => replyStop("Stats shown.") });
+
   // FNV-1a 32-bit (умножение на prime через сумму сдвигов — эквивалент Math.imul(h, 0x01000193))
   const FNV1A = (str) => {
     let h = 0x811c9dc5 >>> 0;
