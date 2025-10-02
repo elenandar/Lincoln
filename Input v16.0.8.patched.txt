@@ -36,17 +36,13 @@ if (typeof LC === "undefined") return { text: String(text || "") };
       LC.Flags?.setCmd?.();
     } catch (_) {}
   }
-  function replyStop(msg){
-    const state = (L && typeof L === "object") ? L : (() => {
-      try { return LC.lcInit(__SCRIPT_SLOT__); } catch (_) { return null; }
-    })();
-    if (state) {
-      LC.pushNotice?.(msg);
-    }
-    LC.lcSys(msg);
-    clearCommandFlags();
-    return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg };
-  }
+function replyStop(msg){
+  // Командные ответы: только SYS (без notice), чтобы не было дублей на следующем ходе
+  try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
+  LC.lcSys(msg);
+  clearCommandFlags();
+  return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: true, _sys: msg };
+}
   // Экспорт для registry (Library)
   LC.replyStop = replyStop;
   LC.reply = reply;
