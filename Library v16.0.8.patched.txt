@@ -134,8 +134,21 @@ Contract:
 
   // RF-T5: Commands registry (minimal start)
   LC.Commands ??= new Map();
-  if (!LC.Commands.has("/help"))  LC.Commands.set("/help",  { bypass: true, handler: () => replyStop("Help shown.") });
-  if (!LC.Commands.has("/stats")) LC.Commands.set("/stats", { bypass: true, handler: () => replyStop("Stats shown.") });
+
+  // Безопасный вызов stop-ответа: сначала пробуем экспорт из Input, иначе — локальный fallback-объект
+  function _safeCmd(msg){
+    if (typeof LC !== "undefined" && typeof LC.replyStop === "function") {
+      return LC.replyStop(msg);
+    }
+    return { text: (LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK."), stop: true, _sys: String(msg ?? "") };
+  }
+
+  if (!LC.Commands.has("/help")) {
+    LC.Commands.set("/help",  { bypass: true, handler: () => _safeCmd("Help shown.") });
+  }
+  if (!LC.Commands.has("/stats")) {
+    LC.Commands.set("/stats", { bypass: true, handler: () => _safeCmd("Stats shown.") });
+  }
 
   // FNV-1a 32-bit (умножение на prime через сумму сдвигов — эквивалент Math.imul(h, 0x01000193))
   const FNV1A = (str) => {
