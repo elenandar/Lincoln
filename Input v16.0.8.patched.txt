@@ -220,15 +220,15 @@ const args   = tokens.slice(1);
           LC.antiEchoFlush();
           return replyStop("Anti-echo cache flushed.");
         }
-        if (/\/antiecho\s+on/i.test(cmdRaw))  { L.antiEchoEnabled = true;  return reply("✅ Anti-echo enabled."); }
-        if (/\/antiecho\s+off/i.test(cmdRaw)) { L.antiEchoEnabled = false; return reply("⚫ Anti-echo disabled."); }
+        if (/\/antiecho\s+on/i.test(cmdRaw))  { L.antiEchoEnabled = true;  return replyStop("✅ Anti-echo enabled."); }
+        if (/\/antiecho\s+off/i.test(cmdRaw)) { L.antiEchoEnabled = false; return replyStop("⚫ Anti-echo disabled."); }
         if (/\/antiecho\s+sensitivity\s+(\d{1,3})/i.test(cmdRaw)) {
           const v = Math.max(1, Math.min(100, parseInt(cmdRaw.match(/sensitivity\s+(\d{1,3})/i)[1], 10)));
-          L.antiEchoSensitivity = v; return reply(`🔧 Anti-echo sensitivity = ${v}%`);
+          L.antiEchoSensitivity = v; return replyStop(`🔧 Anti-echo sensitivity = ${v}%`);
         }
         if (/\/antiecho\s+mode\s+(soft|hard)/i.test(cmdRaw)) {
           L.antiEchoMode = (cmdRaw.match(/mode\s+(soft|hard)/i)[1].toLowerCase() === "hard") ? "hard" : "soft";
-          return reply(`🛡️ Anti-echo mode = ${L.antiEchoMode.toUpperCase()}`);
+          return replyStop(`🛡️ Anti-echo mode = ${L.antiEchoMode.toUpperCase()}`);
         }
         {
           const base = (L.antiEchoSensitivity || 85) / 100;
@@ -269,13 +269,13 @@ const args   = tokens.slice(1);
           const name = m[1].trim();
           const list = m[2].split(",").map(s=>s.trim()).filter(Boolean);
           L.aliases[name] = list;
-          return reply(`Alias set: ${name} = ${list.join(", ")}`);
+          return replyStop(`Alias set: ${name} = ${list.join(", ")}`);
         }
         if (/\/alias\s+del\s+/i.test(cmdRaw)) {
           const m = cmdRaw.match(/\/alias\s+del\s+(.+)$/i);
           if (!m) return replyStop("Usage: /alias del <Name>");
           const name = m[1].trim();
-          if (name in L.aliases) { delete L.aliases[name]; return reply(`Alias deleted: ${name}`); }
+          if (name in L.aliases) { delete L.aliases[name]; return replyStop(`Alias deleted: ${name}`); }
           return replyStop(`No alias for: ${name}`);
         }
         return replyStop("Usage: /alias add <Name>=a,b,c | /alias del <Name> | /alias list");
