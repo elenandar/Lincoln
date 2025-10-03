@@ -804,6 +804,12 @@ L.debugMode = toBool(L.debugMode, false);
         const okF4 = tryPush(P.facts, "important:\\s*(.+?)(?:[.!]|$)", "giu");
         const okF5 = tryPush(P.facts, "remember:\\s*(.+?)(?:[.!]|$)", "giu");
 
+        // EVG: colon-friendly fact cues (ru/en), ':' optional to survive _normU
+        // Помечаем короткие явные подсказки пользователя на «сохранение факта»
+        P.factsCues = P.factsCues || [];
+        tryPush(P.factsCues, "(?:важно|запомни|факт|итог|вывод)\\s*[:\\-]?\\s*(.{8,280})", "giu");
+        tryPush(P.factsCues, "(?:important|note|remember|fact|summary|takeaway)\\s*[:\\-]?\\s*(.{8,280})", "giu");
+
         const needFallback = !(okR1 && okR2 && okR3 && okR4 && okS1 && okS2 && okS3 && okS4 && okS5 && okO1 && okO2 && okO3 && okO4 && okF1 && okF2 && okF3 && okF4 && okF5);
         if (needFallback) {
           const LTR = "A-Za-zА-Яа-яЁё";
@@ -838,6 +844,9 @@ L.debugMode = toBool(L.debugMode, false);
           P.facts.push(/факт:\s*(.+?)(?:[.!]|$)/ig);
           P.facts.push(/important:\s*(.+?)(?:[.!]|$)/ig);
           P.facts.push(/remember:\s*(.+?)(?:[.!]|$)/ig);
+          P.factsCues = P.factsCues || [];
+          P.factsCues.push(/(?:важно|запомни|факт|итог|вывод)\s*[:\-]?\s*(.{8,280})/ig);
+          P.factsCues.push(/(?:important|note|remember|fact|summary|takeaway)\s*[:\-]?\s*(.{8,280})/ig);
         }
         return P;
       },
@@ -951,6 +960,29 @@ L.debugMode = toBool(L.debugMode, false);
         if (!L.evergreen || !L.evergreen.enabled || actionType === "retry" || !text) return;
         const originalText = String(text || "");
         const T = LC._normUCached?.(text) ?? LC._normU(text);
+
+        // EVG: extract cue-based facts on normalized text (':' is optional in regex)
+        try {
+          const TT = T;
+          if (Array.isArray(this.patterns.factsCues)) {
+            for (let i = 0; i < this.patterns.factsCues.length; i++) {
+              const re = this.patterns.factsCues[i];
+              if (!re) continue;
+              re.lastIndex = 0;
+              let m;
+              while ((m = re.exec(TT)) !== null) {
+                const val = (m[1] || "").trim();
+                if (val.length >= 4) {
+                  const key = `cue_${Date.now()}_${i}_${Math.random().toString(36).slice(2,6)}`;
+                  upd("facts", key, val);
+                }
+              }
+            }
+            this.limitCategories?.(L);
+          }
+        } catch (e) {
+          LC.lcWarn?.("EVG: factsCues analyze failed: " + (e && e.message));
+        }
 
         const formatRelation = (subject, action, object, raw, patternType, options={})=>{
           const subj = String(subject || "").trim();
