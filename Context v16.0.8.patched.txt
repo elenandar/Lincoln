@@ -32,10 +32,20 @@ const modifier = function (text) {
   }
 
   const limit = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) || 800;
-  const built = LC.composeContextOverlay?.({ limit, allowPartial: true });
-  const overlayRaw = (built && typeof built.text === "string") ? built.text : String(built?.text || "");
-  const overlay = overlayRaw.length > limit ? overlayRaw.slice(0, limit) : overlayRaw;
+  // CTX: build overlay with safe fallback to upstream text
+  let overlay = "";
+  try {
+    const built = LC.composeContextOverlay?.({ limit, allowPartial: true });
+    const raw = (built && typeof built.text === "string") ? built.text : String(built || "");
+    overlay = raw && raw.trim().length ? raw : "";
+    if (!overlay) throw new Error("empty overlay");
+  } catch (e) {
+    LC.lcWarn?.("CTX: overlay build failed or empty: " + (e && e.message));
+    // SAFE FALLBACK: preserve upstream context instead of blanking it
+    return { text: String(text || "") };
+  }
+  const overlayLimited = overlay.length > limit ? overlay.slice(0, limit) : overlay;
 
-  return { text: overlay };
+  return { text: overlayLimited };
 };
 return modifier(text);
