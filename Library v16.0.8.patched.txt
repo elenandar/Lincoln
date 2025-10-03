@@ -1658,6 +1658,7 @@ function turnSet(n) {
   const L = this.lcInit();
   const v = Math.max(0, Math.floor(Number(n) || 0));
   L.turn = v;
+  L.lastProcessedTurn = v;
   if (L.lastRecapTurn && L.lastRecapTurn >= v) L.lastRecapTurn = 0;
   if (L.lastEpochTurn && L.lastEpochTurn >= v) L.lastEpochTurn = 0;
   if (Array.isArray(L.events)) {
