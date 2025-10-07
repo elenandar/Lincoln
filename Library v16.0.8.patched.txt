@@ -55,6 +55,32 @@ Contract:
     STRICT_CMD_BYPASS: true
   };
 
+  LC.sanitizeAliases = function sanitizeAliases(L){
+    try {
+      if (!L) return;
+      if (!Array.isArray(L.aliases) && L.aliases && typeof L.aliases === "object") {
+        for (const key in L.aliases) {
+          if (!Object.prototype.hasOwnProperty.call(L.aliases, key)) continue;
+          const wrap = { aliases: L.aliases[key] };
+          sanitizeAliases(wrap);
+          L.aliases[key] = wrap.aliases;
+        }
+        return;
+      }
+      const src = Array.isArray(L.aliases) ? L.aliases : [];
+      const uniq = [];
+      const seen = new Set();
+      for (let i=0;i<src.length;i++){
+        const v = String(src[i] || "").trim().toLowerCase();
+        if (!v) continue;
+        if (seen.has(v)) continue;
+        seen.add(v);
+        uniq.push(v);
+      }
+      L.aliases = uniq;
+    } catch(_) {}
+  };
+
   // Notices (centralized)
   LC.pushNotice ??= (msg) => {
     if (!msg) return;
