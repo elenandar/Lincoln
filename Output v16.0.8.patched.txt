@@ -25,6 +25,7 @@ const modifier = function (text) {
 
   const CMD_SYS_PREFIX = "\u2063\u2063";
   const CMD_SYS_META_SEP = "\u2062";
+  const CMD_CYCLE_FLAG = "__cmdCyclePending";
 
   function decodeCommandSys(raw) {
     if (typeof raw !== "string") return null;
@@ -44,9 +45,12 @@ const modifier = function (text) {
 
 
   const isCmd = LC.lcGetFlag("isCmd", false);
+  const cmdCyclePending = LC.lcGetFlag(CMD_CYCLE_FLAG, false);
   const isRetry = LC.lcGetFlag("isRetry", false);
   const wantsRecap = LC.lcGetFlag("doRecap", false);
   const wantsEpoch = LC.lcGetFlag("doEpoch", false);
+  const lastActionType = L.lastActionType || "";
+  const isCommandAction = lastActionType === "command" || cmdCyclePending || isCmd;
 
   if (LC.lcGetFlag?.("isCmd", false) && (LC.lcGetFlag?.("doRecap", false) || LC.lcGetFlag?.("doEpoch", false))) {
     LC.lcWarn?.("Command+TASK collision: check /да handler clears isCmd before Context.");
@@ -94,11 +98,12 @@ const modifier = function (text) {
   }
 
   // Командный ответ: обработка /continue → SYS
-  if (isCmd) {
+  if (isCmd || cmdCyclePending) {
     const msgs = (LC.lcConsumeMsgs?.() || []).map(msg => {
       const decoded = decodeCommandSys(msg);
       return decoded ? decoded.text : msg;
     });
+    try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, false); } catch (_) {}
     LC.Flags?.clearCmd?.(); // страховочный сброс, чтобы не «залипнуть» в командном режиме
     return { text: (msgs.length ? msgs.join("\n") + "\n" + "=".repeat(40) + "\n" : (LC.CONFIG.CMD_PLACEHOLDER || "⟦SYS⟧ OK.") + "\n") };
   }
@@ -107,16 +112,15 @@ const modifier = function (text) {
   if (wantsEpoch) LC.lcSetFlag("doEpoch", false);
 
   // Инкремент хода на реальном действии
-  if (!isRetry && LC.shouldIncrementTurn()) {
+  if (!isRetry && !isCommandAction && LC.shouldIncrementTurn()) {
     LC.incrementTurn();
   }
   L.lastOutput = clean;
 
   // Anti-echo
-  const actionType = L.lastActionType || "";
   let filtered = clean;
   if (!isRetry) {
-    filtered = LC.applyAntiEcho(clean, L.prevOutput, actionType);
+    filtered = LC.applyAntiEcho(clean, L.prevOutput, lastActionType);
     // Only update the anti-echo baseline when not retrying.
     L.prevOutput = filtered;
   }

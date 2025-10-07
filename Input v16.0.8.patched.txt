@@ -24,6 +24,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
 
   const CMD_SYS_PREFIX = "\u2063\u2063"; // invisible marker to tag command SYS messages
   const CMD_SYS_META_SEP = "\u2062";
+  const CMD_CYCLE_FLAG = "__cmdCyclePending";
 
   function stampCommandSysMessage(message) {
     const turn = L?.turn ?? 0;
@@ -37,22 +38,30 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     };
   }
 
+  function clearCommandFlags(options = {}) {
+    const preserveCycle = options && options.preserveCycle === true;
+    try {
+      LC.Flags?.clearCmd?.();
+    } catch (_) {}
+    if (!preserveCycle) {
+      try {
+        LC.lcSetFlag?.(CMD_CYCLE_FLAG, false);
+      } catch (_) {}
+    }
+  }
+
   function reply(msg){
     try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
     // команды, идущие через reply (не stop), всё равно должны снять isCmd,
     // иначе следующий этап воспримет ход как «командный»
-    LC.Flags?.clearCmd?.();
+    clearCommandFlags();
     LC.lcSys(msg);
     return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: false };
-  }
-  function clearCommandFlags(){
-    try {
-      LC.Flags?.clearCmd?.();
-    } catch (_) {}
   }
   function setCommandMode(){
     try {
       LC.Flags?.setCmd?.();
+      LC.lcSetFlag?.(CMD_CYCLE_FLAG, true);
     } catch (_) {}
   }
 function replyStop(msg){
@@ -62,15 +71,56 @@ function replyStop(msg){
   LC.lcSys(stamped.raw);              // лог/SYS-лента (с невидимой меткой)
   L._cmdSysSeen = { turn: stamped.turn, seq: stamped.seq };
   LC.lcConsumeMsgs?.();       // немедленно очищаем очередь SYS-сообщений
-  clearCommandFlags();        // сбросить isCmd/isRetry/isContinue
+  try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, true); } catch (_) {}
+  clearCommandFlags({ preserveCycle: true });        // сбросить isCmd/isRetry/isContinue, но сохранить признак цикла
   return { text: `⟦SYS⟧ ${String(stamped.text || "")}`, stop: true };
 }
 function replyStopSilent(){
   // Без текста и без SYS-префикса — просто остановить генерацию и сбросить флаги
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  clearCommandFlags();
+  try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, true); } catch (_) {}
+  clearCommandFlags({ preserveCycle: true });
   return { text: "", stop: true };
 }
+
+  function handleAcceptDraftCycle(currentL = L) {
+    let processed = false;
+    try {
+      const wantAccept = LC.lcGetFlag?.("acceptDraft", false);
+      if (!wantAccept) return false;
+      LC.lcSetFlag?.("acceptDraft", false);
+      const activeL = currentL || LC?.lcInit?.(__SCRIPT_SLOT__) || L || {};
+
+      if (activeL.recapDraft && activeL.recapDraft.text) {
+        try {
+          let savedCount = 0;
+          if (typeof LC.syncRecapToStoryCards === "function") {
+            savedCount = LC.syncRecapToStoryCards(activeL.recapDraft.text, activeL.recapDraft.window) | 0;
+          }
+          activeL.lastRecapTurn = activeL.recapDraft.turn || activeL.turn;
+          activeL.recapDraft = null;
+          LC.lcSys?.(`✅ Recap saved${savedCount ? ` (${savedCount} card${savedCount===1?'':'s'})` : ""}.`);
+        } catch (e) {
+          LC.lcWarn?.("Recap save failed: " + (e && e.message));
+        }
+        processed = true;
+      }
+
+      if (activeL.epochDraft && activeL.epochDraft.text) {
+        try {
+          activeL.lastEpochTurn = activeL.epochDraft.turn || activeL.turn;
+          activeL.epochDraft = null;
+          LC.lcSys?.("✅ Epoch accepted.");
+        } catch (e) {
+          LC.lcWarn?.("Epoch accept failed: " + (e && e.message));
+        }
+        processed = true;
+      }
+    } catch (e) {
+      LC.lcWarn?.("AcceptDraft handling failed: " + (e && e.message));
+    }
+    return processed;
+  }
   // Экспорт для registry (Library)
   LC.replyStop = replyStop;
   LC.reply = reply;
@@ -176,7 +226,7 @@ const args   = tokens.slice(1);
     if (cmd === "/undo") {
       const n = Number(args[0] || 1);
       try { if (typeof LC !== 'undefined') LC.turnUndo(n); } catch(e) { try { LC.lcSys("⚠️ Undo failed."); } catch(_){} }
-      clearCommandFlags();
+      clearCommandFlags({ preserveCycle: true });
       return replyStop(`↩️ Undid ${n|0} turn${(n|0)===1?"":"s"}.`);
     }
 
@@ -184,7 +234,7 @@ const args   = tokens.slice(1);
     if (cmd === "/turn" && (args[0] || "").toLowerCase() === "set") {
       const n = Number(args[1] || 0);
       try { if (typeof LC !== 'undefined') LC.turnSet(n); } catch(e) { try { LC.lcSys("⚠️ Turn set failed."); } catch(_){} }
-      clearCommandFlags();
+      clearCommandFlags({ preserveCycle: true });
       return replyStop(`↩️ Turn set to ${n|0}.`);
     }
 
@@ -196,7 +246,7 @@ const args   = tokens.slice(1);
       }
       LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn;
       LC.lcSetFlag("doRecap", true);
-      LC.Flags?.clearCmd?.(); // важно: снять isCmd до Context
+      clearCommandFlags({ preserveCycle: true }); // важно: снять isCmd до Context, но сохранить признак командного цикла
       return replyStop("📋 Recap will be generated.");
     }
     if (cmd === "/нет")  {
@@ -271,7 +321,11 @@ const args   = tokens.slice(1);
         return replyStop("🗿 Epoch requested. Next output → draft.");
 
       case "/continue":
-        if (L.recapDraft || L.epochDraft) { LC.lcSetFlag("acceptDraft", true); return replyStopSilent(); }
+        if (L.recapDraft || L.epochDraft) {
+          LC.lcSetFlag("acceptDraft", true);
+          handleAcceptDraftCycle();
+          return replyStopSilent();
+        }
         return replyStop("❌ No draft to save.");
 
       case "/evergreen": {
