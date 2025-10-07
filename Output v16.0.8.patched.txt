@@ -49,7 +49,10 @@ const modifier = function (text) {
   const isRetry = LC.lcGetFlag("isRetry", false);
   const wantsRecap = LC.lcGetFlag("doRecap", false);
   const wantsEpoch = LC.lcGetFlag("doEpoch", false);
-  const lastActionType = L.lastActionType || "";
+  // Derive lastActionType for analysis
+  const lastActionType =
+    (L && L.lastActionType) ||
+    (isRetry ? "retry" : (LC.lcGetFlag?.("isCmd", false) ? "command" : "story"));
   const isCommandAction = lastActionType === "command" || cmdCyclePending || isCmd;
 
   if (LC.lcGetFlag?.("isCmd", false) && (LC.lcGetFlag?.("doRecap", false) || LC.lcGetFlag?.("doEpoch", false))) {
@@ -162,7 +165,7 @@ const modifier = function (text) {
     const autoEvergreen = LC.autoEvergreen;
     if (autoEvergreen?.analyze) {
       try {
-        autoEvergreen.analyze(out, actionType);
+        autoEvergreen.analyze(out, lastActionType);
       } catch (e) {
         LC.lcWarn("Post-analyze autoEvergreen error: " + (e && e.message));
       }
