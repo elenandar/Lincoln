@@ -214,14 +214,34 @@ const args   = tokens.slice(1);
 
   // ==== Команды ====
   if (cmd) {
-    setCommandMode();
-    L.lastActionType = "command";
-
 
     const wantRecap = LC.lcGetFlag("wantRecap", false);
 
     ensureSharedCommand("/help", buildHelpMessage);
+    ensureSharedCommand("/h", buildHelpMessage);
     ensureSharedCommand("/stats", buildStatsMessage);
+
+    // Try registry first
+    const def = LC.Commands?.get(cmd);
+    if (def && typeof def.handler === "function") {
+      if (def.bypass === true) {
+        LC.lcSetFlag?.("isCmd", true);
+        L.lastActionType = "command";
+      } else {
+        setCommandMode();
+        L.lastActionType = "command";
+      }
+      try {
+        const res = def.handler(args, text);
+        return res;
+      } catch (e) {
+        return replyStop(`Command failed: ${e?.message || e}`);
+      }
+    }
+
+    setCommandMode();
+    L.lastActionType = "command";
+
 // /undo [N]
     if (cmd === "/undo") {
       const n = Number(args[0] || 1);
@@ -264,27 +284,7 @@ const args   = tokens.slice(1);
       return replyStop("🕑 Recap later (3 turns).");
     }
 
-    // Сначала пробуем registry
-    try {
-      const def = LC.Commands?.get(cmd);
-      if (def && typeof def.handler === "function") {
-        // honor bypass: не меняем ход, не логируем ничего кроме ответа
-        const res = def.handler(args, text);
-        if (def.bypass) {
-          // гарантируем командный цикл и отсутствие побочных эффектов
-          LC.lcSetFlag?.("isCmd", true);
-        }
-        return res;
-      }
-    } catch (e) {
-      return replyStop(`Command failed: ${e?.message || e}`);
-    }
-
     switch ((cmd.split(" ")[0])) {
-      case "/help":
-      case "/h":
-        return replyStop(buildHelpMessage(L));
-
       case "/ui":
         if (/\/ui\s+on/i.test(cmdRaw)) {
           L.sysShow = true;
@@ -483,11 +483,6 @@ const args   = tokens.slice(1);
           `isRetry=${LC.lcGetFlag("isRetry", false)}, isContinue=${LC.lcGetFlag("isContinue", false)}`,
           `Keep context: ${keep ? "ON" : "OFF"}`
         ].join("\n"));
-      }
-
-
-      case "/stats": {
-        return replyStop(buildStatsMessage(L));
       }
 
       case "/cadence": {
