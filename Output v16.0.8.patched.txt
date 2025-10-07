@@ -29,11 +29,17 @@ const modifier = function (text) {
 
   function decodeCommandSys(raw) {
     if (typeof raw !== "string") return null;
-    if (!raw.startsWith(CMD_SYS_PREFIX)) return null;
-    const metaEnd = raw.indexOf(CMD_SYS_META_SEP, CMD_SYS_PREFIX.length);
+    const SYS_PREFIX = "⟦SYS⟧";
+    let source = raw;
+    if (source.startsWith(SYS_PREFIX)) {
+      const trimmed = source.slice(SYS_PREFIX.length).trimStart();
+      source = trimmed.length ? trimmed : source;
+    }
+    if (!source.startsWith(CMD_SYS_PREFIX)) return null;
+    const metaEnd = source.indexOf(CMD_SYS_META_SEP, CMD_SYS_PREFIX.length);
     if (metaEnd <= CMD_SYS_PREFIX.length) return null;
-    const meta = raw.slice(CMD_SYS_PREFIX.length, metaEnd);
-    const text = raw.slice(metaEnd + CMD_SYS_META_SEP.length);
+    const meta = source.slice(CMD_SYS_PREFIX.length, metaEnd);
+    const text = source.slice(metaEnd + CMD_SYS_META_SEP.length);
     const [turnStr, seqStr] = meta.split(":");
     const turn = Number.parseInt(turnStr, 10);
     const seq = Number.parseInt(seqStr, 10);
