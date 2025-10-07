@@ -76,10 +76,10 @@ function replyStop(msg){
   return { text: `⟦SYS⟧ ${String(stamped.text || "")}`, stop: true };
 }
 function replyStopSilent(){
-  // Без текста и без SYS-префикса — просто остановить генерацию и сбросить флаги
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, true); } catch (_) {}
-  clearCommandFlags({ preserveCycle: true });
+  // помечаем командный цикл, но не кладём ничего в SYS-очередь
+  LC.lcSetFlag?.("isCmd", true);
+  // НЕ пишем SYS и НЕ ставим плейсхолдер — Output вернёт пустую строку
   return { text: "", stop: true };
 }
 
