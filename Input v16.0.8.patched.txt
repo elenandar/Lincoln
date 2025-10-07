@@ -266,14 +266,15 @@ const args   = tokens.slice(1);
 
     // Сначала пробуем registry
     try {
-      const reg = LC.Commands?.get(cmd);
-      if (reg && typeof reg.handler === "function") {
-        if (reg.bypass) {
-          // заглушка — позволяем продолжить обработку локально
-        } else {
-          const result = reg.handler(args, text);
-          if (typeof result !== "undefined") return result;
+      const def = LC.Commands?.get(cmd);
+      if (def && typeof def.handler === "function") {
+        // honor bypass: не меняем ход, не логируем ничего кроме ответа
+        const res = def.handler(args, text);
+        if (def.bypass) {
+          // гарантируем командный цикл и отсутствие побочных эффектов
+          LC.lcSetFlag?.("isCmd", true);
         }
+        return res;
       }
     } catch (e) {
       return replyStop(`Command failed: ${e?.message || e}`);
