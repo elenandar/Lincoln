@@ -422,13 +422,19 @@ const args   = tokens.slice(1);
           const name = m[1].trim();
           const list = m[2].split(",").map(s=>s.trim()).filter(Boolean);
           L.aliases[name] = list;
-          return replyStop(`Alias set: ${name} = ${list.join(", ")}`);
+          LC.sanitizeAliases?.(L);
+          const finalList = Array.isArray(L.aliases[name]) ? L.aliases[name] : [];
+          return replyStop(`Alias set: ${name} = ${finalList.join(", ")}`);
         }
         if (/\/alias\s+del\s+/i.test(cmdRaw)) {
           const m = cmdRaw.match(/\/alias\s+del\s+(.+)$/i);
           if (!m) return replyStop("Usage: /alias del <Name>");
           const name = m[1].trim();
-          if (name in L.aliases) { delete L.aliases[name]; return replyStop(`Alias deleted: ${name}`); }
+          if (name in L.aliases) {
+            delete L.aliases[name];
+            LC.sanitizeAliases?.(L);
+            return replyStop(`Alias deleted: ${name}`);
+          }
           return replyStop(`No alias for: ${name}`);
         }
         return replyStop("Usage: /alias add <Name>=a,b,c | /alias del <Name> | /alias list");
