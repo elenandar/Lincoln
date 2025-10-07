@@ -117,9 +117,12 @@ const modifier = function (text) {
     });
     try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, false); } catch (_) {}
     LC.Flags?.clearCmd?.(); // страховочный сброс, чтобы не «залипнуть» в командном режиме
-    if (!msgs.length) return { text: (LC.CONFIG.CMD_PLACEHOLDER || "⟦SYS⟧ OK.") + "\n" };
+    if (!msgs.length) {
+      // Командный ответ уже был показан на Input-стадии → молчим
+      return { text: "" };
+    }
     const body = msgs.join("\n");
-    return { text: body + (body ? "\n" + "=".repeat(40) + "\n" : "\n") };
+    return { text: body + "\n" + "=".repeat(40) + "\n" };
   }
 
   if (wantsRecap) LC.lcSetFlag("doRecap", false);
