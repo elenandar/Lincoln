@@ -58,7 +58,9 @@ const modifier = function (text) {
   // Derive lastActionType for analysis
   const lastActionType =
     (L && L.lastActionType) ||
-    (isRetry ? "retry" : (LC.lcGetFlag?.("isCmd", false) ? "command" : "story"));
+    (isRetry ? "retry"
+             : (LC.lcGetFlag?.("isContinue", false) ? "continue"
+                : (LC.lcGetFlag?.("isCmd", false) ? "command" : "story")));
   const isCommandAction = lastActionType === "command" || cmdCyclePending || isCmd;
 
   if (LC.lcGetFlag?.("isCmd", false) && (LC.lcGetFlag?.("doRecap", false) || LC.lcGetFlag?.("doEpoch", false))) {
