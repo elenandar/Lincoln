@@ -185,17 +185,20 @@ function replyStopSilent(){
 
   function ensureSharedCommand(cmdName, builder) {
     if (!LC?.Commands) return;
-    const existing = LC.Commands.get(cmdName);
+    const existing = LC.Commands?.get?.(cmdName);
     if (existing && !existing.bypass && typeof existing.handler === "function") {
       return;
     }
+    const prev = existing;
+    const bypass = (prev && prev.bypass === true) || false;
     LC.Commands.set(cmdName, {
       handler() {
         const ctx = LC?.lcInit?.(__SCRIPT_SLOT__) || LC?.lcInit?.() || L;
         const message = builder(ctx);
         if (typeof LC.replyStop === "function") return LC.replyStop(message);
         return { text: `⟦SYS⟧ ${String(message ?? "")}`, stop: true };
-      }
+      },
+      bypass
     });
   }
 
