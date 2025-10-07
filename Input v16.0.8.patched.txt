@@ -22,6 +22,21 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   const raw = String(text || "");
   const userText = LC.stripYouWrappers(raw.trim());
 
+  const CMD_SYS_PREFIX = "\u2063\u2063"; // invisible marker to tag command SYS messages
+  const CMD_SYS_META_SEP = "\u2062";
+
+  function stampCommandSysMessage(message) {
+    const turn = L?.turn ?? 0;
+    const seq = (L._cmdSysSeq = (L._cmdSysSeq || 0) + 1);
+    const text = String(message ?? "");
+    return {
+      raw: `${CMD_SYS_PREFIX}${turn}:${seq}${CMD_SYS_META_SEP}${text}`,
+      turn,
+      seq,
+      text
+    };
+  }
+
   function reply(msg){
     try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
     // команды, идущие через reply (не stop), всё равно должны снять isCmd,
@@ -43,9 +58,12 @@ if (typeof LC === "undefined") return { text: String(text || "") };
 function replyStop(msg){
   // Командные ответы: только SYS (без notice) + немедленный вывод текста
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  LC.lcSys(msg);              // лог/SYS-лента
+  const stamped = stampCommandSysMessage(msg);
+  LC.lcSys(stamped.raw);              // лог/SYS-лента (с невидимой меткой)
+  L._cmdSysSeen = { turn: stamped.turn, seq: stamped.seq };
+  LC.lcConsumeMsgs?.();       // немедленно очищаем очередь SYS-сообщений
   clearCommandFlags();        // сбросить isCmd/isRetry/isContinue
-  return { text: `⟦SYS⟧ ${String(msg || "")}`, stop: true };
+  return { text: `⟦SYS⟧ ${String(stamped.text || "")}`, stop: true };
 }
 function replyStopSilent(){
   // Без текста и без SYS-префикса — просто остановить генерацию и сбросить флаги

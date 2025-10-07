@@ -23,6 +23,25 @@ const modifier = function (text) {
   let out = String(text || "").trim();
   const clean = LC.lcStripSys(out);
 
+  const CMD_SYS_PREFIX = "\u2063\u2063";
+  const CMD_SYS_META_SEP = "\u2062";
+
+  function decodeCommandSys(raw) {
+    if (typeof raw !== "string") return null;
+    if (!raw.startsWith(CMD_SYS_PREFIX)) return null;
+    const metaEnd = raw.indexOf(CMD_SYS_META_SEP, CMD_SYS_PREFIX.length);
+    if (metaEnd <= CMD_SYS_PREFIX.length) return null;
+    const meta = raw.slice(CMD_SYS_PREFIX.length, metaEnd);
+    const text = raw.slice(metaEnd + CMD_SYS_META_SEP.length);
+    const [turnStr, seqStr] = meta.split(":");
+    const turn = Number.parseInt(turnStr, 10);
+    const seq = Number.parseInt(seqStr, 10);
+    if (!Number.isFinite(turn) || !Number.isFinite(seq)) {
+      return { text };
+    }
+    return { text, turn, seq };
+  }
+
 
   const isCmd = LC.lcGetFlag("isCmd", false);
   const isRetry = LC.lcGetFlag("isRetry", false);
@@ -76,7 +95,10 @@ const modifier = function (text) {
 
   // Командный ответ: обработка /continue → SYS
   if (isCmd) {
-    const msgs = LC.lcConsumeMsgs?.() || [];
+    const msgs = (LC.lcConsumeMsgs?.() || []).map(msg => {
+      const decoded = decodeCommandSys(msg);
+      return decoded ? decoded.text : msg;
+    });
     LC.Flags?.clearCmd?.(); // страховочный сброс, чтобы не «залипнуть» в командном режиме
     return { text: (msgs.length ? msgs.join("\n") + "\n" + "=".repeat(40) + "\n" : (LC.CONFIG.CMD_PLACEHOLDER || "⟦SYS⟧ OK.") + "\n") };
   }
@@ -153,7 +175,45 @@ const modifier = function (text) {
   const budget = omBudget(t0, LC.CONFIG?.LIMITS?.OUTPUT_BUDGET_MS ?? 3500);
   if (budget.over) LC.lcWarn?.(`Output budget exceeded: ${budget.dt}ms`);
   const notices = LC.consumeNotices?.() || "";
-  const msgs = LC.lcConsumeMsgs?.() || [];
+  let msgs = LC.lcConsumeMsgs?.() || [];
+  if (msgs.length) {
+    const filtered = [];
+    let seenTurn = L._cmdSysSeen?.turn;
+    let seenSeq = L._cmdSysSeen?.seq;
+    let sawStamped = false;
+    for (const rawMsg of msgs) {
+      const decoded = decodeCommandSys(rawMsg);
+      if (!decoded || decoded.turn == null || decoded.seq == null) {
+        filtered.push(decoded ? decoded.text : rawMsg);
+        continue;
+      }
+      sawStamped = true;
+      const currentTurn = typeof decoded.turn === "number" ? decoded.turn : null;
+      const currentSeq = typeof decoded.seq === "number" ? decoded.seq : null;
+      const lastTurn = typeof seenTurn === "number" ? seenTurn : -Infinity;
+      const lastSeq = typeof seenSeq === "number" ? seenSeq : -Infinity;
+      const isStaleTurn = currentTurn < lastTurn;
+      const isSameTurn = currentTurn === lastTurn;
+      if (isStaleTurn || (isSameTurn && currentSeq <= lastSeq)) {
+        continue;
+      }
+      if (!isSameTurn && currentTurn < (L.turn ?? -Infinity)) {
+        continue;
+      }
+      if (!Number.isFinite(currentTurn) || !Number.isFinite(currentSeq)) {
+        continue;
+      }
+      if (currentTurn > lastTurn || (isSameTurn && currentSeq > lastSeq)) {
+        seenTurn = currentTurn;
+        seenSeq = currentSeq;
+      }
+      // командные сообщения уже были показаны напрямую -> пропускаем
+    }
+    if (sawStamped) {
+      L._cmdSysSeen = { turn: seenTurn, seq: seenSeq };
+    }
+    msgs = filtered;
+  }
   let final = out;
   if (L.sysShow && !isRetry) {
     if (msgs.length) final = msgs.join("\n") + "\n" + "=".repeat(40) + "\n" + final;
