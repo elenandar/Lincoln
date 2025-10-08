@@ -100,6 +100,63 @@ Contract:
     clearCmd(){ LC.lcSetFlag?.("isCmd", false); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); }
   };
 
+  LC.applyRecapDraft ??= function applyRecapDraft(L) {
+    if (!L || !L.recapDraft || !L.recapDraft.text) return false;
+    let savedCount = 0;
+    if (typeof LC.syncRecapToStoryCards === "function") {
+      try {
+        savedCount = LC.syncRecapToStoryCards(L.recapDraft.text, L.recapDraft.window) | 0;
+      } catch (e) {
+        LC.lcWarn?.("syncRecapToStoryCards failed: " + (e && e.message));
+      }
+    }
+    L.lastRecapTurn = L.recapDraft.turn || L.turn;
+    L.recapDraft = null;
+    LC.lcSys?.(`✅ Recap saved${savedCount ? ` (${savedCount} card${savedCount === 1 ? "" : "s"})` : ""}.`);
+    return { savedCount };
+  };
+
+  LC.applyEpochDraft ??= function applyEpochDraft(L) {
+    if (!L || !L.epochDraft || !L.epochDraft.text) return false;
+    L.lastEpochTurn = L.epochDraft.turn || L.turn;
+    L.epochDraft = null;
+    LC.lcSys?.("✅ Epoch accepted.");
+    return true;
+  };
+
+  LC.Drafts = LC.Drafts || {};
+  LC.Drafts.applyPending = function applyPending(L, source){
+    try {
+      if (!L) return { applied:false, reason:"no-state" };
+      if (L.__draftAppliedStamp === L.turn) return { applied:false, reason:"already-applied" };
+
+      let did = false, notes=[];
+      if (L.recapDraft) {
+        // ваш текущий код «принять recapDraft» (перенос в карточки, метки lastRecapTurn и т.д.)
+        try {
+          const recapResult = LC.applyRecapDraft?.(L);
+          if (recapResult) { did = true; notes.push("recap"); }
+        } catch(e) { LC.lcWarn?.("applyRecapDraft: "+e?.message); }
+      }
+      if (L.epochDraft) {
+        // ваш текущий код «принять epochDraft»
+        try {
+          const epochResult = LC.applyEpochDraft?.(L);
+          if (epochResult) { did = true; notes.push("epoch"); }
+        } catch(e) { LC.lcWarn?.("applyEpochDraft: "+e?.message); }
+      }
+      if (did) {
+        L.__draftAppliedStamp = L.turn;
+        LC.lcSys?.("✅ Draft saved ("+notes.join("+")+")");
+        return { applied:true, notes };
+      }
+      return { applied:false, reason:"no-draft" };
+    } catch(e) {
+      LC.lcWarn?.("Drafts.applyPending failed: "+(e && e.message));
+      return { applied:false, reason:"error" };
+    }
+  };
+
   // Turns facade (тонкая обёртка)
   LC.Turns ??= {
     incIfNeeded(){ if (!LC.lcGetFlag?.("isCmd") && !LC.lcGetFlag?.("isRetry")) { const L=LC.lcInit(); L.turn=(L.turn|0)+1; } },
