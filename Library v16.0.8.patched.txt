@@ -55,30 +55,42 @@ Contract:
     STRICT_CMD_BYPASS: true
   };
 
-  LC.sanitizeAliases = function sanitizeAliases(L){
-    try {
-      if (!L) return;
-      if (!Array.isArray(L.aliases) && L.aliases && typeof L.aliases === "object") {
-        for (const key in L.aliases) {
-          if (!Object.prototype.hasOwnProperty.call(L.aliases, key)) continue;
-          const wrap = { aliases: L.aliases[key] };
-          sanitizeAliases(wrap);
-          L.aliases[key] = wrap.aliases;
+  LC.sanitizeAliases = function (L){
+    try{
+      if (!L || !L.aliases) return;
+      if (Array.isArray(L.aliases)) {
+        const arr = L.aliases;
+        const seen = new Set();
+        const clean = [];
+        for (let i=0;i<arr.length;i++){
+          const v = String(arr[i]||"").trim().toLowerCase();
+          if (!v || seen.has(v)) continue;
+          seen.add(v);
+          clean.push(v);
         }
+        L.aliases = clean;
         return;
       }
-      const src = Array.isArray(L.aliases) ? L.aliases : [];
-      const uniq = [];
-      const seen = new Set();
-      for (let i=0;i<src.length;i++){
-        const v = String(src[i] || "").trim().toLowerCase();
-        if (!v) continue;
-        if (seen.has(v)) continue;
-        seen.add(v);
-        uniq.push(v);
+      if (typeof L.aliases === "object") {
+        const map = L.aliases;
+        for (const key of Object.keys(map)) {
+          const arr = Array.isArray(map[key]) ? map[key] : [];
+          const seen = new Set();
+          const clean = [];
+          for (let i=0;i<arr.length;i++){
+            const v = String(arr[i]||"").trim().toLowerCase();
+            if (!v || seen.has(v)) continue;
+            seen.add(v);
+            clean.push(v);
+          }
+          if (clean.length) {
+            map[key] = clean;
+          } else {
+            delete map[key];
+          }
+        }
       }
-      L.aliases = uniq;
-    } catch(_) {}
+    }catch(_){}
   };
 
   // Notices (centralized)
