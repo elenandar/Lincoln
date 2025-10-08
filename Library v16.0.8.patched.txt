@@ -107,9 +107,25 @@ Contract:
   };
 
   // Flags facade
-  LC.Flags ??= {
-    setCmd(){ LC.lcSetFlag?.("isCmd", true); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
-    clearCmd(){ LC.lcSetFlag?.("isCmd", false); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); }
+  LC.Flags ||= {};
+  LC.Flags.clearCmd ||= function clearCmd(preserveCycle){
+    try {
+      if (!preserveCycle) LC.lcSetFlag?.("__cmdCyclePending", false);
+      LC.lcSetFlag?.("isCmd", false);
+      LC.lcSetFlag?.("isRetry", false);
+      LC.lcSetFlag?.("isContinue", false);
+    } catch(_) {}
+  };
+  LC.Flags.setCmd ||= function setCmd(){
+    LC.lcSetFlag?.("isCmd", true);
+    LC.lcSetFlag?.("isRetry", false);
+    LC.lcSetFlag?.("isContinue", false);
+  };
+  LC.Flags.queueRecap ||= function queueRecap(){
+    LC.lcSetFlag?.("doRecap", true);
+  };
+  LC.Flags.queueEpoch ||= function queueEpoch(){
+    LC.lcSetFlag?.("doEpoch", true);
   };
 
   // --- SYS formatting helpers (shared by Input/Output) ---
@@ -1774,14 +1790,6 @@ L.debugMode = toBool(L.debugMode, false);
   } else if (_globalScope && typeof _globalScope === "object") {
     _globalScope.LC = LC;
   }
-
-  // ===== Flags API (non-breaking) =====
-  LC.Flags = Object.assign({
-    setCmd(){ LC.lcSetFlag?.("isCmd", true); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
-    clearCmd(){ LC.lcSetFlag?.("isCmd", false); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); },
-    queueRecap(){ LC.lcSetFlag?.("doRecap", true); },
-    queueEpoch(){ LC.lcSetFlag?.("doEpoch", true); },
-  }, LC.Flags || {});
 
   if (typeof globalThis !== "undefined") globalThis.LC = LC;
   if (typeof window !== "undefined") window.LC = LC;
