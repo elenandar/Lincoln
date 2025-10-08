@@ -71,7 +71,7 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   function clearCommandFlags(options = {}) {
     const preserveCycle = options && options.preserveCycle === true;
     try {
-      LC.Flags?.clearCmd?.();
+      LC.Flags?.clearCmd?.(preserveCycle);
     } catch (_) {}
     if (!preserveCycle) {
       try {
@@ -95,11 +95,14 @@ function replyStop(msg){
   try { LC.lcConsumeMsgs?.(); } catch(_) {}
   return { text: line ? line + "\n" : "", stop: true };
 }
-function replyStopSilent(){
+function replyStopSilent(options = {}){
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
   LC.lcSetFlag?.("isCmd", true);
-  // Никаких SYS и плейсхолдеров — Output вернет пусто при пустой очереди
-  try { LC.lcConsumeMsgs?.(); } catch(_) {}
+  const keepQueue = options && options.keepQueue === true;
+  if (!keepQueue) {
+    // Никаких SYS и плейсхолдеров — Output вернет пусто при пустой очереди
+    try { LC.lcConsumeMsgs?.(); } catch(_) {}
+  }
   return { text: "", stop: true };
 }
 
@@ -315,8 +318,9 @@ const args   = tokens.slice(1);
         if (L.recapDraft || L.epochDraft) {
           // Гарантированно применяем драфты на стадии Input (идемпотентность внутри)
           LC.lcSetFlag?.("isCmd", true);
+          try { LC.lcConsumeMsgs?.(); } catch(_) {}
           LC.Drafts?.applyPending?.(L, "input");
-          return replyStopSilent();
+          return replyStopSilent({ keepQueue: true });
         }
         return replyStop("❌ No draft to save.");
 
