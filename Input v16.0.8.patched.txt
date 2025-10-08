@@ -95,21 +95,19 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     } catch (_) {}
   }
 function replyStop(msg){
-  // Командные ответы: только SYS (без notice) + немедленный вывод текста
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  const stamped = stampCommandSysMessage(msg);
-  LC.lcSys(stamped.raw);              // лог/SYS-лента (с невидимой меткой)
-  L._cmdSysSeen = { turn: stamped.turn, seq: stamped.seq };
-  LC.lcConsumeMsgs?.();       // немедленно очищаем очередь SYS-сообщений
-  try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, true); } catch (_) {}
-  clearCommandFlags({ preserveCycle: true });        // сбросить isCmd/isRetry/isContinue, но сохранить признак цикла
-  return { text: `⟦SYS⟧ ${String(stamped.text || "")}`, stop: true };
+  // Командный цикл: помечаем, но НЕ кладем в SYS-очередь (очередь не нужна при stop:true)
+  LC.lcSetFlag?.("isCmd", true);
+  const line = LC.sysLine?.(msg) || "";
+  // Очистить возможные остатки очереди (страховка)
+  try { LC.lcConsumeMsgs?.(); } catch(_) {}
+  return { text: line ? line + "\n" : "", stop: true };
 }
 function replyStopSilent(){
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  // помечаем командный цикл, но не кладём ничего в SYS-очередь
   LC.lcSetFlag?.("isCmd", true);
-  // НЕ пишем SYS и НЕ ставим плейсхолдер — Output вернёт пустую строку
+  // Никаких SYS и плейсхолдеров — Output вернет пусто при пустой очереди
+  try { LC.lcConsumeMsgs?.(); } catch(_) {}
   return { text: "", stop: true };
 }
 
