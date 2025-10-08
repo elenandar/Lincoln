@@ -77,18 +77,13 @@ const modifier = function (text) {
   // Командный ответ: обработка /continue → SYS
   try { LC.Drafts?.applyPending?.(L, "output"); } catch(_) {}
   if (isCmd || cmdCyclePending) {
-    const rawMsgs = LC.lcConsumeMsgs?.() || [];
-    const msgs = rawMsgs.map(msg => {
-      const decoded = decodeCommandSys(msg);
-      return decoded ? decoded.text : msg;
-    });
+    const msgs = LC.lcConsumeMsgs?.() || [];
     try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, false); } catch (_) {}
     LC.Flags?.clearCmd?.(); // страховочный сброс, чтобы не «залипнуть» в командном режиме
-    if (!msgs.length) {
-      // Командный ответ уже был показан на Input-стадии → молчим
-      return { text: "" };
-    }
-    return { text: msgs.join("\n") + "\n" + "=".repeat(40) + "\n" };
+    if (!msgs.length) return { text: "" }; // Командный ответ уже был показан на Input-стадии → молчим
+
+    const body = LC.sysBlock?.(msgs) || (msgs.join("\n") + "\n");
+    return { text: body };
   }
 
   if (wantsRecap) LC.lcSetFlag("doRecap", false);
