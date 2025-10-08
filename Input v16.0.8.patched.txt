@@ -26,6 +26,36 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   const CMD_SYS_META_SEP = "\u2062";
   const CMD_CYCLE_FLAG = "__cmdCyclePending";
 
+  function ensureCommandRegistryBypassGuard() {
+    const registry = LC?.Commands;
+    if (!registry || typeof registry.set !== "function" || registry.__lcBypassGuard) return;
+    const originalSet = registry.set;
+    registry.set = function guardedSet(cmdName, definition) {
+      let nextDef = definition;
+      try {
+        const prev = this.get?.(cmdName);
+        if (prev && prev.bypass === true) {
+          if (nextDef && typeof nextDef === "object") {
+            if (nextDef.bypass !== true) {
+              let applied = false;
+              try {
+                nextDef.bypass = true;
+                applied = nextDef.bypass === true;
+              } catch (_) {}
+              if (!applied) {
+                nextDef = { ...nextDef, bypass: true };
+              }
+            }
+          } else if (typeof nextDef === "function") {
+            nextDef = { handler: nextDef, bypass: true };
+          }
+        }
+      } catch (_) {}
+      return originalSet.call(this, cmdName, nextDef);
+    };
+    registry.__lcBypassGuard = true;
+  }
+
   function stampCommandSysMessage(message) {
     const turn = L?.turn ?? 0;
     const seq = (L._cmdSysSeq = (L._cmdSysSeq || 0) + 1);
@@ -147,6 +177,7 @@ function replyStopSilent(){
 
   function ensureSharedCommand(cmdName, builder) {
     if (!LC?.Commands) return;
+    ensureCommandRegistryBypassGuard();
     const existing = LC.Commands?.get?.(cmdName);
     if (existing && !existing.bypass && typeof existing.handler === "function") {
       return;
@@ -179,6 +210,7 @@ const args   = tokens.slice(1);
 
   // ==== Команды ====
   if (cmd) {
+    ensureCommandRegistryBypassGuard();
 
     const wantRecap = LC.lcGetFlag("wantRecap", false);
 
@@ -198,6 +230,10 @@ const args   = tokens.slice(1);
       }
       try {
         const res = def.handler(args, text);
+        if (def?.bypass) {
+          LC.lcSetFlag?.("isCmd", true);
+          L.lastActionType = "command";
+        }
         return res;
       } catch (e) {
         return replyStop(`Command failed: ${e?.message || e}`);
