@@ -112,6 +112,19 @@ Contract:
     clearCmd(){ LC.lcSetFlag?.("isCmd", false); LC.lcSetFlag?.("isRetry", false); LC.lcSetFlag?.("isContinue", false); }
   };
 
+  // --- SYS formatting helpers (shared by Input/Output) ---
+  LC.sysLine = function sysLine(msg){
+    const s = String(msg ?? "").trim();
+    return s ? `⟦SYS⟧ ${s}` : "";
+  };
+
+  LC.sysBlock = function sysBlock(lines){
+    const arr = Array.isArray(lines) ? lines : [String(lines ?? "")];
+    const body = arr.map(v => String(v ?? "").trim()).filter(Boolean).join("\n");
+    if (!body) return "";
+    return body + "\n" + "=".repeat(40) + "\n";
+  };
+
   LC.applyRecapDraft ??= function applyRecapDraft(L) {
     if (!L || !L.recapDraft || !L.recapDraft.text) return false;
     let savedCount = 0;
