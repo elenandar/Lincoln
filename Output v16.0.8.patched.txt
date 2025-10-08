@@ -95,6 +95,7 @@ const modifier = function (text) {
   if (wantsRecap) LC.lcSetFlag("doRecap", false);
   if (wantsEpoch) LC.lcSetFlag("doEpoch", false);
 
+  LC.assertTurnInvariants?.(L, "output:pre-inc");
   // Инкремент хода на реальном действии
   if (!isRetry && !isCommandAction && LC.shouldIncrementTurn()) {
     LC.incrementTurn();
