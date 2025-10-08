@@ -83,44 +83,6 @@ function replyStopSilent(){
   return { text: "", stop: true };
 }
 
-  function handleAcceptDraftCycle(currentL = L) {
-    let processed = false;
-    try {
-      const wantAccept = LC.lcGetFlag?.("acceptDraft", false);
-      if (!wantAccept) return false;
-      LC.lcSetFlag?.("acceptDraft", false);
-      const activeL = currentL || LC?.lcInit?.(__SCRIPT_SLOT__) || L || {};
-
-      if (activeL.recapDraft && activeL.recapDraft.text) {
-        try {
-          let savedCount = 0;
-          if (typeof LC.syncRecapToStoryCards === "function") {
-            savedCount = LC.syncRecapToStoryCards(activeL.recapDraft.text, activeL.recapDraft.window) | 0;
-          }
-          activeL.lastRecapTurn = activeL.recapDraft.turn || activeL.turn;
-          activeL.recapDraft = null;
-          LC.lcSys?.(`✅ Recap saved${savedCount ? ` (${savedCount} card${savedCount===1?'':'s'})` : ""}.`);
-        } catch (e) {
-          LC.lcWarn?.("Recap save failed: " + (e && e.message));
-        }
-        processed = true;
-      }
-
-      if (activeL.epochDraft && activeL.epochDraft.text) {
-        try {
-          activeL.lastEpochTurn = activeL.epochDraft.turn || activeL.turn;
-          activeL.epochDraft = null;
-          LC.lcSys?.("✅ Epoch accepted.");
-        } catch (e) {
-          LC.lcWarn?.("Epoch accept failed: " + (e && e.message));
-        }
-        processed = true;
-      }
-    } catch (e) {
-      LC.lcWarn?.("AcceptDraft handling failed: " + (e && e.message));
-    }
-    return processed;
-  }
   // Экспорт для registry (Library)
   LC.replyStop = replyStop;
   LC.reply = reply;
@@ -326,8 +288,9 @@ const args   = tokens.slice(1);
 
       case "/continue":
         if (L.recapDraft || L.epochDraft) {
-          LC.lcSetFlag("acceptDraft", true);
-          handleAcceptDraftCycle();
+          // Гарантированно применяем драфты на стадии Input (идемпотентность внутри)
+          LC.lcSetFlag?.("isCmd", true);
+          LC.Drafts?.applyPending?.(L, "input");
           return replyStopSilent();
         }
         return replyStop("❌ No draft to save.");
