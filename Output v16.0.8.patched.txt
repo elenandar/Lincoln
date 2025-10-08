@@ -88,8 +88,7 @@ const modifier = function (text) {
       // Командный ответ уже был показан на Input-стадии → молчим
       return { text: "" };
     }
-    const body = msgs.join("\n");
-    return { text: body + "\n" + "=".repeat(40) + "\n" };
+    return { text: msgs.join("\n") + "\n" + "=".repeat(40) + "\n" };
   }
 
   if (wantsRecap) LC.lcSetFlag("doRecap", false);
