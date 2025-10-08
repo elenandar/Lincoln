@@ -504,9 +504,8 @@ L.debugMode = toBool(L.debugMode, false);
     shouldIncrementTurn(){
       const isRetry = this.lcGetFlag("isRetry", false);
       const isCmd   = this.lcGetFlag("isCmd", false);
-      const isContinue = this.lcGetFlag("isContinue", false);
-      // increment only on real story input, not on retry and not on soft continue
-      return !isCmd && !isRetry && !isContinue;
+      // теперь: Continue = реальный ход; +1 только если не команда и не retry
+      return !isCmd && !isRetry;
     },
     incrementTurn(){
       const L = this.lcInit();
