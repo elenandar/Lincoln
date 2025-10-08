@@ -80,14 +80,6 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     }
   }
 
-  function reply(msg){
-    try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-    // команды, идущие через reply (не stop), всё равно должны снять isCmd,
-    // иначе следующий этап воспримет ход как «командный»
-    clearCommandFlags();
-    LC.lcSys(msg);
-    return { text: LC.CONFIG?.CMD_PLACEHOLDER ?? "⟦SYS⟧ OK.", stop: false };
-  }
   function setCommandMode(){
     try {
       LC.Flags?.setCmd?.();
@@ -113,7 +105,6 @@ function replyStopSilent(){
 
   // Экспорт для registry (Library)
   LC.replyStop = replyStop;
-  LC.reply = reply;
 
   function buildHelpMessage(currentL = L) {
     const version = LC?.CONFIG?.VERSION ?? "";
