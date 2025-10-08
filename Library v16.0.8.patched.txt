@@ -1117,19 +1117,25 @@ L.debugMode = toBool(L.debugMode, false);
             }
           }
           // Dedup facts by normalized text
-          try{
+          try {
             const cat = (L.evergreen && L.evergreen.facts) || {};
             const keys = Object.keys(cat);
             const seen = new Set();
-            for (let i=0;i<keys.length;i++){
+            for (let i = 0; i < keys.length; i++) {
               const k = keys[i];
-              const v = String(cat[k]||"").trim().toLowerCase();
-              if (!v) { delete cat[k]; continue; }
-              if (seen.has(v)) { delete cat[k]; continue; }
+              const v = String(cat[k] || "").trim().toLowerCase();
+              if (!v) {
+                delete cat[k];
+                continue;
+              }
+              if (seen.has(v)) {
+                delete cat[k];
+                continue;
+              }
               seen.add(v);
             }
             LC.autoEvergreen?.limitCategories?.(L);
-          }catch(_){}
+          } catch (_) {}
         }
         } catch (e) {
           LC.lcWarn?.("EVG: factsCues analyze failed: " + (e && e.message));
