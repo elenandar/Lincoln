@@ -83,6 +83,11 @@ const modifier = function (text) {
     if (!msgs.length) return { text: "" }; // Командный ответ уже был показан на Input-стадии → молчим
 
     const body = LC.sysBlock?.(msgs) || (msgs.join("\n") + "\n");
+    // Очередь должен быть пустой после вывода
+    try {
+      const left = LC.lcConsumeMsgs?.() || [];
+      if (left.length) LC.lcWarn?.("SYS queue not empty after command cycle, purged " + left.length);
+    } catch(_) {}
     return { text: body };
   }
 
