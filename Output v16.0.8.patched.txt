@@ -96,7 +96,7 @@ const modifier = function (text) {
 
   LC.assertTurnInvariants?.(L, "output:pre-inc");
   // Инкремент хода на реальном действии
-  if (!isRetry && !isCommandAction && LC.shouldIncrementTurn()) {
+  if (!isRetry && !LC.lcGetFlag?.("isCmd", false) && LC.shouldIncrementTurn()) {
     LC.incrementTurn();
   }
   L.lastOutput = clean;
