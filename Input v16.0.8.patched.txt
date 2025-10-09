@@ -169,7 +169,7 @@ function replyStopSilent(){
     if (existing && !existing.bypass && typeof existing.handler === "function") {
       return;
     }
-    const prev = existing;
+    const prev = LC.Commands?.get?.(cmdName);
     const bypass = (prev && prev.bypass === true) || false;
     LC.Commands.set(cmdName, {
       handler() {
@@ -229,6 +229,11 @@ const args   = tokens.slice(1);
 
     setCommandMode();
     L.lastActionType = "command";
+
+    if (def?.bypass) {
+      LC.lcSetFlag?.("isCmd", true);
+      L.lastActionType = "command";
+    }
 
 // /undo [N]
     if (cmd === "/undo") {
