@@ -439,6 +439,149 @@ Contract:
       }
     });
 
+    // /time
+    reg.set("/time", {
+      description: "/time — show current time | /time set day N [Name] — set day | /time next — advance time",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Time command", stop: true };
+        
+        // /time next — advance to next time of day
+        if (/\/time\s+next/i.test(cmdRaw)) {
+          if (LC.TimeEngine && typeof LC.TimeEngine.advance === 'function') {
+            LC.TimeEngine.advance();
+            const timeInfo = L.time || {};
+            return LC.replyStop(`⏰ Время изменилось: ${timeInfo.dayName}, ${timeInfo.timeOfDay}`);
+          }
+          return LC.replyStop("❌ TimeEngine not available");
+        }
+        
+        // /time set day N [Name]
+        const setMatch = cmdRaw.match(/\/time\s+set\s+day\s+(\d+)(?:\s+(.+))?/i);
+        if (setMatch) {
+          const dayNum = parseInt(setMatch[1], 10);
+          const dayNameCustom = setMatch[2] ? setMatch[2].trim() : null;
+          
+          if (!L.time) L.time = { currentDay: 1, dayName: 'Понедельник', timeOfDay: 'Утро', turnsPerToD: 5, turnsInCurrentToD: 0, scheduledEvents: [] };
+          L.time.currentDay = dayNum;
+          
+          if (dayNameCustom) {
+            L.time.dayName = dayNameCustom;
+          } else {
+            // Auto-calculate day name based on day number
+            const dayNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+            const dayIndex = ((dayNum - 1) % 7);
+            L.time.dayName = dayNames[dayIndex];
+          }
+          
+          return LC.replyStop(`📅 День установлен: ${L.time.currentDay} (${L.time.dayName})`);
+        }
+        
+        // /time — show current time
+        if (!L.time) L.time = { currentDay: 1, dayName: 'Понедельник', timeOfDay: 'Утро', turnsPerToD: 5, turnsInCurrentToD: 0, scheduledEvents: [] };
+        return LC.replyStop([
+          "⏰ ТЕКУЩЕЕ ВРЕМЯ",
+          `День: ${L.time.currentDay} (${L.time.dayName})`,
+          `Время суток: ${L.time.timeOfDay}`,
+          `Ходов в текущем времени: ${L.time.turnsInCurrentToD}/${L.time.turnsPerToD}`
+        ].join("\n"));
+      }
+    });
+
+    // /event
+    reg.set("/event", {
+      description: "/event add \"<Name>\" on day N — schedule event",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Event command", stop: true };
+        
+        // /event add "Name" on day N
+        const addMatch = cmdRaw.match(/\/event\s+add\s+"([^"]+)"\s+on\s+day\s+(\d+)/i);
+        if (!addMatch) {
+          return LC.replyStop("❌ Usage: /event add \"<Name>\" on day N");
+        }
+        
+        const eventName = addMatch[1].trim();
+        const eventDay = parseInt(addMatch[2], 10);
+        
+        if (!eventName || eventName.length < 2) {
+          return LC.replyStop("❌ Event name too short (min 2 chars)");
+        }
+        
+        if (!Number.isFinite(eventDay) || eventDay < 1) {
+          return LC.replyStop("❌ Invalid day number");
+        }
+        
+        // Initialize time if needed
+        if (!L.time) L.time = { currentDay: 1, dayName: 'Понедельник', timeOfDay: 'Утро', turnsPerToD: 5, turnsInCurrentToD: 0, scheduledEvents: [] };
+        if (!Array.isArray(L.time.scheduledEvents)) L.time.scheduledEvents = [];
+        
+        // Add event
+        const event = {
+          name: eventName,
+          day: eventDay,
+          id: `event_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        };
+        
+        L.time.scheduledEvents.push(event);
+        
+        const currentDay = L.time.currentDay || 1;
+        const daysUntil = eventDay - currentDay;
+        
+        if (daysUntil === 0) {
+          return LC.replyStop(`📌 Событие "${eventName}" запланировано на сегодня (день ${eventDay})`);
+        } else if (daysUntil < 0) {
+          return LC.replyStop(`📌 Событие "${eventName}" запланировано на день ${eventDay} (в прошлом)`);
+        } else {
+          return LC.replyStop(`📌 Событие "${eventName}" запланировано на день ${eventDay} (через ${daysUntil} дней)`);
+        }
+      }
+    });
+
+    // /schedule
+    reg.set("/schedule", {
+      description: "/schedule — show all scheduled events",
+      handler(args, text) {
+        const L = LC.lcInit();
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Schedule command", stop: true };
+        
+        if (!L.time) L.time = { currentDay: 1, dayName: 'Понедельник', timeOfDay: 'Утро', turnsPerToD: 5, turnsInCurrentToD: 0, scheduledEvents: [] };
+        if (!Array.isArray(L.time.scheduledEvents)) L.time.scheduledEvents = [];
+        
+        if (L.time.scheduledEvents.length === 0) {
+          return LC.replyStop("📅 Нет запланированных событий");
+        }
+        
+        const currentDay = L.time.currentDay || 1;
+        const lines = ["📅 РАСПИСАНИЕ СОБЫТИЙ"];
+        
+        // Sort events by day
+        const sortedEvents = L.time.scheduledEvents.slice().sort((a, b) => (a.day || 0) - (b.day || 0));
+        
+        for (let i = 0; i < sortedEvents.length; i++) {
+          const event = sortedEvents[i];
+          const daysUntil = event.day - currentDay;
+          let status = '';
+          
+          if (daysUntil < 0) {
+            status = '(прошло)';
+          } else if (daysUntil === 0) {
+            status = '(сегодня!)';
+          } else if (daysUntil === 1) {
+            status = '(завтра)';
+          } else {
+            status = `(через ${daysUntil} дней)`;
+          }
+          
+          lines.push(`День ${event.day}: ${event.name} ${status}`);
+        }
+        
+        return LC.replyStop(lines.join("\n"));
+      }
+    });
+
     // /antiecho
     reg.set("/antiecho", {
       description: "/antiecho on|off|sensitivity N (1-100)|mode soft|hard|stats|flush",
@@ -997,6 +1140,16 @@ L.debugMode = toBool(L.debugMode, false);
       
       // secrets tracking
       L.secrets = Array.isArray(L.secrets) ? L.secrets : [];
+      
+      // time tracking
+      L.time = L.time || {
+        currentDay: 1,
+        dayName: 'Понедельник',
+        timeOfDay: 'Утро',
+        turnsPerToD: 5,
+        turnsInCurrentToD: 0,
+        scheduledEvents: []
+      };
       
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
@@ -2557,6 +2710,49 @@ L.debugMode = toBool(L.debugMode, false);
       }
     },
 
+    // ========== Time Engine ==========
+    TimeEngine: {
+      advance(){
+        const L = LC.lcInit();
+        if (!L.time) {
+          L.time = {
+            currentDay: 1,
+            dayName: 'Понедельник',
+            timeOfDay: 'Утро',
+            turnsPerToD: 5,
+            turnsInCurrentToD: 0,
+            scheduledEvents: []
+          };
+        }
+        
+        // Increment turn counter for current time of day
+        L.time.turnsInCurrentToD = (L.time.turnsInCurrentToD || 0) + 1;
+        
+        // Check if we need to advance time of day
+        if (L.time.turnsInCurrentToD >= L.time.turnsPerToD) {
+          L.time.turnsInCurrentToD = 0;
+          
+          // Advance time of day: Утро -> День -> Вечер -> Ночь -> Утро
+          const timeSequence = ['Утро', 'День', 'Вечер', 'Ночь'];
+          const currentIndex = timeSequence.indexOf(L.time.timeOfDay);
+          
+          if (currentIndex >= 0 && currentIndex < timeSequence.length - 1) {
+            // Move to next time of day
+            L.time.timeOfDay = timeSequence[currentIndex + 1];
+          } else {
+            // Wrap around to morning and increment day
+            L.time.timeOfDay = 'Утро';
+            L.time.currentDay = (L.time.currentDay || 1) + 1;
+            
+            // Update day name (циклично: Понедельник -> Вторник -> ... -> Воскресенье -> Понедельник)
+            const dayNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+            const dayIndex = ((L.time.currentDay - 1) % 7);
+            L.time.dayName = dayNames[dayIndex];
+          }
+        }
+      }
+    },
+
     evergreenManualSet(L, category, key, value){
       const state = L || this.lcInit();
       if (!state || !state.evergreen || !category) return;
@@ -2950,6 +3146,39 @@ LC.composeContextOverlay = function(options) {
 
     const canon = LC.EvergreenEngine?.getCanon?.() || "";
     if (canon) priority.push(`⟦CANON⟧ ${canon}`);
+
+    // Time and Schedule
+    if (L.time) {
+      const timeStr = `Сейчас ${L.time.dayName}, ${L.time.timeOfDay.toLowerCase()}.`;
+      priority.push(`⟦TIME⟧ ${timeStr}`);
+      
+      // Check for scheduled events
+      if (Array.isArray(L.time.scheduledEvents) && L.time.scheduledEvents.length > 0) {
+        const currentDay = L.time.currentDay || 1;
+        const upcomingEvents = [];
+        
+        for (let i = 0; i < L.time.scheduledEvents.length; i++) {
+          const event = L.time.scheduledEvents[i];
+          if (event && event.day && event.day >= currentDay) {
+            const daysUntil = event.day - currentDay;
+            const eventName = event.name || 'Событие';
+            if (daysUntil === 0) {
+              upcomingEvents.push(`${eventName} происходит сегодня`);
+            } else if (daysUntil === 1) {
+              upcomingEvents.push(`До ${eventName} остался 1 день`);
+            } else if (daysUntil <= 7) {
+              upcomingEvents.push(`До ${eventName} осталось ${daysUntil} дня`);
+            }
+          }
+        }
+        
+        if (upcomingEvents.length > 0) {
+          for (let i = 0; i < upcomingEvents.length; i++) {
+            priority.push(`⟦SCHEDULE⟧ ${upcomingEvents[i]}`);
+          }
+        }
+      }
+    }
 
     // Active goals (created within last 20 turns)
     if (L.goals && typeof L.goals === 'object') {
