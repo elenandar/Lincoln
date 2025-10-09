@@ -146,20 +146,20 @@ const modifier = function (text) {
     } catch (e) {
       LC.lcWarn("Post-analyze analyzeTextForEvents error: " + (e && e.message));
     }
-    const autoEvergreen = LC.autoEvergreen;
-    if (autoEvergreen?.analyze) {
-      try {
-        autoEvergreen.analyze(out, lastActionType);
-      } catch (e) {
-        LC.lcWarn("Post-analyze autoEvergreen error: " + (e && e.message));
-      }
+    try {
+      LC.RelationsEngine.analyze(out);
+    } catch (e) {
+      LC.lcWarn("Post-analyze RelationsEngine error: " + (e && e.message));
     }
-    if (autoEvergreen?.analyzeForGoals) {
-      try {
-        autoEvergreen.analyzeForGoals(out, lastActionType);
-      } catch (e) {
-        LC.lcWarn("Post-analyze analyzeForGoals error: " + (e && e.message));
-      }
+    try {
+      LC.EvergreenEngine.analyze(out, lastActionType);
+    } catch (e) {
+      LC.lcWarn("Post-analyze EvergreenEngine error: " + (e && e.message));
+    }
+    try {
+      LC.GoalsEngine.analyze(out, lastActionType);
+    } catch (e) {
+      LC.lcWarn("Post-analyze GoalsEngine error: " + (e && e.message));
     }
   }
 
