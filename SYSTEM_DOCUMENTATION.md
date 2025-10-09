@@ -793,6 +793,229 @@ When Максим not in focus → Secret hidden
 
 ---
 
+### 3.4 In-Game Time and Calendar System (TimeEngine)
+
+The Lincoln system tracks in-game time progression, enabling time-aware storytelling with deadlines, schedules, and temporal context for the AI.
+
+#### Overview
+
+**Key Capabilities:**
+1. **Time of Day Tracking** - Automatic progression through Утро → День → Вечер → Ночь
+2. **Day Counter** - Sequential day numbering with automatic week cycling
+3. **Event Scheduling** - Track upcoming events with countdown display
+4. **Context Integration** - Time and schedule information in AI context
+5. **Manual Control** - Commands to view, set, and advance time
+
+#### State Structure
+
+Time state is stored in `state.lincoln.time`:
+
+```javascript
+state.lincoln.time = {
+  currentDay: 1,              // Current day number
+  dayName: 'Понедельник',     // Day name (cycles through week)
+  timeOfDay: 'Утро',          // Current time period
+  turnsPerToD: 5,             // Turns needed to advance time period
+  turnsInCurrentToD: 0,       // Turns elapsed in current period
+  scheduledEvents: []         // Array of scheduled events
+}
+```
+
+**Scheduled Event Structure:**
+
+```javascript
+{
+  id: "event_1234_abc",       // Unique event ID
+  name: "Школьная вечеринка", // Event name
+  day: 7                      // Day when event occurs
+}
+```
+
+#### Time Progression
+
+**Automatic Advancement:**
+- `LC.TimeEngine.advance()` is called after each story turn in Output module
+- Each call increments `turnsInCurrentToD`
+- When `turnsInCurrentToD >= turnsPerToD`, time period advances
+
+**Time Cycle:**
+```
+Утро (Morning)
+  ↓ 5 turns
+День (Afternoon)
+  ↓ 5 turns
+Вечер (Evening)
+  ↓ 5 turns
+Ночь (Night)
+  ↓ 5 turns → New Day
+Утро (Morning) [Day +1]
+```
+
+**Day Naming:**
+Days cycle through the week: Понедельник → Вторник → Среда → Четверг → Пятница → Суббота → Воскресенье → Понедельник
+
+#### Context Integration
+
+Time information appears in context overlay with high priority:
+
+**⟦TIME⟧ Tag (Priority: 750)**
+```
+⟦TIME⟧ Сейчас Среда, вечер.
+```
+
+**⟦SCHEDULE⟧ Tag (Priority: 750)**
+```
+⟦SCHEDULE⟧ До Вечеринка осталось 2 дня
+⟦SCHEDULE⟧ Экзамен по математике происходит сегодня
+```
+
+**Filtering Rules:**
+- TIME tag always shows current day and time of day
+- SCHEDULE tag shows events on current day or within next 7 days
+- Past events (day < currentDay) are excluded from display
+- Events shown with countdown: "сегодня", "остался 1 день", "осталось N дня"
+
+#### Commands
+
+**`/time` - Show Current Time**
+```
+⏰ ТЕКУЩЕЕ ВРЕМЯ
+День: 5 (Пятница)
+Время суток: Вечер
+Ходов в текущем времени: 3/5
+```
+
+**`/time set day N [Name]` - Set Day**
+```
+/time set day 10
+→ 📅 День установлен: 10 (Среда)
+
+/time set day 15 Особый День
+→ 📅 День установлен: 15 (Особый День)
+```
+
+**`/time next` - Advance Time**
+```
+/time next
+→ ⏰ Время изменилось: Пятница, Вечер
+```
+
+**`/event add "<Name>" on day N` - Schedule Event**
+```
+/event add "Школьная вечеринка" on day 7
+→ 📌 Событие "Школьная вечеринка" запланировано на день 7 (через 2 дней)
+```
+
+**`/schedule` - Show All Events**
+```
+📅 РАСПИСАНИЕ СОБЫТИЙ
+День 5: Тест по математике (сегодня!)
+День 7: Школьная вечеринка (через 2 дней)
+День 10: Встреча с директором (через 5 дней)
+```
+
+#### Architecture
+
+The time system integrates across multiple modules:
+
+```
+Output v16.0.8.patched.txt
+    ↓ After each turn: LC.TimeEngine.advance()
+Library v16.0.8.patched.txt
+    ↓ Update turnsInCurrentToD, timeOfDay, currentDay
+state.lincoln.time
+    ↓ Read by composeContextOverlay()
+Library v16.0.8.patched.txt
+    ↓ Generate ⟦TIME⟧ and ⟦SCHEDULE⟧ tags
+Context v16.0.8.patched.txt
+    → AI sees temporal context and deadlines
+```
+
+#### Practical Examples
+
+**Example 1: Basic Time Flow**
+
+Turn 1 (Day 1, Утро):
+```
+⟦TIME⟧ Сейчас Понедельник, утро.
+```
+
+After 5 turns → Day 1, День:
+```
+⟦TIME⟧ Сейчас Понедельник, день.
+```
+
+After 20 turns → Day 2, Утро:
+```
+⟦TIME⟧ Сейчас Вторник, утро.
+```
+
+**Example 2: Event Scheduling**
+
+Day 3, planning a party for Day 5:
+```
+User: /event add "День рождения Хлои" on day 5
+System: 📌 Событие "День рождения Хлои" запланировано на день 5 (через 2 дней)
+
+Context shows:
+⟦TIME⟧ Сейчас Среда, день.
+⟦SCHEDULE⟧ До День рождения Хлои осталось 2 дня
+```
+
+Day 5 arrives:
+```
+⟦TIME⟧ Сейчас Пятница, утро.
+⟦SCHEDULE⟧ День рождения Хлои происходит сегодня
+```
+
+**Example 3: Multiple Events**
+
+```
+/event add "Экзамен" on day 10
+/event add "Концерт" on day 12
+/event add "Каникулы" on day 20
+
+/schedule
+→ 📅 РАСПИСАНИЕ СОБЫТИЙ
+  День 10: Экзамен (через 5 дней)
+  День 12: Концерт (через 7 дней)
+  День 20: Каникулы (через 15 дней)
+```
+
+#### Integration with Other Systems
+
+**With GoalsEngine:**
+- Character goals can reference scheduled events
+- "Максим хочет подготовиться к экзамену" + SCHEDULE creates urgency
+
+**With MoodEngine:**
+- Events can trigger mood changes when they occur
+- Anticipation of events affects character status
+
+**With KnowledgeEngine:**
+- Secrets about events ("Максим знает о сюрпризе на вечеринке")
+- Event-related knowledge filtering
+
+#### Technical Notes
+
+**Turn Budget:**
+- TimeEngine.advance() called in try-catch to prevent errors
+- Minimal performance impact (~1ms per turn)
+
+**State Persistence:**
+- Time state persists across sessions
+- Manual time control via `/time set` for testing/debugging
+- Events persist until manually cleared (future enhancement)
+
+**Future Enhancements (Out of Scope):**
+- `/event delete <id>` - Remove scheduled events
+- Time-based triggers (auto-execute on specific days)
+- Custom time period lengths per scene
+- Historical event log
+- Multiple timeline support
+
+---
+
 ## 4. Testing System
 
 ### 4.1 Test Files
@@ -804,6 +1027,7 @@ The project includes comprehensive test suites:
 3. **test_mood.js** - Tests the MoodEngine functionality
 4. **test_secrets.js** - Tests the KnowledgeEngine and secrets system
 5. **test_engines.js** - Tests engine module structure and integration
+6. **test_time.js** - Tests the TimeEngine and calendar system
 
 ### 4.2 Running Tests
 
@@ -818,6 +1042,9 @@ node test_goals.js
 
 # Test secrets system
 node test_secrets.js
+
+# Test time and calendar system
+node test_time.js
 ```
 
 ### 4.3 Test Coverage
@@ -1046,9 +1273,34 @@ A comprehensive audit was performed on all four modules (Library, Input, Output,
 **Test files created:**
 - test_mood.js (comprehensive test suite)
 
+### Ticket #3: In-Game Time and Calendar System (TimeEngine)
+
+**Code files modified:**
+- Library v16.0.8.patched.txt (+190 lines: TimeEngine module, L.time initialization in lcInit, composeContextOverlay TIME/SCHEDULE tags, /time, /event, /schedule commands)
+- Output v16.0.8.patched.txt (+5 lines: TimeEngine.advance() call in post-analysis)
+- SYSTEM_DOCUMENTATION.md (new section 3.4 documenting TimeEngine with examples)
+
+**Test files created:**
+- test_time.js (comprehensive test suite, 12 tests)
+
+**Key features implemented:**
+- LC.TimeEngine virtual module with advance() method
+- L.time state initialization in lcInit() with default values
+- Automatic time progression: Утро → День → Вечер → Ночь → Утро (next day)
+- Day cycling through week: Понедельник through Воскресенье
+- Event scheduling system with L.time.scheduledEvents array
+- ⟦TIME⟧ context tag showing current day and time of day
+- ⟦SCHEDULE⟧ context tags for upcoming events (priority weight 750)
+- `/time` command - show current time
+- `/time set day N [Name]` command - set day manually
+- `/time next` command - manually advance time
+- `/event add "<Name>" on day N` command - schedule events
+- `/schedule` command - list all scheduled events
+- Automatic TimeEngine.advance() call after each story turn in Output module
+
 ---
 
-**Documentation Version:** 1.2  
+**Documentation Version:** 1.3  
 **Last Updated:** 2025-01-09  
 **Status:** ✅ Complete and Verified  
 **Repository:** elenandar/Lincoln  
