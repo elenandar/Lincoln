@@ -161,6 +161,11 @@ const modifier = function (text) {
     } catch (e) {
       LC.lcWarn("Post-analyze GoalsEngine error: " + (e && e.message));
     }
+    try {
+      LC.MoodEngine.analyze(out);
+    } catch (e) {
+      LC.lcWarn("Post-analyze MoodEngine error: " + (e && e.message));
+    }
   }
 
   // Авто-оффер recap и авто-epoch
