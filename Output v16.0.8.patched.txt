@@ -147,24 +147,10 @@ const modifier = function (text) {
       LC.lcWarn("Post-analyze analyzeTextForEvents error: " + (e && e.message));
     }
     try {
-      LC.RelationsEngine.analyze(out);
+      // Use UnifiedAnalyzer for optimized text analysis
+      LC.UnifiedAnalyzer.analyze(out, lastActionType);
     } catch (e) {
-      LC.lcWarn("Post-analyze RelationsEngine error: " + (e && e.message));
-    }
-    try {
-      LC.EvergreenEngine.analyze(out, lastActionType);
-    } catch (e) {
-      LC.lcWarn("Post-analyze EvergreenEngine error: " + (e && e.message));
-    }
-    try {
-      LC.GoalsEngine.analyze(out, lastActionType);
-    } catch (e) {
-      LC.lcWarn("Post-analyze GoalsEngine error: " + (e && e.message));
-    }
-    try {
-      LC.MoodEngine.analyze(out);
-    } catch (e) {
-      LC.lcWarn("Post-analyze MoodEngine error: " + (e && e.message));
+      LC.lcWarn("Post-analyze UnifiedAnalyzer error: " + (e && e.message));
     }
     try {
       LC.TimeEngine.advance();
