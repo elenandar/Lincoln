@@ -1430,7 +1430,7 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     // ---------- Evergreen (patterns + fallback) ----------
-    autoEvergreen: {
+    EvergreenEngine: {
       _buildPatterns(){
         const P = { relations:[], status:[], obligations:[], facts:[], goals:[] };
         const tryPush = (arr, src, flags, meta) => {
@@ -2155,17 +2155,29 @@ L.debugMode = toBool(L.debugMode, false);
         LC.lcSys("Evergreen storage cleared.");
       },
       analyzeForGoals(text, actionType){
+        // Backward compatibility: delegate to LC.GoalsEngine
+        if (LC.GoalsEngine && typeof LC.GoalsEngine.analyze === "function") {
+          LC.GoalsEngine.analyze(text, actionType);
+        }
+      }
+    },
+
+    // ========== Goals Engine ==========
+    GoalsEngine: {
+      analyze(text, actionType){
         const L = LC.lcInit();
-        if (!this.patterns) this.patterns = this._buildPatterns();
+        const autoEvergreen = LC.autoEvergreen || LC.EvergreenEngine;
+        if (!autoEvergreen) return;
+        if (!autoEvergreen.patterns) autoEvergreen.patterns = autoEvergreen._buildPatterns();
         if (!L.evergreen || !L.evergreen.enabled || actionType === "retry" || !text) return;
-        if (!Array.isArray(this.patterns.goals) || this.patterns.goals.length === 0) return;
+        if (!Array.isArray(autoEvergreen.patterns.goals) || autoEvergreen.patterns.goals.length === 0) return;
         
         const originalText = String(text || "");
         const T = LC._normUCached?.(text) ?? LC._normU(text);
         
         // GOALS
-        for (let i=0; i<this.patterns.goals.length; i++){
-          const p = this.patterns.goals[i];
+        for (let i=0; i<autoEvergreen.patterns.goals.length; i++){
+          const p = autoEvergreen.patterns.goals[i];
           p.lastIndex = 0;
           let m;
           try {
@@ -2183,8 +2195,8 @@ L.debugMode = toBool(L.debugMode, false);
               
               if (!charRaw || !goalText) continue;
               
-              const character = this.normalizeCharName(charRaw);
-              if (!character || !this.isImportantCharacter(character)) continue;
+              const character = autoEvergreen.normalizeCharName(charRaw);
+              if (!character || !autoEvergreen.isImportantCharacter(character)) continue;
               
               // Clean up goal text
               goalText = goalText.replace(/[.,!?]+$/, "").trim();
@@ -2207,6 +2219,120 @@ L.debugMode = toBool(L.debugMode, false);
         }
       }
     },
+
+    // ========== Relations Engine ==========
+    RelationsEngine: {
+      MODIFIERS: {
+        romance: 15,
+        conflict: -10,
+        betrayal: -25,
+        loyalty: 10
+      },
+
+      analyze(text){
+        if (!text) return;
+        const L = LC.lcInit();
+        if (!L.evergreen) L.evergreen = {};
+        if (!L.evergreen.relations) L.evergreen.relations = {};
+
+        const low = toStr(text).toLowerCase();
+        
+        // Helper function to extract character names from a sentence
+        const extractCharacters = (sentence) => {
+          const characters = [];
+          const normalized = LC._normUCached?.(sentence) ?? LC._normU(sentence);
+          
+          // Use autoEvergreen patterns to find character names
+          const autoEvergreen = LC.autoEvergreen || LC.EvergreenEngine;
+          if (autoEvergreen && typeof autoEvergreen.normalizeCharName === 'function') {
+            // Split sentence into words and try to find character names
+            const words = normalized.split(/\s+/);
+            for (let i = 0; i < words.length; i++) {
+              // Try single word
+              let candidate = words[i];
+              let normalized_name = autoEvergreen.normalizeCharName(candidate);
+              if (normalized_name && normalized_name !== candidate && autoEvergreen.isImportantCharacter(normalized_name)) {
+                if (characters.indexOf(normalized_name) === -1) {
+                  characters.push(normalized_name);
+                }
+              }
+              
+              // Try two-word combinations
+              if (i < words.length - 1) {
+                candidate = words[i] + ' ' + words[i + 1];
+                normalized_name = autoEvergreen.normalizeCharName(candidate);
+                if (normalized_name && normalized_name !== candidate && autoEvergreen.isImportantCharacter(normalized_name)) {
+                  if (characters.indexOf(normalized_name) === -1) {
+                    characters.push(normalized_name);
+                  }
+                }
+              }
+              
+              // Try three-word combinations
+              if (i < words.length - 2) {
+                candidate = words[i] + ' ' + words[i + 1] + ' ' + words[i + 2];
+                normalized_name = autoEvergreen.normalizeCharName(candidate);
+                if (normalized_name && normalized_name !== candidate && autoEvergreen.isImportantCharacter(normalized_name)) {
+                  if (characters.indexOf(normalized_name) === -1) {
+                    characters.push(normalized_name);
+                  }
+                }
+              }
+            }
+          }
+          return characters;
+        };
+
+        // Split text into sentences for better context
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+        // Check for relationship-affecting events
+        const relationshipEvents = ['romance', 'conflict', 'betrayal', 'loyalty'];
+        for (const type of relationshipEvents) {
+          if (!LC._eventPatterns || !LC._eventPatterns[type]) continue;
+          const regs = LC._eventPatterns[type];
+          for (let i = 0; i < regs.length; i++) {
+            if (regs[i].test(low)) {
+              const modifier = this.MODIFIERS[type];
+              if (!modifier) continue;
+              
+              // Find the sentence that triggered this event
+              for (let s = 0; s < sentences.length; s++) {
+                const sentence = sentences[s];
+                if (regs[i].test(sentence.toLowerCase())) {
+                  const participants = extractCharacters(sentence);
+                  
+                  // If we found at least 2 characters, update their relationship
+                  if (participants.length >= 2) {
+                    // Update relationship between first two detected characters
+                    const char1 = participants[0];
+                    const char2 = participants[1];
+                    
+                    // Ensure nested object structure exists
+                    if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
+                      L.evergreen.relations[char1] = {};
+                    }
+                    if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
+                      L.evergreen.relations[char2] = {};
+                    }
+                    
+                    // Update numeric values (default to 50 if not set)
+                    const currentVal1to2 = typeof L.evergreen.relations[char1][char2] === 'number' ? L.evergreen.relations[char1][char2] : 50;
+                    const currentVal2to1 = typeof L.evergreen.relations[char2][char1] === 'number' ? L.evergreen.relations[char2][char1] : 50;
+                    
+                    L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, currentVal1to2 + modifier));
+                    L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, currentVal2to1 + modifier));
+                  }
+                  break;
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
+    },
+
     evergreenManualSet(L, category, key, value){
       const state = L || this.lcInit();
       if (!state || !state.evergreen || !category) return;
@@ -2286,52 +2412,7 @@ L.debugMode = toBool(L.debugMode, false);
       const low = toStr(text).toLowerCase();
       const t = L.turn || 0;
 
-      // Helper function to extract character names from a sentence
-      const extractCharacters = (sentence) => {
-        const characters = [];
-        const normalized = LC._normUCached?.(sentence) ?? LC._normU(sentence);
-        
-        // Use autoEvergreen patterns to find character names
-        if (LC.autoEvergreen && typeof LC.autoEvergreen.normalizeCharName === 'function') {
-          // Split sentence into words and try to find character names
-          const words = normalized.split(/\s+/);
-          for (let i = 0; i < words.length; i++) {
-            // Try single word
-            let candidate = words[i];
-            let normalized_name = LC.autoEvergreen.normalizeCharName(candidate);
-            if (normalized_name && normalized_name !== candidate && LC.autoEvergreen.isImportantCharacter(normalized_name)) {
-              if (characters.indexOf(normalized_name) === -1) {
-                characters.push(normalized_name);
-              }
-            }
-            
-            // Try two-word combinations
-            if (i < words.length - 1) {
-              candidate = words[i] + ' ' + words[i + 1];
-              normalized_name = LC.autoEvergreen.normalizeCharName(candidate);
-              if (normalized_name && normalized_name !== candidate && LC.autoEvergreen.isImportantCharacter(normalized_name)) {
-                if (characters.indexOf(normalized_name) === -1) {
-                  characters.push(normalized_name);
-                }
-              }
-            }
-            
-            // Try three-word combinations
-            if (i < words.length - 2) {
-              candidate = words[i] + ' ' + words[i + 1] + ' ' + words[i + 2];
-              normalized_name = LC.autoEvergreen.normalizeCharName(candidate);
-              if (normalized_name && normalized_name !== candidate && LC.autoEvergreen.isImportantCharacter(normalized_name)) {
-                if (characters.indexOf(normalized_name) === -1) {
-                  characters.push(normalized_name);
-                }
-              }
-            }
-          }
-        }
-        return characters;
-      };
-
-      // Split text into sentences for better context
+      // Split text into sentences for better context (used for relations)
       const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
 
       for (const type in this._eventPatterns){
@@ -2346,51 +2427,20 @@ L.debugMode = toBool(L.debugMode, false);
             }
             if (!exists) L.events.push({ type, turn:t, weight:w, src: (source||"output") }); LC.ensureEventsCap(300);
             
-            // For relationship-affecting events, update numeric relationship values
-            const relationshipEvents = ['romance', 'conflict', 'betrayal', 'loyalty'];
-            if (relationshipEvents.indexOf(type) !== -1 && CONFIG.RELATIONSHIP_MODIFIERS && CONFIG.RELATIONSHIP_MODIFIERS[type]) {
-              const modifier = CONFIG.RELATIONSHIP_MODIFIERS[type];
-              
-              // Find the sentence that triggered this event
-              for (let s = 0; s < sentences.length; s++) {
-                const sentence = sentences[s];
-                if (regs[i].test(sentence.toLowerCase())) {
-                  const participants = extractCharacters(sentence);
-                  
-                  // If we found at least 2 characters, update their relationship
-                  if (participants.length >= 2) {
-                    // Initialize relations structure if needed
-                    if (!L.evergreen) L.evergreen = {};
-                    if (!L.evergreen.relations) L.evergreen.relations = {};
-                    
-                    // Update relationship between first two detected characters
-                    const char1 = participants[0];
-                    const char2 = participants[1];
-                    
-                    // Ensure nested object structure exists
-                    if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
-                      L.evergreen.relations[char1] = {};
-                    }
-                    if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
-                      L.evergreen.relations[char2] = {};
-                    }
-                    
-                    // Update numeric values (default to 50 if not set)
-                    const currentVal1to2 = typeof L.evergreen.relations[char1][char2] === 'number' ? L.evergreen.relations[char1][char2] : 50;
-                    const currentVal2to1 = typeof L.evergreen.relations[char2][char1] === 'number' ? L.evergreen.relations[char2][char1] : 50;
-                    
-                    L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, currentVal1to2 + modifier));
-                    L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, currentVal2to1 + modifier));
-                  }
-                  break;
-                }
-              }
-            }
-            
             break;
           }
         }
       }
+      
+      // Delegate relationship analysis to RelationsEngine
+      if (LC.RelationsEngine && typeof LC.RelationsEngine.analyze === 'function') {
+        try {
+          LC.RelationsEngine.analyze(text);
+        } catch (e) {
+          LC.lcWarn?.("RelationsEngine.analyze error: " + (e && e.message));
+        }
+      }
+      
       this._pruneEventsWindow();
     },
     computeRecapScore(){
@@ -2591,6 +2641,15 @@ L.debugMode = toBool(L.debugMode, false);
       LC.CONFIG.FEATURES.STRICT_CMD_BYPASS = true;
     }
   } catch(_) {}
+  
+  // Backward compatibility aliases
+  LC.autoEvergreen = LC.EvergreenEngine;
+  
+  // Sync RELATIONSHIP_MODIFIERS to RelationsEngine
+  if (LC.RelationsEngine && CONFIG.RELATIONSHIP_MODIFIERS) {
+    LC.RelationsEngine.MODIFIERS = CONFIG.RELATIONSHIP_MODIFIERS;
+  }
+  
   if (typeof globalThis !== "undefined") {
     globalThis.LC = LC;
   } else if (_globalScope && typeof _globalScope === "object") {
