@@ -88,21 +88,16 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   }
 function replyStop(msg){
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  // Командный цикл: помечаем, но НЕ кладем в SYS-очередь (очередь не нужна при stop:true)
   LC.lcSetFlag?.("isCmd", true);
   const line = LC.sysLine?.(msg) || "";
-  // Очистить возможные остатки очереди (страховка)
-  try { LC.lcConsumeMsgs?.(); } catch(_) {}
+  try { LC.lcConsumeMsgs?.(); } catch(_) {} // очистка хвоста очереди
   return { text: line ? line + "\n" : "", stop: true };
 }
-function replyStopSilent(options = {}){
+
+function replyStopSilent(){
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
   LC.lcSetFlag?.("isCmd", true);
-  const keepQueue = options && options.keepQueue === true;
-  if (!keepQueue) {
-    // Никаких SYS и плейсхолдеров — Output вернет пусто при пустой очереди
-    try { LC.lcConsumeMsgs?.(); } catch(_) {}
-  }
+  try { LC.lcConsumeMsgs?.(); } catch(_) {}
   return { text: "", stop: true };
 }
 
