@@ -2177,15 +2177,15 @@ L.debugMode = toBool(L.debugMode, false);
 
     // ---------- Events & Recap Scheduler ----------
     _eventPatterns: {
-      conflict:   [/ударил|ударила|ударили|ссора|крик|плюха|fight|hit|punched/i],
+      conflict:   [/ударил|ударила|ударили|ссор|крик|плюха|fight|hit|punched/i],
       romance:    [/поцеловал|поцеловала|kiss|призналс[яа]|dating|together/i],
       authority:  [/директор|учитель|teacher|principal|detention|выговор/i],
       achievement:[/побед[аил]|win|успех|трофей|награда|award/i],
       reveal:     [/секрет|разоблачение|confess|reveal|truth/i],
       location:   [/кабинет|столовая|коридор|спортзал|cafeteria|hallway|gym/i],
       timeskip:   [/прошло\s+\d+|через\s+\d+|hours?\s+later|days?\s+later|weeks?\s+later/i],
-      betrayal:   [/предал|предала|предали|измена|betrayed|betray|backstab/i],
-      loyalty:    [/верность|преданность|лояльность|поддержка|loyal|loyalty|support|stood by/i]
+      betrayal:   [/предал|предала|предали|измен|betrayed|betray|backstab/i],
+      loyalty:    [/верност|преданност|лояльност|поддерж|loyal|loyalty|support|stood by/i]
     },
     _pruneEventsWindow(){
       const L = this.lcInit();
