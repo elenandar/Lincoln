@@ -1811,6 +1811,9 @@ function turnSet(n) {
   if (L.tm && Number(L.tm.wantRecapTurn) >= v) {
     L.tm.wantRecapTurn = 0;
   }
+  if (L.tm) {
+    L.tm.lastRecapScore = 0;
+  }
 
       // clear flags on rewind
     LC.lcSetFlag("wantRecap", false);
