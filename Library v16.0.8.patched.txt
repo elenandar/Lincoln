@@ -1091,7 +1091,6 @@ L.debugMode = toBool(L.debugMode, false);
             }
             LC.autoEvergreen?.limitCategories?.(L);
           } catch (_) {}
-        }
         } catch (e) {
           LC.lcWarn?.("EVG: factsCues analyze failed: " + (e && e.message));
         }
