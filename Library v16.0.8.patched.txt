@@ -141,35 +141,19 @@ Contract:
 
   LC.Drafts = LC.Drafts || {};
   LC.Drafts.applyPending = function applyPending(L, source){
-    try {
-      if (!L) return { applied:false, reason:"no-state" };
+    try{
+      if (!L) return { applied:false };
       if (L.__draftAppliedStamp === L.turn) return { applied:false, reason:"already-applied" };
-
-      let did = false, notes=[];
-      if (L.recapDraft) {
-        // ваш текущий код «принять recapDraft» (перенос в карточки, метки lastRecapTurn и т.д.)
-        try {
-          const recapResult = LC.applyRecapDraft?.(L);
-          if (recapResult) { did = true; notes.push("recap"); }
-        } catch(e) { LC.lcWarn?.("applyRecapDraft: "+e?.message); }
-      }
-      if (L.epochDraft) {
-        // ваш текущий код «принять epochDraft»
-        try {
-          const epochResult = LC.applyEpochDraft?.(L);
-          if (epochResult) { did = true; notes.push("epoch"); }
-        } catch(e) { LC.lcWarn?.("applyEpochDraft: "+e?.message); }
-      }
-      if (did) {
+      let did=false, notes=[];
+      if (L.recapDraft) { LC.applyRecapDraft?.(L); did=true; notes.push("recap"); }
+      if (L.epochDraft) { LC.applyEpochDraft?.(L); did=true; notes.push("epoch"); }
+      if (did){
         L.__draftAppliedStamp = L.turn;
         LC.lcSys?.("✅ Draft saved ("+notes.join("+")+")");
         return { applied:true, notes };
       }
       return { applied:false, reason:"no-draft" };
-    } catch(e) {
-      LC.lcWarn?.("Drafts.applyPending failed: "+(e && e.message));
-      return { applied:false, reason:"error" };
-    }
+    }catch(e){ LC.lcWarn?.("Drafts.applyPending failed: "+(e && e.message)); return { applied:false, reason:"error" }; }
   };
 
   // Turns facade (тонкая обёртка)

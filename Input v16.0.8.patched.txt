@@ -313,9 +313,8 @@ const args   = tokens.slice(1);
         if (L.recapDraft || L.epochDraft) {
           // Гарантированно применяем драфты на стадии Input (идемпотентность внутри)
           LC.lcSetFlag?.("isCmd", true);
-          try { LC.lcConsumeMsgs?.(); } catch(_) {}
           LC.Drafts?.applyPending?.(L, "input");
-          return replyStopSilent({ keepQueue: true });
+          return replyStopSilent();
         }
         return replyStop("❌ No draft to save.");
 

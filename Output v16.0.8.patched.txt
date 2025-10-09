@@ -75,7 +75,6 @@ const modifier = function (text) {
   }
 
   // Командный ответ: обработка /continue → SYS
-  try { LC.Drafts?.applyPending?.(L, "output"); } catch(_) {}
   if (isCmd || cmdCyclePending) {
     const msgs = LC.lcConsumeMsgs?.() || [];
     try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, false); } catch (_) {}
