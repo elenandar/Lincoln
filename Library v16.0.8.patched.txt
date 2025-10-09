@@ -942,6 +942,10 @@ L.debugMode = toBool(L.debugMode, false);
       
       // goals tracking
       L.goals = L.goals || {};
+      
+      // character mood/status tracking
+      L.character_status = L.character_status || {};
+      
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
       const evergreenCapDefault = Number.isFinite(defaultEvergreenCapNum) ? defaultEvergreenCapNum : 0;
@@ -2327,6 +2331,142 @@ L.debugMode = toBool(L.debugMode, false);
       }
     },
 
+    // ========== Mood Engine ==========
+    MoodEngine: {
+      analyze(text){
+        if (!text) return;
+        const L = LC.lcInit();
+        if (!L.character_status) L.character_status = {};
+
+        const low = toStr(text).toLowerCase();
+        
+        // Helper to extract character name from text around a match
+        const findCharacterInText = (text) => {
+          const autoEvergreen = LC.EvergreenEngine;
+          if (!autoEvergreen || typeof autoEvergreen.normalizeCharName !== 'function') return null;
+          
+          // Get all words from the text
+          const normalized = LC._normUCached?.(text) ?? LC._normU(text);
+          const words = normalized.split(/\s+/);
+          
+          // Try to find character names by checking each word/phrase
+          for (let i = 0; i < words.length; i++) {
+            // Try three-word combinations first (e.g., "Миссис Грейсон")
+            if (i < words.length - 2) {
+              const threeWord = words[i] + ' ' + words[i + 1] + ' ' + words[i + 2];
+              const normalized3 = autoEvergreen.normalizeCharName(threeWord);
+              if (normalized3 && autoEvergreen.isImportantCharacter(normalized3)) {
+                return normalized3;
+              }
+            }
+            
+            // Try two-word combinations (e.g., "Максим Бергман")
+            if (i < words.length - 1) {
+              const twoWord = words[i] + ' ' + words[i + 1];
+              const normalized2 = autoEvergreen.normalizeCharName(twoWord);
+              if (normalized2 && autoEvergreen.isImportantCharacter(normalized2)) {
+                return normalized2;
+              }
+            }
+            
+            // Try single word (e.g., "Максим", "Макс")
+            const oneWord = words[i];
+            const normalized1 = autoEvergreen.normalizeCharName(oneWord);
+            if (normalized1 && autoEvergreen.isImportantCharacter(normalized1)) {
+              return normalized1;
+            }
+          }
+          
+          return null;
+        };
+
+        // Split text into sentences
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+
+        // Mood patterns: Russian and English markers
+        const moodPatterns = [
+          // Angry - Russian
+          { regex: /разозли(л(?:ся|сь)?|вш)/i, mood: 'angry', reason: 'ссора' },
+          { regex: /(?:был|была|стал|стала)\s+(?:зол|зла|сердит|сердита|раздражен|раздражена)/i, mood: 'angry', reason: 'конфликт' },
+          { regex: /(?:в ярости|в гневе|в бешенстве)/i, mood: 'angry', reason: 'ярость' },
+          { regex: /(?:рассерди|разъяри)/i, mood: 'angry', reason: 'раздражение' },
+          
+          // Angry - English
+          { regex: /(?:became|got|was|turned)\s+(?:angry|mad|furious|enraged)/i, mood: 'angry', reason: 'conflict' },
+          { regex: /(?:in rage|in fury|in anger)/i, mood: 'angry', reason: 'rage' },
+          { regex: /(?:angered|infuriated|enraged)/i, mood: 'angry', reason: 'confrontation' },
+          
+          // Happy - Russian
+          { regex: /(?:был|была|стал|стала)\s+(?:счастлив|счастлива|рад|рада|доволен|довольна)/i, mood: 'happy', reason: 'радость' },
+          { regex: /(?:обрадова|обрадовал|обрадовала|возликова)/i, mood: 'happy', reason: 'хорошие новости' },
+          { regex: /(?:в восторге|в приподнятом настроении)/i, mood: 'happy', reason: 'успех' },
+          
+          // Happy - English
+          { regex: /(?:was|became|felt)\s+(?:happy|joyful|glad|delighted|thrilled)/i, mood: 'happy', reason: 'good news' },
+          { regex: /(?:in delight|in joy|overjoyed)/i, mood: 'happy', reason: 'success' },
+          { regex: /(?:rejoiced|celebrated)/i, mood: 'happy', reason: 'celebration' },
+          
+          // Scared - Russian
+          { regex: /(?:испуга|напуга|перепуга|устраши)/i, mood: 'scared', reason: 'страх' },
+          { regex: /(?:был|была|стал|стала)\s+(?:напуган|напугана|испуган|испугана)/i, mood: 'scared', reason: 'угроза' },
+          { regex: /(?:в страхе|в ужасе|в панике)/i, mood: 'scared', reason: 'опасность' },
+          
+          // Scared - English
+          { regex: /(?:was|became|got)\s+(?:scared|frightened|terrified|afraid)/i, mood: 'scared', reason: 'threat' },
+          { regex: /(?:in fear|in terror|in panic)/i, mood: 'scared', reason: 'danger' },
+          { regex: /(?:feared|panicked)/i, mood: 'scared', reason: 'fear' },
+          
+          // Tired - Russian
+          { regex: /(?:устал|устала|изнемог|изнемогла|вымотал|вымотала)/i, mood: 'tired', reason: 'усталость' },
+          { regex: /(?:был|была|стал|стала)\s+(?:уставш|измучен|измучена|истощен|истощена)/i, mood: 'tired', reason: 'истощение' },
+          { regex: /(?:без сил|изнурен|изнурена)/i, mood: 'tired', reason: 'перенапряжение' },
+          
+          // Tired - English
+          { regex: /(?:was|became|got|felt)\s+(?:tired|exhausted|weary|fatigued)/i, mood: 'tired', reason: 'fatigue' },
+          { regex: /(?:worn out|drained|depleted)/i, mood: 'tired', reason: 'exhaustion' },
+          
+          // Wounded/Hurt - Russian
+          { regex: /(?:ранен|ранена|поранен|поранена|травмирован|травмирована)/i, mood: 'wounded', reason: 'ранение' },
+          { regex: /(?:был|была)\s+(?:ранен|ранена|избит|избита)/i, mood: 'wounded', reason: 'травма' },
+          { regex: /(?:получил|получила)\s+(?:рану|травму|ранение|увечье)/i, mood: 'wounded', reason: 'повреждение' },
+          
+          // Wounded/Hurt - English
+          { regex: /(?:was|got|became)\s+(?:wounded|hurt|injured)/i, mood: 'wounded', reason: 'injury' },
+          { regex: /(?:received|sustained|suffered)\s+(?:a wound|an injury|damage)/i, mood: 'wounded', reason: 'wound' },
+          { regex: /(?:bleeding|bruised|injured)/i, mood: 'wounded', reason: 'trauma' }
+        ];
+
+        // Check each sentence for mood markers
+        for (let s = 0; s < sentences.length; s++) {
+          const sentence = sentences[s];
+          const sentenceLow = sentence.toLowerCase();
+          
+          for (let p = 0; p < moodPatterns.length; p++) {
+            const pattern = moodPatterns[p];
+            if (pattern.regex.test(sentenceLow)) {
+              // Try to find a character name in this sentence
+              const character = findCharacterInText(sentence);
+              
+              if (character) {
+                const mood = pattern.mood;
+                const reason = pattern.reason;
+                const expires = (L.turn || 0) + 5;
+                
+                // Store mood status
+                L.character_status[character] = {
+                  mood: mood,
+                  reason: reason,
+                  expires: expires
+                };
+                
+                break; // Found a mood for this sentence
+              }
+            }
+          }
+        }
+      }
+    },
+
     evergreenManualSet(L, category, key, value){
       const state = L || this.lcInit();
       if (!state || !state.evergreen || !category) return;
@@ -2740,6 +2880,39 @@ LC.composeContextOverlay = function(options) {
       }
     }
 
+    // Character mood/status (active statuses)
+    if (L.character_status && typeof L.character_status === 'object') {
+      const currentTurn = L.turn || 0;
+      for (const character in L.character_status) {
+        if (Object.prototype.hasOwnProperty.call(L.character_status, character)) {
+          const status = L.character_status[character];
+          if (status && typeof status.expires === 'number' && currentTurn < status.expires) {
+            // Status is still active
+            const mood = status.mood || 'unknown';
+            const reason = status.reason || '';
+            let moodText = '';
+            
+            // Create mood description
+            if (mood === 'angry') {
+              moodText = reason ? `${character} зол из-за ${reason}` : `${character} зол`;
+            } else if (mood === 'happy') {
+              moodText = reason ? `${character} счастлив благодаря ${reason}` : `${character} счастлив`;
+            } else if (mood === 'scared') {
+              moodText = reason ? `${character} напуган из-за ${reason}` : `${character} напуган`;
+            } else if (mood === 'tired') {
+              moodText = reason ? `${character} устал от ${reason}` : `${character} устал`;
+            } else if (mood === 'wounded') {
+              moodText = reason ? `${character} ранен (${reason})` : `${character} ранен`;
+            } else {
+              moodText = reason ? `${character}: ${mood} (${reason})` : `${character}: ${mood}`;
+            }
+            
+            priority.push(`⟦MOOD⟧ ${moodText}`);
+          }
+        }
+      }
+    }
+
     const opening = LC.getOpeningLine?.() || "";
     if (opening) normal.push(opening);
 
@@ -2773,6 +2946,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦TASK⟧") === 0)   return 900;
       if (line.indexOf("⟦CANON⟧") === 0)  return 800;
       if (line.indexOf("⟦GOAL⟧") === 0)   return 750;
+      if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
       if (line.indexOf("⟦OPENING⟧") === 0)return 700;
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
       if (line.indexOf("⟦SCENE⟧") === 0)  return 500;
@@ -2784,7 +2958,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, OPENING:0, SCENE:0, META:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, MOOD:0, OPENING:0, SCENE:0, META:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
