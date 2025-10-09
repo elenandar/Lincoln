@@ -407,6 +407,7 @@ const args   = tokens.slice(1);
           if (!m) return replyStop("Usage: /alias add <Name>=a,b,c");
           const name = m[1].trim();
           const list = m[2].split(",").map(s=>s.trim()).filter(Boolean);
+          L.aliases = (L.aliases && typeof L.aliases === "object") ? L.aliases : {};
           L.aliases[name] = list;
           LC.sanitizeAliases?.(L);
           const finalList = Array.isArray(L.aliases[name]) ? L.aliases[name] : [];
@@ -416,6 +417,7 @@ const args   = tokens.slice(1);
           const m = cmdRaw.match(/\/alias\s+del\s+(.+)$/i);
           if (!m) return replyStop("Usage: /alias del <Name>");
           const name = m[1].trim();
+          L.aliases = (L.aliases && typeof L.aliases === "object") ? L.aliases : {};
           if (name in L.aliases) {
             delete L.aliases[name];
             LC.sanitizeAliases?.(L);

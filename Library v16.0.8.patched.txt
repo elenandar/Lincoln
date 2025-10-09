@@ -57,13 +57,36 @@ Contract:
 
   LC.sanitizeAliases = function (L){
     try{
-      const arr = Array.isArray(L?.aliases) ? L.aliases : [];
-      const seen = new Set(); const clean = [];
-      for (let i=0;i<arr.length;i++){
-        const v = String(arr[i]||"").trim().toLowerCase();
-        if (!v || seen.has(v)) continue; seen.add(v); clean.push(v);
+      if (!L) return;
+      const aliases = L.aliases;
+      if (Array.isArray(aliases)){
+        const seen = new Set(); const clean = [];
+        for (let i=0;i<aliases.length;i++){
+          const v = String(aliases[i] ?? "").trim().toLowerCase();
+          if (!v || seen.has(v)) continue;
+          seen.add(v); clean.push(v);
+        }
+        L.aliases = clean;
+        return;
       }
-      L.aliases = clean;
+      if (aliases && typeof aliases === "object"){
+        const cleanMap = {};
+        for (const key of Object.keys(aliases)){
+          const safeKey = String(key ?? "").trim();
+          if (!safeKey) continue;
+          const arr = Array.isArray(aliases[key]) ? aliases[key] : [];
+          const seen = new Set(); const clean = [];
+          for (let i=0;i<arr.length;i++){
+            const v = String(arr[i] ?? "").trim().toLowerCase();
+            if (!v || seen.has(v)) continue;
+            seen.add(v); clean.push(v);
+          }
+          if (clean.length) cleanMap[safeKey] = clean;
+        }
+        L.aliases = cleanMap;
+        return;
+      }
+      L.aliases = {};
     }catch(_){}
   };
 
