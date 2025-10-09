@@ -36,6 +36,20 @@ const modifier = function (text) {
   }
 
   const limit = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) || 800;
+  
+  // Helper function to safely slice strings without breaking surrogate pairs
+  function safeSlice(str, maxLength) {
+    if (str.length <= maxLength) return str;
+    // Check if we're cutting in the middle of a surrogate pair
+    const charCode = str.charCodeAt(maxLength - 1);
+    // High surrogate range: 0xD800-0xDBFF
+    if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+      // We're at a high surrogate, cut one character earlier to avoid breaking the pair
+      return str.slice(0, maxLength - 1);
+    }
+    return str.slice(0, maxLength);
+  }
+  
   // CTX: build overlay with safe fallback to upstream text
   let overlay = "";
   try {
@@ -48,7 +62,7 @@ const modifier = function (text) {
     // SAFE FALLBACK: preserve upstream context instead of blanking it
     return { text: String(text || "") };
   }
-  const overlayLimited = overlay.length > limit ? overlay.slice(0, limit) : overlay;
+  const overlayLimited = safeSlice(overlay, limit);
 
   return { text: overlayLimited };
 };
