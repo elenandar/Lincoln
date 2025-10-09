@@ -46,13 +46,13 @@ console.log("");
 
 // Test 2: Pattern Building
 console.log("Test 2: Goal Patterns");
-if (LC.autoEvergreen && LC.autoEvergreen._buildPatterns) {
-  const patterns = LC.autoEvergreen._buildPatterns();
+if (LC.EvergreenEngine && LC.EvergreenEngine._buildPatterns) {
+  const patterns = LC.EvergreenEngine._buildPatterns();
   console.log("✓ Patterns built:", !!patterns);
   console.log("✓ Goal patterns exist:", Array.isArray(patterns.goals));
   console.log("✓ Goal patterns count:", patterns.goals ? patterns.goals.length : 0);
 } else {
-  console.log("✗ autoEvergreen._buildPatterns not available");
+  console.log("✗ EvergreenEngine._buildPatterns not available");
 }
 console.log("");
 
@@ -61,8 +61,8 @@ console.log("Test 3: Russian Goal Detection");
 L.evergreen = { enabled: true, relations: {}, status: {}, obligations: {}, facts: {}, history: [] };
 L.turn = 5;
 const testTextRu1 = "Максим хочет узнать правду о директоре.";
-if (LC.autoEvergreen?.analyzeForGoals) {
-  LC.autoEvergreen.analyzeForGoals(testTextRu1, "output");
+if (LC.GoalsEngine?.analyze) {
+  LC.GoalsEngine.analyze(testTextRu1, "output");
   const goalKeys = Object.keys(L.goals);
   console.log("✓ Goals detected:", goalKeys.length);
   if (goalKeys.length > 0) {
@@ -73,7 +73,7 @@ if (LC.autoEvergreen?.analyzeForGoals) {
     console.log("✓ Goal turnCreated:", firstGoal.turnCreated);
   }
 } else {
-  console.log("✗ analyzeForGoals not available");
+  console.log("✗ GoalsEngine.analyze not available");
 }
 console.log("");
 
@@ -82,8 +82,8 @@ console.log("Test 4: English Goal Detection");
 L.goals = {}; // Reset
 L.turn = 10;
 const testTextEn1 = "Chloe wants to win the competition.";
-if (LC.autoEvergreen?.analyzeForGoals) {
-  LC.autoEvergreen.analyzeForGoals(testTextEn1, "output");
+if (LC.GoalsEngine?.analyze) {
+  LC.GoalsEngine.analyze(testTextEn1, "output");
   const goalKeys = Object.keys(L.goals);
   console.log("✓ Goals detected:", goalKeys.length);
   if (goalKeys.length > 0) {
@@ -93,7 +93,7 @@ if (LC.autoEvergreen?.analyzeForGoals) {
     console.log("✓ Goal status:", firstGoal.status);
   }
 } else {
-  console.log("✗ analyzeForGoals not available");
+  console.log("✗ GoalsEngine.analyze not available");
 }
 console.log("");
 
@@ -102,8 +102,8 @@ console.log("Test 5: Context Overlay Integration");
 L.goals = {}; // Reset
 L.turn = 15;
 const testTextRu2 = "Максим решил отомстить директору за несправедливость.";
-if (LC.autoEvergreen?.analyzeForGoals) {
-  LC.autoEvergreen.analyzeForGoals(testTextRu2, "output");
+if (LC.GoalsEngine?.analyze) {
+  LC.GoalsEngine.analyze(testTextRu2, "output");
 }
 
 if (LC.composeContextOverlay) {
@@ -151,9 +151,9 @@ const testTexts = [
   "Ashley's goal is to help Максим."
 ];
 
-if (LC.autoEvergreen?.analyzeForGoals) {
+if (LC.GoalsEngine?.analyze) {
   testTexts.forEach((text, index) => {
-    LC.autoEvergreen.analyzeForGoals(text, "output");
+    LC.GoalsEngine.analyze(text, "output");
   });
   const goalCount = Object.keys(L.goals).length;
   console.log("✓ Total goals detected from various patterns:", goalCount);
@@ -162,7 +162,7 @@ if (LC.autoEvergreen?.analyzeForGoals) {
     console.log(`   - ${goal.character}: ${goal.text}`);
   });
 } else {
-  console.log("✗ analyzeForGoals not available");
+  console.log("✗ GoalsEngine.analyze not available");
 }
 console.log("");
 
