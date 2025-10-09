@@ -309,6 +309,7 @@ const args   = tokens.slice(1);
         L.tm = L.tm || {};
         L.tm.wantRecapTurn = 0;
         LC.lcSetFlag("doRecap", true);
+        clearCommandFlags({ preserveCycle: true });
         return replyStop("📋 Recap requested. Next output → draft.");
 
       case "/epoch":
@@ -316,6 +317,7 @@ const args   = tokens.slice(1);
         L.tm = L.tm || {};
         L.tm.wantRecapTurn = 0;
         LC.lcSetFlag("doEpoch", true);
+        clearCommandFlags({ preserveCycle: true });
         return replyStop("🗿 Epoch requested. Next output → draft.");
 
       case "/continue":

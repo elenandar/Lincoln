@@ -71,8 +71,6 @@ const modifier = function (text) {
     LC.lcWarn?.("Command+TASK collision: check /да handler clears isCmd before Context.");
   }
 
-  try { LC.Drafts?.applyPending?.(L, "output"); } catch(_) {}
-
   // Opening — первичный захват
   if (L.turn === 0 && !L.openingCaptured && !isRetry && clean.length > 20) {
     LC.captureOpeningFromOutput(clean);
