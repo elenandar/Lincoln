@@ -390,6 +390,55 @@ Contract:
       }
     });
 
+    // /secret
+    reg.set("/secret", {
+      description: "/secret <text> known_by: <Name1>, <Name2>, ... — add secret",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Secret command", stop: true };
+        
+        // Parse: /secret <text> known_by: <names>
+        const match = cmdRaw.match(/\/secret\s+(.+?)\s+known_by:\s*(.+)$/i);
+        if (!match) {
+          return LC.replyStop("❌ Usage: /secret <text> known_by: <Name1>, <Name2>, ...");
+        }
+        
+        const secretText = match[1].trim();
+        const knownByRaw = match[2].trim();
+        
+        if (!secretText || secretText.length < 5) {
+          return LC.replyStop("❌ Secret text too short (min 5 chars).");
+        }
+        
+        if (!knownByRaw) {
+          return LC.replyStop("❌ Must specify at least one character in known_by.");
+        }
+        
+        // Parse character names (comma-separated)
+        const knownByList = knownByRaw.split(/,\s*/).map(n => n.trim()).filter(n => n.length > 0);
+        
+        if (knownByList.length === 0) {
+          return LC.replyStop("❌ Must specify at least one character in known_by.");
+        }
+        
+        // Create secret object
+        const secretId = `secret_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const secret = {
+          id: secretId,
+          text: secretText,
+          known_by: knownByList
+        };
+        
+        // Add to secrets array
+        if (!Array.isArray(L.secrets)) L.secrets = [];
+        L.secrets.push(secret);
+        
+        const knownByStr = knownByList.join(", ");
+        return LC.replyStop(`🤫 Secret added (known by: ${knownByStr})`);
+      }
+    });
+
     // /antiecho
     reg.set("/antiecho", {
       description: "/antiecho on|off|sensitivity N (1-100)|mode soft|hard|stats|flush",
@@ -945,6 +994,9 @@ L.debugMode = toBool(L.debugMode, false);
       
       // character mood/status tracking
       L.character_status = L.character_status || {};
+      
+      // secrets tracking
+      L.secrets = Array.isArray(L.secrets) ? L.secrets : [];
       
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
@@ -2332,6 +2384,44 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     // ========== Mood Engine ==========
+    // ========== Knowledge Engine (Secrets System) ==========
+    KnowledgeEngine: {
+      // Extract character names from scene focus line
+      extractFocusCharacters(contextText){
+        if (!contextText) return [];
+        const focusMatch = contextText.match(/⟦SCENE⟧\s+Focus\s+on:\s*([^\n]+)/i);
+        if (!focusMatch) return [];
+        
+        const focusLine = focusMatch[1];
+        const characters = [];
+        const parts = focusLine.split(/,\s*/);
+        
+        for (let i = 0; i < parts.length; i++) {
+          const name = parts[i].trim();
+          if (name) characters.push(name);
+        }
+        
+        return characters;
+      },
+      
+      // Check if a secret should be visible to current focus
+      isSecretVisible(secret, focusCharacters){
+        if (!secret || !secret.known_by || !Array.isArray(secret.known_by)) return false;
+        if (!focusCharacters || focusCharacters.length === 0) return false;
+        
+        // Check if any focus character knows this secret
+        for (let i = 0; i < focusCharacters.length; i++) {
+          const focusChar = focusCharacters[i].toLowerCase().trim();
+          for (let j = 0; j < secret.known_by.length; j++) {
+            const knownBy = secret.known_by[j].toLowerCase().trim();
+            if (focusChar === knownBy) return true;
+          }
+        }
+        
+        return false;
+      }
+    },
+
     MoodEngine: {
       analyze(text){
         if (!text) return;
@@ -2913,6 +3003,30 @@ LC.composeContextOverlay = function(options) {
       }
     }
 
+    // Secrets (filtered by scene focus)
+    if (L.secrets && Array.isArray(L.secrets) && L.secrets.length > 0) {
+      // First, build preliminary context to check for scene focus
+      const prelimChars = LC.getActiveCharacters(10);
+      const HOT = LC.CONFIG?.CHAR_WINDOW_HOT ?? 3;
+      const focusChars = [];
+      if (prelimChars && prelimChars.length > 0) {
+        for (let i = 0; i < prelimChars.length; i++) {
+          const c = prelimChars[i];
+          if (c.turnsAgo <= HOT) focusChars.push(c.name);
+        }
+      }
+      
+      // Filter secrets based on who knows them
+      if (focusChars.length > 0) {
+        for (let i = 0; i < L.secrets.length; i++) {
+          const secret = L.secrets[i];
+          if (LC.KnowledgeEngine && LC.KnowledgeEngine.isSecretVisible(secret, focusChars)) {
+            priority.push(`⟦SECRET⟧ ${secret.text}`);
+          }
+        }
+      }
+    }
+
     const opening = LC.getOpeningLine?.() || "";
     if (opening) normal.push(opening);
 
@@ -2946,6 +3060,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦TASK⟧") === 0)   return 900;
       if (line.indexOf("⟦CANON⟧") === 0)  return 800;
       if (line.indexOf("⟦GOAL⟧") === 0)   return 750;
+      if (line.indexOf("⟦SECRET⟧") === 0) return 740;
       if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
       if (line.indexOf("⟦OPENING⟧") === 0)return 700;
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
@@ -2958,7 +3073,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, MOOD:0, OPENING:0, SCENE:0, META:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, MOOD:0, OPENING:0, SCENE:0, META:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
