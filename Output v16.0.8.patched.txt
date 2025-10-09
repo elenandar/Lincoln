@@ -154,6 +154,13 @@ const modifier = function (text) {
         LC.lcWarn("Post-analyze autoEvergreen error: " + (e && e.message));
       }
     }
+    if (autoEvergreen?.analyzeForGoals) {
+      try {
+        autoEvergreen.analyzeForGoals(out, lastActionType);
+      } catch (e) {
+        LC.lcWarn("Post-analyze analyzeForGoals error: " + (e && e.message));
+      }
+    }
   }
 
   // Авто-оффер recap и авто-epoch

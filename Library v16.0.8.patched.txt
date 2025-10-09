@@ -939,6 +939,9 @@ L.debugMode = toBool(L.debugMode, false);
         history: [], lastUpdate: 0
       };
       L.evergreen.history = Array.isArray(L.evergreen.history) ? L.evergreen.history : [];
+      
+      // goals tracking
+      L.goals = L.goals || {};
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
       const evergreenCapDefault = Number.isFinite(defaultEvergreenCapNum) ? defaultEvergreenCapNum : 0;
@@ -1429,7 +1432,7 @@ L.debugMode = toBool(L.debugMode, false);
     // ---------- Evergreen (patterns + fallback) ----------
     autoEvergreen: {
       _buildPatterns(){
-        const P = { relations:[], status:[], obligations:[], facts:[] };
+        const P = { relations:[], status:[], obligations:[], facts:[], goals:[] };
         const tryPush = (arr, src, flags, meta) => {
           try {
             const re = new RegExp(src, flags);
@@ -1515,6 +1518,28 @@ L.debugMode = toBool(L.debugMode, false);
           P.factsCues.push(/(?:важно|запомни|факт|итог|вывод)\s*[:\-]?\s*(.{8,280})/ig);
           P.factsCues.push(/(?:important|note|remember|fact|summary|takeaway)\s*[:\-]?\s*(.{8,280})/ig);
         }
+        
+        // GOALS - Russian patterns
+        P.goals = P.goals || [];
+        tryPush(P.goals, "(?:цель|задача)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:хочет|намерен(?:а)?|планирует|стремится|решил(?:а)?|мечтает)\\s+(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:его|её|ее|их)\\s+(?:цель|задача|план|мечта)\\s*[:\\-]?\\s*(.{8,200})", "giu");
+        // GOALS - English patterns
+        tryPush(P.goals, "(?:goal|objective|aim)\\s+(?:of\\s+)?([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:wants to|intends to|plans to|aims to|decided to|dreams of)\\s+(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})(?:'s)?\\s+(?:goal|objective|plan|dream)\\s*[:\\-]?\\s*(.{8,200})", "giu");
+        
+        // Fallback goal patterns for older regex engines
+        if (P.goals.length === 0) {
+          const LTR = "A-Za-zА-Яа-яЁё";
+          P.goals.push(new RegExp(`(?:цель|задача)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:хочет|намерен(?:а)?|планирует|стремится|решил(?:а)?|мечтает)\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:его|её|ее|их)\\s+(?:цель|задача|план|мечта)\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`(?:goal|objective|aim)\\s+(?:of\\s+)?([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:wants to|intends to|plans to|aims to|decided to|dreams of)\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})(?:'s)?\\s+(?:goal|objective|plan|dream)\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
+        }
+        
         return P;
       },
 
@@ -2128,6 +2153,58 @@ L.debugMode = toBool(L.debugMode, false);
         const L=LC.lcInit();
         L.evergreen = { enabled:true, relations:{}, status:{}, obligations:{}, facts:{}, history:[], lastUpdate:L.turn };
         LC.lcSys("Evergreen storage cleared.");
+      },
+      analyzeForGoals(text, actionType){
+        const L = LC.lcInit();
+        if (!this.patterns) this.patterns = this._buildPatterns();
+        if (!L.evergreen || !L.evergreen.enabled || actionType === "retry" || !text) return;
+        if (!Array.isArray(this.patterns.goals) || this.patterns.goals.length === 0) return;
+        
+        const originalText = String(text || "");
+        const T = LC._normUCached?.(text) ?? LC._normU(text);
+        
+        // GOALS
+        for (let i=0; i<this.patterns.goals.length; i++){
+          const p = this.patterns.goals[i];
+          p.lastIndex = 0;
+          let m;
+          try {
+            while ((m = p.exec(T)) !== null){
+              let charRaw = "";
+              let goalText = "";
+              
+              // Extract character and goal text from match groups
+              // Pattern can have character in group 1 or 2 depending on structure
+              if (m[1] && m[2]) {
+                // Most patterns: character in [1], goal in [2]
+                charRaw = String(m[1] || "").trim();
+                goalText = String(m[2] || "").trim();
+              }
+              
+              if (!charRaw || !goalText) continue;
+              
+              const character = this.normalizeCharName(charRaw);
+              if (!character || !this.isImportantCharacter(character)) continue;
+              
+              // Clean up goal text
+              goalText = goalText.replace(/[.,!?]+$/, "").trim();
+              if (goalText.length < 8 || goalText.length > 200) continue;
+              
+              // Create unique key for this goal
+              const goalKey = `${character}_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+              
+              // Store goal in state.lincoln.goals
+              L.goals[goalKey] = {
+                character: character,
+                text: goalText,
+                status: "active",
+                turnCreated: L.turn
+              };
+            }
+          } catch (err) {
+            LC.lcWarn?.(`Goal analysis regex error: ${err && err.message ? err.message : err}`);
+          }
+        }
       }
     },
     evergreenManualSet(L, category, key, value){
@@ -2606,6 +2683,25 @@ LC.composeContextOverlay = function(options) {
     const canon = LC.autoEvergreen?.getCanon?.() || "";
     if (canon) priority.push(`⟦CANON⟧ ${canon}`);
 
+    // Active goals (created within last 20 turns)
+    if (L.goals && typeof L.goals === 'object') {
+      const goalEntries = Object.entries(L.goals);
+      const activeGoals = [];
+      for (let i = 0; i < goalEntries.length; i++) {
+        const [key, goal] = goalEntries[i];
+        if (!goal || goal.status !== 'active') continue;
+        const turnsSince = L.turn - (goal.turnCreated || 0);
+        if (turnsSince >= 0 && turnsSince < 20) {
+          activeGoals.push(`${goal.character}: ${goal.text}`);
+        }
+      }
+      if (activeGoals.length > 0) {
+        for (let i = 0; i < activeGoals.length; i++) {
+          priority.push(`⟦GOAL⟧ Цель ${activeGoals[i]}`);
+        }
+      }
+    }
+
     const opening = LC.getOpeningLine?.() || "";
     if (opening) normal.push(opening);
 
@@ -2638,6 +2734,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦INTENT⟧") === 0) return 1000;
       if (line.indexOf("⟦TASK⟧") === 0)   return 900;
       if (line.indexOf("⟦CANON⟧") === 0)  return 800;
+      if (line.indexOf("⟦GOAL⟧") === 0)   return 750;
       if (line.indexOf("⟦OPENING⟧") === 0)return 700;
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
       if (line.indexOf("⟦SCENE⟧") === 0)  return 500;
@@ -2649,7 +2746,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, OPENING:0, SCENE:0, META:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, OPENING:0, SCENE:0, META:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
