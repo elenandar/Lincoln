@@ -474,15 +474,13 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     assertTurnInvariants(L, ctx){
-      try {
+      try{
         const isCmd = LC.lcGetFlag?.("isCmd", false);
         const isRetry = LC.lcGetFlag?.("isRetry", false);
-        const isContinue = LC.lcGetFlag?.("isContinue", false);
         const should = LC.shouldIncrementTurn?.() === true;
-        if (isCmd && should) LC.lcWarn?.("[TURN] would increment on command @"+ctx);
-        if (isRetry && should) LC.lcWarn?.("[TURN] would increment on retry @"+ctx);
-        if (isContinue && should) LC.lcWarn?.("[TURN] would increment on continue @"+ctx);
-      } catch(_) {}
+        if (isCmd && should)  LC.lcWarn?.("[TURN] would increment on command @"+ctx);
+        if (isRetry && should)LC.lcWarn?.("[TURN] would increment on retry @"+ctx);
+      }catch(_){ }
     },
 
     shouldIncrementTurn(){
