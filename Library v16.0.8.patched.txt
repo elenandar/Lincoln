@@ -2527,13 +2527,13 @@ LC.selfTest = function() {
     const epochDraft = baseL.epochDraft;
     push(Array.isArray(baseL.events), `events array (${Array.isArray(baseL.events) ? baseL.events.length : 'n/a'})`);
     push(typeof baseL.turn === 'number' && baseL.turn >= 0, `turn=${baseL.turn}`);
-    push(typeof this.lcGetFlag === 'function', 'flags API available');
+    push(typeof baseL.currentAction === 'object', 'currentAction object available');
     push(!recapDraft || typeof recapDraft === 'string' || typeof recapDraft.text === 'string', 'recapDraft text field');
     push(!epochDraft || typeof epochDraft === 'string' || typeof epochDraft.text === 'string', 'epochDraft text field');
     push(baseL.evergreen && Array.isArray(baseL.evergreen.history), 'evergreen.history is array');
-    const wantRecap = this.lcGetFlag ? this.lcGetFlag('wantRecap', false) : !!baseL.wantRecap;
-    const doRecap = this.lcGetFlag ? this.lcGetFlag('doRecap', false) : !!baseL.doRecap;
-    const doEpoch = this.lcGetFlag ? this.lcGetFlag('doEpoch', false) : !!baseL.doEpoch;
+    const wantRecap = baseL.currentAction?.wantRecap || false;
+    const doRecap = baseL.currentAction?.task === 'recap';
+    const doEpoch = baseL.currentAction?.task === 'epoch';
     push(!(wantRecap && doEpoch), 'flags: not both wantRecap and doEpoch');
 
     const self = this;
