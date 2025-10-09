@@ -917,11 +917,11 @@ L.debugMode = toBool(L.debugMode, false);
         const okO4Src = `([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+promised\\s+(?:(?:(${enRecipient})\\s+)?(.+?))(?:[.,!]|$)`;
         const okO4 = tryPush(P.obligations, okO4Src, "giu");
 
-        const okF1 = tryPush(P.facts, "важно:\\s*(.+?)(?:[.!]|$)", "giu");
-        const okF2 = tryPush(P.facts, "запомни:\\s*(.+?)(?:[.!]|$)", "giu");
-        const okF3 = tryPush(P.facts, "факт:\\s*(.+?)(?:[.!]|$)", "giu");
-        const okF4 = tryPush(P.facts, "important:\\s*(.+?)(?:[.!]|$)", "giu");
-        const okF5 = tryPush(P.facts, "remember:\\s*(.+?)(?:[.!]|$)", "giu");
+        const okF1 = tryPush(P.facts, "важно:\\s*([^.!\\n]+)", "giu");
+        const okF2 = tryPush(P.facts, "запомни:\\s*([^.!\\n]+)", "giu");
+        const okF3 = tryPush(P.facts, "факт:\\s*([^.!\\n]+)", "giu");
+        const okF4 = tryPush(P.facts, "important:\\s*([^.!\\n]+)", "giu");
+        const okF5 = tryPush(P.facts, "remember:\\s*([^.!\\n]+)", "giu");
 
         // EVG: colon-friendly fact cues (ru/en), ':' optional to survive _normU
         // Помечаем короткие явные подсказки пользователя на «сохранение факта»
@@ -958,11 +958,11 @@ L.debugMode = toBool(L.debugMode, false);
           P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+owes\\s+([${LTR}'-]+)\\s+(.+?)(?:[.,!]|$)`, "gi"));
           P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+promised\\s+(?:(?:(${enRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
 
-          P.facts.push(/важно:\s*(.+?)(?:[.!]|$)/ig);
-          P.facts.push(/запомни:\s*(.+?)(?:[.!]|$)/ig);
-          P.facts.push(/факт:\s*(.+?)(?:[.!]|$)/ig);
-          P.facts.push(/important:\s*(.+?)(?:[.!]|$)/ig);
-          P.facts.push(/remember:\s*(.+?)(?:[.!]|$)/ig);
+          P.facts.push(/важно:\s*([^.!\n]+)/ig);
+          P.facts.push(/запомни:\s*([^.!\n]+)/ig);
+          P.facts.push(/факт:\s*([^.!\n]+)/ig);
+          P.facts.push(/important:\s*([^.!\n]+)/ig);
+          P.facts.push(/remember:\s*([^.!\n]+)/ig);
           P.factsCues = P.factsCues || [];
           P.factsCues.push(/(?:важно|запомни|факт|итог|вывод)\s*[:\-]?\s*(.{8,280})/ig);
           P.factsCues.push(/(?:important|note|remember|fact|summary|takeaway)\s*[:\-]?\s*(.{8,280})/ig);
