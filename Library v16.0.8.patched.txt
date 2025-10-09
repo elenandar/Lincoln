@@ -111,22 +111,38 @@ Contract:
   LC.Flags ||= {};
   LC.Flags.clearCmd ||= function clearCmd(preserveCycle){
     try {
-      if (!preserveCycle) LC.lcSetFlag?.("__cmdCyclePending", false);
-      LC.lcSetFlag?.("isCmd", false);
-      LC.lcSetFlag?.("isRetry", false);
-      LC.lcSetFlag?.("isContinue", false);
+      const L = LC.lcInit ? LC.lcInit() : {};
+      if (!preserveCycle && L.currentAction) delete L.currentAction.__cmdCyclePending;
+      if (L.currentAction) {
+        if (L.currentAction.type === 'command') delete L.currentAction.type;
+        if (L.currentAction.type === 'retry') delete L.currentAction.type;
+        if (L.currentAction.type === 'continue') delete L.currentAction.type;
+      }
     } catch(_) {}
   };
   LC.Flags.setCmd ||= function setCmd(){
-    LC.lcSetFlag?.("isCmd", true);
-    LC.lcSetFlag?.("isRetry", false);
-    LC.lcSetFlag?.("isContinue", false);
+    try {
+      const L = LC.lcInit ? LC.lcInit() : {};
+      if (L.currentAction) {
+        L.currentAction.type = 'command';
+      }
+    } catch(_) {}
   };
   LC.Flags.queueRecap ||= function queueRecap(){
-    LC.lcSetFlag?.("doRecap", true);
+    try {
+      const L = LC.lcInit ? LC.lcInit() : {};
+      if (L.currentAction) {
+        L.currentAction.task = 'recap';
+      }
+    } catch(_) {}
   };
   LC.Flags.queueEpoch ||= function queueEpoch(){
-    LC.lcSetFlag?.("doEpoch", true);
+    try {
+      const L = LC.lcInit ? LC.lcInit() : {};
+      if (L.currentAction) {
+        L.currentAction.task = 'epoch';
+      }
+    } catch(_) {}
   };
 
   // --- SYS formatting helpers (shared by Input/Output) ---
@@ -185,7 +201,12 @@ Contract:
 
   // Turns facade (тонкая обёртка)
   LC.Turns ??= {
-    incIfNeeded(){ if (!LC.lcGetFlag?.("isCmd") && !LC.lcGetFlag?.("isRetry")) { const L=LC.lcInit(); L.turn=(L.turn|0)+1; } },
+    incIfNeeded(){ 
+      const L=LC.lcInit(); 
+      if (L.currentAction?.type !== 'command' && L.currentAction?.type !== 'retry') { 
+        L.turn=(L.turn|0)+1; 
+      } 
+    },
     set(n){ LC.turnSet?.(n); },
     undo(n){ LC.turnUndo?.(n); },
   };
@@ -298,10 +319,9 @@ Contract:
       handler(args, text) {
         const L = LC.lcInit();
         if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Recap command", stop: true };
-        LC.lcSetFlag("wantRecap", false);
+        L.currentAction = { type: 'story', task: 'recap' };
         L.tm = L.tm || {};
         L.tm.wantRecapTurn = 0;
-        LC.lcSetFlag("doRecap", true);
         LC.Flags?.clearCmd?.(true);
         return LC.replyStop("📋 Recap requested. Next output → draft.");
       }
@@ -313,10 +333,9 @@ Contract:
       handler(args, text) {
         const L = LC.lcInit();
         if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Epoch command", stop: true };
-        LC.lcSetFlag("wantRecap", false);
+        L.currentAction = { type: 'story', task: 'epoch' };
         L.tm = L.tm || {};
         L.tm.wantRecapTurn = 0;
-        LC.lcSetFlag("doEpoch", true);
         LC.Flags?.clearCmd?.(true);
         return LC.replyStop("🗿 Epoch requested. Next output → draft.");
       }
@@ -329,7 +348,7 @@ Contract:
         const L = LC.lcInit();
         if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Continue command", stop: true };
         if (L.recapDraft || L.epochDraft) {
-          LC.lcSetFlag?.("isCmd", true);
+          L.currentAction = { type: 'command', name: '/continue' };
           LC.Drafts?.applyPending?.(L, "input");
           return { text: "", stop: true };
         }
@@ -533,20 +552,22 @@ Contract:
         const cmdRaw = text || "";
         if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Retry command", stop: true };
         if (/\/retry\s+keep/i.test(cmdRaw)) {
-          LC.lcSetFlag("RETRY_KEEP_CONTEXT", true);
+          if (!L.currentAction) L.currentAction = {};
+          L.currentAction.RETRY_KEEP_CONTEXT = true;
           return LC.replyStop("🔁 Retry: keep context = ON.");
         }
         if (/\/retry\s+clear/i.test(cmdRaw)) {
-          LC.lcSetFlag("RETRY_KEEP_CONTEXT", false);
+          if (!L.currentAction) L.currentAction = {};
+          L.currentAction.RETRY_KEEP_CONTEXT = false;
           return LC.replyStop("🔁 Retry: keep context = OFF.");
         }
-        const keep = LC.lcGetFlag("RETRY_KEEP_CONTEXT", false);
+        const keep = L.currentAction?.RETRY_KEEP_CONTEXT || false;
         return LC.replyStop([
           "=== RETRY ===",
           `Consecutive: ${L.consecutiveRetries || 0}`,
           `Total: ${L.tm?.retries || 0}`,
           `Turn: ${L.turn}, LastProcessed: ${L.lastProcessedTurn}`,
-          `isRetry=${LC.lcGetFlag("isRetry", false)}, isContinue=${LC.lcGetFlag("isContinue", false)}`,
+          `isRetry=${L.currentAction?.type === 'retry'}, isContinue=${L.currentAction?.type === 'continue'}`,
           `Keep context: ${keep ? "ON" : "OFF"}`
         ].join("\n"));
       }
@@ -724,7 +745,7 @@ Contract:
           `Data: ${cfg.DATA_VERSION || "n/a"}`,
           `Cadence: ${L.cadence} (muteUntil=${L.recapMuteUntil ?? "-"}, sinceRecap=${(L.turn - (L.lastRecapTurn || 0)) || 0})`,
           `Anti-echo: ${anti}`,
-          `Flags: isCmd=${LC.lcGetFlag("isCmd",false)}, isRetry=${LC.lcGetFlag("isRetry",false)}, isContinue=${LC.lcGetFlag("isContinue",false)}, RETRY_KEEP_CONTEXT=${LC.lcGetFlag("RETRY_KEEP_CONTEXT",false)}`
+          `CurrentAction: type=${L.currentAction?.type || 'none'}, task=${L.currentAction?.task || 'none'}, RETRY_KEEP_CONTEXT=${L.currentAction?.RETRY_KEEP_CONTEXT || false}`
         ];
         const mods = (L && L._modsSeen) || {};
         const modList = Object.entries(mods).map(([k,v]) => `${k}:${v}`).join(", ");
@@ -734,7 +755,7 @@ Contract:
           try {
             LC.Flags?.clearCmd?.();
           } catch (_) {}
-          return !LC.lcGetFlag("isCmd", false) && !LC.lcGetFlag("isRetry", false) && !LC.lcGetFlag("isContinue", false);
+          return L.currentAction?.type !== 'command' && L.currentAction?.type !== 'retry' && L.currentAction?.type !== 'continue';
         })();
         const flagsResetStatus = flagsReset ? "ok" : "warn";
         out.push(`flagsReset=${flagsResetStatus}`);
@@ -847,7 +868,7 @@ Contract:
       L.turn = toNum(L.turn, 0);
       L.lastProcessedTurn = toNum(L.lastProcessedTurn, -1);
       L.lastActionType = toStr(L.lastActionType);
-      L.flags = L.flags || {};
+      L.currentAction = L.currentAction || {};
 
       // io
       L.lastInput = toStr(L.lastInput);
@@ -960,9 +981,6 @@ L.debugMode = toBool(L.debugMode, false);
     lcError(m)  { this.lcSys("❌ " + m); const L=this.lcInit(); L.tm.errors=(L.tm.errors||0)+1; },
     lcDebug(m)  { const L=this.lcInit(); if (L.debugMode) this.lcSys("🔍 " + m); },
     lcConsumeMsgs(){ const L=this.lcInit(); const a=L.sysMsgs.slice(); L.sysMsgs=[]; return a; },
-    // ---------- FLAGS ----------
-    lcSetFlag(k,v){ const L=this.lcInit(); L.flags[toStr(k)] = v; },
-    lcGetFlag(k,def){ const L=this.lcInit(); return (k in L.flags) ? L.flags[k] : def; },
 
     // ---------- Text utils ----------
     _normU(s){
@@ -1007,16 +1025,16 @@ L.debugMode = toBool(L.debugMode, false);
       if (isContinue){
         inputType = "continue";
         L.continueCount++; L.consecutiveRetries = 0;
-        this.lcSetFlag("isContinue", true); this.lcSetFlag("isRetry", false);
+        L.currentAction = { type: 'continue' };
       } else if (isRetry){
         inputType = "retry";
         L.consecutiveRetries++; L.continueCount = 0;
-        this.lcSetFlag("isRetry", true); this.lcSetFlag("isContinue", false);
+        L.currentAction = { type: 'retry' };
         L.tm.retries = (L.tm.retries || 0) + 1;
       } else {
         inputType = "new";
         L.consecutiveRetries = 0; L.continueCount = 0;
-        this.lcSetFlag("isRetry", false); this.lcSetFlag("isContinue", false);
+        L.currentAction = { type: 'story' };
         L.lastInput = toStr(raw);
       }
       L.lastActionType = inputType;
@@ -1025,8 +1043,8 @@ L.debugMode = toBool(L.debugMode, false);
 
     assertTurnInvariants(L, ctx){
       try{
-        const isCmd = LC.lcGetFlag?.("isCmd", false);
-        const isRetry = LC.lcGetFlag?.("isRetry", false);
+        const isCmd = L.currentAction?.type === 'command';
+        const isRetry = L.currentAction?.type === 'retry';
         const should = LC.shouldIncrementTurn?.() === true;
         if (isCmd && should)  LC.lcWarn?.("[TURN] would increment on command @"+ctx);
         if (isRetry && should)LC.lcWarn?.("[TURN] would increment on retry @"+ctx);
@@ -1034,8 +1052,9 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     shouldIncrementTurn(){
-      const isRetry = this.lcGetFlag("isRetry", false);
-      const isCmd   = this.lcGetFlag("isCmd", false);
+      const L = this.lcInit();
+      const isRetry = L.currentAction?.type === 'retry';
+      const isCmd   = L.currentAction?.type === 'command';
       // теперь: Continue = реальный ход; +1 только если не команда и не retry
       return !isCmd && !isRetry;
     },
@@ -2144,13 +2163,17 @@ L.debugMode = toBool(L.debugMode, false);
     },
     checkRecapOfferV2(){
       const L = this.lcInit();
-      if (this.lcGetFlag("isRetry", false) || this.lcGetFlag("isCmd", false)) return false;
+      if (L.currentAction?.type === 'retry' || L.currentAction?.type === 'command') return false;
       if (L.recapDraft || L.epochDraft) return false;
       if (L.turn < (L.recapMuteUntil || 0)) return false;
 
-      if (this.lcGetFlag("wantRecap", false)) {
+      const wantRecap = L.currentAction?.wantRecap || false;
+      if (wantRecap) {
         const since = L.turn - (L.tm.wantRecapTurn || L.turn);
-        if (since >= 3) { this.lcSetFlag("wantRecap", false); L.tm.wantRecapTurn = 0; }
+        if (since >= 3) { 
+          if (L.currentAction) L.currentAction.wantRecap = false;
+          L.tm.wantRecapTurn = 0; 
+        }
         else return false;
       }
 
@@ -2163,7 +2186,8 @@ L.debugMode = toBool(L.debugMode, false);
       const enoughCooldown = sinceLast >= Math.max(baseCooldown, cfgCooldown);
 
       if (score >= CONFIG.RECAP_V2.SCORE_THRESHOLD && enoughCooldown){
-        this.lcSetFlag("wantRecap", true);
+        if (!L.currentAction) L.currentAction = {};
+        L.currentAction.wantRecap = true;
         L.tm.wantRecapTurn = L.turn;
         if (L.sysShow) this.lcSys("🤖 Want a recap? Reply: /да, /нет, /позже.");
         return true;
@@ -2173,7 +2197,7 @@ L.debugMode = toBool(L.debugMode, false);
     checkAutoEpoch(){
       const L = this.lcInit();
       if (L && L.recapDraft) return false; // delay auto-epoch while recap draft pending
-      if (this.lcGetFlag("isRetry", false) || this.lcGetFlag("isCmd", false)) return false;
+      if (L.currentAction?.type === 'retry' || L.currentAction?.type === 'command') return false;
       if (L.epochDraft) return false;
 
       const t = L.turn || 0;
@@ -2188,7 +2212,8 @@ L.debugMode = toBool(L.debugMode, false);
       const high = score >= CONFIG.RECAP_V2.AUTO_EPOCH_SCORE;
 
       if (recentRecaps >= CONFIG.RECAP_V2.AUTO_EPOCH_MIN_RECAPS || high) {
-        this.lcSetFlag("doEpoch", true);
+        if (!L.currentAction) L.currentAction = {};
+        L.currentAction.task = 'epoch';
         this.pushNotice("🗿 Epoch scheduled for next turn.");
         if (L.sysShow) this.lcSys("🗿 Epoch scheduled automatically.");
         return true;
@@ -2339,9 +2364,10 @@ function turnSet(n) {
   }
 
       // clear flags on rewind
-    LC.lcSetFlag("wantRecap", false);
-    LC.lcSetFlag("doRecap", false);
-    LC.lcSetFlag("doEpoch", false);
+    if (L.currentAction) {
+      delete L.currentAction.wantRecap;
+      delete L.currentAction.task;
+    }
     this.lcSys(`↩️ Turn set to ${L.turn}.`);
     return L.turn;
 }
@@ -2376,10 +2402,10 @@ LC.composeContextOverlay = function(options) {
 
     if (L.lastIntent && L.lastIntent.length > 2) priority.push(`⟦INTENT⟧ ${L.lastIntent}`);
 
-    if (!LC.lcGetFlag("isCmd", false) && LC.lcGetFlag("doRecap", false)) {
+    if (L.currentAction?.type !== 'command' && L.currentAction?.task === 'recap') {
       priority.push("⟦TASK⟧ NOW WRITE A RECAP: Summarize the last 10–15 turns in 5–7 clear sentences, focusing on key events/relationships and current situation.");
     }
-    if (!LC.lcGetFlag("isCmd", false) && LC.lcGetFlag("doEpoch", false)) {
+    if (L.currentAction?.type !== 'command' && L.currentAction?.task === 'epoch') {
       priority.push("⟦TASK⟧ NOW WRITE AN EPOCH: Compress multiple recaps into 5–7 sentences with major consequences and status changes.");
     }
 
@@ -2477,12 +2503,7 @@ LC.migrateState = function(L) {
     if (!Array.isArray(L.evergreen.history)) L.evergreen.history = [];
     if (!L.tm || typeof L.tm !== 'object') L.tm = {};
     if (!Array.isArray(L.tm.recapTurns)) L.tm.recapTurns = [];
-    if (this.lcGetFlag) {
-      const norm = (v)=> v === true ? true : false;
-      if (typeof L.wantRecap !== 'undefined') L.wantRecap = norm(L.wantRecap);
-      if (typeof L.doRecap   !== 'undefined') L.doRecap   = norm(L.doRecap);
-      if (typeof L.doEpoch   !== 'undefined') L.doEpoch   = norm(L.doEpoch);
-    }
+    if (!L.currentAction || typeof L.currentAction !== 'object') L.currentAction = {};
   } catch(_) {}
 };
 
@@ -2506,13 +2527,13 @@ LC.selfTest = function() {
     const epochDraft = baseL.epochDraft;
     push(Array.isArray(baseL.events), `events array (${Array.isArray(baseL.events) ? baseL.events.length : 'n/a'})`);
     push(typeof baseL.turn === 'number' && baseL.turn >= 0, `turn=${baseL.turn}`);
-    push(typeof this.lcGetFlag === 'function', 'flags API available');
+    push(typeof baseL.currentAction === 'object', 'currentAction object available');
     push(!recapDraft || typeof recapDraft === 'string' || typeof recapDraft.text === 'string', 'recapDraft text field');
     push(!epochDraft || typeof epochDraft === 'string' || typeof epochDraft.text === 'string', 'epochDraft text field');
     push(baseL.evergreen && Array.isArray(baseL.evergreen.history), 'evergreen.history is array');
-    const wantRecap = this.lcGetFlag ? this.lcGetFlag('wantRecap', false) : !!baseL.wantRecap;
-    const doRecap = this.lcGetFlag ? this.lcGetFlag('doRecap', false) : !!baseL.doRecap;
-    const doEpoch = this.lcGetFlag ? this.lcGetFlag('doEpoch', false) : !!baseL.doEpoch;
+    const wantRecap = baseL.currentAction?.wantRecap || false;
+    const doRecap = baseL.currentAction?.task === 'recap';
+    const doEpoch = baseL.currentAction?.task === 'epoch';
     push(!(wantRecap && doEpoch), 'flags: not both wantRecap and doEpoch');
 
     const self = this;
@@ -2523,7 +2544,7 @@ LC.selfTest = function() {
       self._cmdSysSeq = 0;
       self._cmdSysSeen = undefined;
       const L = self.lcInit();
-      L.flags = L.flags || {};
+      L.currentAction = L.currentAction || {};
       L.sysMsgs = Array.isArray(L.sysMsgs) ? L.sysMsgs : [];
       return L;
     }
@@ -2567,7 +2588,7 @@ LC.selfTest = function() {
       L.turn = 12;
       L.recapDraft = { text: 'Recap draft body', turn: 11, window: [8, 11] };
       const beforeTurn = L.turn;
-      self.lcSetFlag('isCmd', true);
+      L.currentAction = { type: 'command', name: '/continue' };
       const first = self.Drafts.applyPending(L, 'selftest');
       const firstMsgs = self.lcConsumeMsgs();
       const sawDraftSaved = Array.isArray(firstMsgs) && firstMsgs.some((m) => /✅ Draft saved/i.test(m));
@@ -2583,7 +2604,7 @@ LC.selfTest = function() {
       const L = freshState();
       L.turn = 5;
       L.sysMsgs.push('⟦SYS⟧ Help block');
-      self.lcSetFlag('isCmd', true);
+      L.currentAction = { type: 'command', name: '/help' };
       const beforeTurn = L.turn;
       const should = self.shouldIncrementTurn();
       const first = self.lcConsumeMsgs();
@@ -2597,7 +2618,7 @@ LC.selfTest = function() {
       L.turn = 9;
       self.detectInputType('Первый ход');
       const type = self.detectInputType('Первый ход');
-      const isRetry = self.lcGetFlag('isRetry', false);
+      const isRetry = L.currentAction?.type === 'retry';
       const should = self.shouldIncrementTurn();
       const baseline = 'Baseline output sample';
       L.prevOutput = baseline;
@@ -2690,8 +2711,8 @@ LC.ctxPreview = function() {
     out.push(`⟦CONTEXT PREVIEW⟧ turn=${L.turn} limit=${LIMIT}`);
     if (L.lastIntent) out.push(`INTENT: ${String(L.lastIntent).slice(0,140)}…`);
     try {
-      const doRecap = LC.lcGetFlag ? LC.lcGetFlag("doRecap", false) : false;
-      const doEpoch = LC.lcGetFlag ? LC.lcGetFlag("doEpoch", false) : false;
+      const doRecap = L.currentAction?.task === 'recap';
+      const doEpoch = L.currentAction?.task === 'epoch';
       if (doRecap) out.push("TASK: Recap requested");
       if (doEpoch) out.push("TASK: Epoch requested");
     } catch(_){}

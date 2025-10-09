@@ -79,7 +79,8 @@ if (typeof LC === "undefined") return { text: String(text || "") };
     } catch (_) {}
     if (!preserveCycle) {
       try {
-        LC.lcSetFlag?.(CMD_CYCLE_FLAG, false);
+        const L = LC.lcInit ? LC.lcInit(__SCRIPT_SLOT__) : {};
+        if (L.currentAction) delete L.currentAction.__cmdCyclePending;
       } catch (_) {}
     }
   }
@@ -87,12 +88,14 @@ if (typeof LC === "undefined") return { text: String(text || "") };
   function setCommandMode(){
     try {
       LC.Flags?.setCmd?.();
-      LC.lcSetFlag?.(CMD_CYCLE_FLAG, true);
+      const L = LC.lcInit ? LC.lcInit(__SCRIPT_SLOT__) : {};
+      if (L.currentAction) L.currentAction.__cmdCyclePending = true;
     } catch (_) {}
   }
 function replyStop(msg){
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  LC.lcSetFlag?.("isCmd", true);
+  const L = LC.lcInit ? LC.lcInit(__SCRIPT_SLOT__) : {};
+  if (L.currentAction) L.currentAction.type = 'command';
   const line = LC.sysLine?.(msg) || "";
   try { LC.lcConsumeMsgs?.(); } catch(_) {} // очистка хвоста очереди
   return { text: line ? line + "\n" : "", stop: true };
@@ -100,7 +103,8 @@ function replyStop(msg){
 
 function replyStopSilent(){
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
-  LC.lcSetFlag?.("isCmd", true);
+  const L = LC.lcInit ? LC.lcInit(__SCRIPT_SLOT__) : {};
+  if (L.currentAction) L.currentAction.type = 'command';
   try { LC.lcConsumeMsgs?.(); } catch(_) {}
   return { text: "", stop: true };
 }
@@ -193,7 +197,7 @@ const args   = tokens.slice(1);
   if (cmd) {
     ensureCommandRegistryBypassGuard();
 
-    const wantRecap = LC.lcGetFlag("wantRecap", false);
+    const wantRecap = L.currentAction?.wantRecap || false;
 
     ensureSharedCommand("/help", buildHelpMessage);
     ensureSharedCommand("/h", buildHelpMessage);
@@ -203,7 +207,7 @@ const args   = tokens.slice(1);
     const def = LC.Commands?.get(cmd);
     if (def && typeof def.handler === "function") {
       if (def.bypass === true) {
-        LC.lcSetFlag?.("isCmd", true);
+        L.currentAction = { type: 'command', name: cmd };
         L.lastActionType = "command";
       } else {
         setCommandMode();
@@ -212,7 +216,7 @@ const args   = tokens.slice(1);
       try {
         const res = def.handler(args, text);
         if (def?.bypass) {
-          LC.lcSetFlag?.("isCmd", true);
+          L.currentAction = { type: 'command', name: cmd };
           L.lastActionType = "command";
         }
         return res;
@@ -225,7 +229,7 @@ const args   = tokens.slice(1);
     L.lastActionType = "command";
 
     if (def?.bypass) {
-      LC.lcSetFlag?.("isCmd", true);
+      L.currentAction = { type: 'command', name: cmd };
       L.lastActionType = "command";
     }
 
@@ -248,26 +252,30 @@ const args   = tokens.slice(1);
 
     // быстрые ответы на оффер recap
     if (cmd === "/да")   {
-      if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
+      if (!(typeof LC !== 'undefined' && L.currentAction && L.currentAction.wantRecap)) {
         return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
-      LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn;
-      LC.lcSetFlag("doRecap", true);
+      delete L.currentAction.wantRecap;
+      L.recapMuteUntil = L.turn;
+      L.currentAction = { type: 'story', task: 'recap' };
       clearCommandFlags({ preserveCycle: true }); // важно: снять isCmd до Context, но сохранить признак командного цикла
       return replyStop("📋 Recap will be generated.");
     }
     if (cmd === "/нет")  {
-      if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
+      if (!(typeof LC !== 'undefined' && L.currentAction && L.currentAction.wantRecap)) {
         return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
-      LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 5;
+      delete L.currentAction.wantRecap;
+      L.recapMuteUntil = L.turn + 5;
       return replyStop("🚫 Recap postponed for 5 turns.");
     }
     if (cmd === "/позже"){
-      if (!(typeof LC !== 'undefined' && LC.lcGetFlag && LC.lcGetFlag('wantRecap', wantRecap))) {
+      if (!(typeof LC !== 'undefined' && L.currentAction && L.currentAction.wantRecap)) {
         return replyStop('ℹ️ Нет активного оффера рекапа.');
       }
-      LC.lcSetFlag("wantRecap", false); L.recapMuteUntil = L.turn + 3; if (L.tm) L.tm.wantRecapTurn = 0;
+      delete L.currentAction.wantRecap;
+      L.recapMuteUntil = L.turn + 3; 
+      if (L.tm) L.tm.wantRecapTurn = 0;
       return replyStop("🕑 Recap later (3 turns).");
     }
 
@@ -286,8 +294,8 @@ const args   = tokens.slice(1);
   }
 
   // Не команда — Intent
-  const _isCont = LC.lcGetFlag("isContinue", false);
-const _isRet  = LC.lcGetFlag("isRetry", false);
+  const _isCont = L.currentAction?.type === 'continue';
+const _isRet  = L.currentAction?.type === 'retry';
 if (!_isCont && !_isRet && userText && userText.length > 0) L.lastIntent = userText.slice(0, 300);
   return { text: String(userText || "") };
 };
