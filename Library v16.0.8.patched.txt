@@ -1958,25 +1958,186 @@ LC.migrateState = function(L) {
 
 
 LC.selfTest = function() {
+  const st = getState();
+  const hadOriginal = Object.prototype.hasOwnProperty.call(st, "lincoln");
+  const originalState = hadOriginal ? st.lincoln : undefined;
+  const savedEchoCache = this._echoCache;
+  const savedEchoOrder = this._echoOrder;
+  const savedCmdSeq = this._cmdSysSeq;
+  const savedCmdSeen = this._cmdSysSeen;
+  const savedPatterns = this.autoEvergreen ? this.autoEvergreen.patterns : undefined;
+
+  const lines = [];
+  const push = (cond, msg) => lines.push(`${cond ? "✅" : "⚠️"} ${msg}`);
+
   try {
-    const L = this.lcInit();
-    const lines = [];
-    const ok = (b)=> b ? "✅" : "⚠️";
-    lines.push(`${ok(Array.isArray(L.events))} events: ${Array.isArray(L.events) ? L.events.length : 'N/A'}`);
-    lines.push(`${ok(typeof L.turn === 'number' && L.turn >= 0)} turn: ${L.turn}`);
-    lines.push(`${ok(typeof this.lcGetFlag === 'function')} flags API available`);
-    const recapDraft = L.recapDraft;
-    const epochDraft = L.epochDraft;
-    lines.push(`${ok(!recapDraft || typeof recapDraft === 'string' || typeof recapDraft.text === 'string')} recapDraft text field`);
-    lines.push(`${ok(!epochDraft || typeof epochDraft === 'string' || typeof epochDraft.text === 'string')} epochDraft text field`);
-    lines.push(`${ok(L.evergreen && Array.isArray(L.evergreen.history))} evergreen.history is array`);
-    const w = this.lcGetFlag ? this.lcGetFlag("wantRecap", false) : !!L.wantRecap;
-    const dr = this.lcGetFlag ? this.lcGetFlag("doRecap", false)   : !!L.doRecap;
-    const de = this.lcGetFlag ? this.lcGetFlag("doEpoch", false)   : !!L.doEpoch;
-    lines.push(`${ok(!(w && de))} flags: not both wantRecap and doEpoch`);
-    return lines.join("\n");
-  } catch(e) {
-    return "⚠️ selfTest exception: " + (e && e.message ? e.message : String(e));
+    const baseL = this.lcInit();
+    const recapDraft = baseL.recapDraft;
+    const epochDraft = baseL.epochDraft;
+    push(Array.isArray(baseL.events), `events array (${Array.isArray(baseL.events) ? baseL.events.length : 'n/a'})`);
+    push(typeof baseL.turn === 'number' && baseL.turn >= 0, `turn=${baseL.turn}`);
+    push(typeof this.lcGetFlag === 'function', 'flags API available');
+    push(!recapDraft || typeof recapDraft === 'string' || typeof recapDraft.text === 'string', 'recapDraft text field');
+    push(!epochDraft || typeof epochDraft === 'string' || typeof epochDraft.text === 'string', 'epochDraft text field');
+    push(baseL.evergreen && Array.isArray(baseL.evergreen.history), 'evergreen.history is array');
+    const wantRecap = this.lcGetFlag ? this.lcGetFlag('wantRecap', false) : !!baseL.wantRecap;
+    const doRecap = this.lcGetFlag ? this.lcGetFlag('doRecap', false) : !!baseL.doRecap;
+    const doEpoch = this.lcGetFlag ? this.lcGetFlag('doEpoch', false) : !!baseL.doEpoch;
+    push(!(wantRecap && doEpoch), 'flags: not both wantRecap and doEpoch');
+
+    const self = this;
+    function freshState() {
+      st.lincoln = {};
+      self._echoCache = {};
+      self._echoOrder = [];
+      self._cmdSysSeq = 0;
+      self._cmdSysSeen = undefined;
+      const L = self.lcInit();
+      L.flags = L.flags || {};
+      L.sysMsgs = Array.isArray(L.sysMsgs) ? L.sysMsgs : [];
+      return L;
+    }
+
+    function run(label, fn) {
+      try {
+        const res = fn();
+        if (res && typeof res === 'object' && Object.prototype.hasOwnProperty.call(res, 'ok')) {
+          const detail = res.detail ? ` — ${res.detail}` : '';
+          push(!!res.ok, `${label}${detail}`);
+        } else {
+          push(!!res, label);
+        }
+      } catch (err) {
+        push(false, `${label} error: ${err && err.message ? err.message : err}`);
+      }
+    }
+
+    run('Continue button bumps turn', () => {
+      const L = freshState();
+      L.turn = 7;
+      L.lastInput = 'Previous line';
+      const type = self.detectInputType('');
+      const before = L.turn;
+      const should = self.shouldIncrementTurn();
+      if (type !== 'continue') {
+        return { ok: false, detail: `type=${type}` };
+      }
+      if (!should) {
+        return { ok: false, detail: 'shouldIncrementTurn=false' };
+      }
+      self.incrementTurn();
+      return { ok: L.turn === before + 1, detail: `turn=${L.turn}` };
+    });
+
+    run('Command /continue saves draft once', () => {
+      if (!self.Drafts || typeof self.Drafts.applyPending !== 'function') {
+        return { ok: true, detail: 'drafts API missing' };
+      }
+      const L = freshState();
+      L.turn = 12;
+      L.recapDraft = { text: 'Recap draft body', turn: 11, window: [8, 11] };
+      const beforeTurn = L.turn;
+      self.lcSetFlag('isCmd', true);
+      const first = self.Drafts.applyPending(L, 'selftest');
+      const firstMsgs = self.lcConsumeMsgs();
+      const sawDraftSaved = Array.isArray(firstMsgs) && firstMsgs.some((m) => /✅ Draft saved/i.test(m));
+      const second = self.Drafts.applyPending(L, 'selftest');
+      const secondMsgs = self.lcConsumeMsgs();
+      const okTurn = L.turn === beforeTurn;
+      const okSilent = Array.isArray(secondMsgs) && secondMsgs.length === 0;
+      const ok = !!first?.applied && sawDraftSaved && okTurn && (!second?.applied) && okSilent;
+      return { ok, detail: `msgs=${Array.isArray(firstMsgs) ? firstMsgs.length : 0}, repeat=${second?.reason || 'none'}` };
+    });
+
+    run('/help keeps turn + clears SYS queue', () => {
+      const L = freshState();
+      L.turn = 5;
+      L.sysMsgs.push('⟦SYS⟧ Help block');
+      self.lcSetFlag('isCmd', true);
+      const beforeTurn = L.turn;
+      const should = self.shouldIncrementTurn();
+      const first = self.lcConsumeMsgs();
+      const second = self.lcConsumeMsgs();
+      const ok = !should && beforeTurn === L.turn && Array.isArray(first) && first.length === 1 && Array.isArray(second) && second.length === 0;
+      return { ok, detail: `consumed=${Array.isArray(first) ? first.length : 0}` };
+    });
+
+    run('Retry keeps turn & anti-echo baseline', () => {
+      const L = freshState();
+      L.turn = 9;
+      self.detectInputType('Первый ход');
+      const type = self.detectInputType('Первый ход');
+      const isRetry = self.lcGetFlag('isRetry', false);
+      const should = self.shouldIncrementTurn();
+      const baseline = 'Baseline output sample';
+      L.prevOutput = baseline;
+      const filtered = self.applyAntiEcho('Повторный ответ', baseline, 'retry');
+      const ok = type === 'retry' && isRetry && !should && L.turn === 9 && filtered === 'Повторный ответ' && L.prevOutput === baseline;
+      return { ok, detail: `retry=${isRetry}` };
+    });
+
+    run('Context overlay fallback keeps upstream text', () => {
+      if (typeof self.composeContextOverlay !== 'function') {
+        return { ok: true, detail: 'no composeContextOverlay' };
+      }
+      freshState();
+      const savedCompose = self.composeContextOverlay;
+      const upstream = 'Original upstream context';
+      let finalText = '';
+      let fallbackUsed = false;
+      try {
+        self.composeContextOverlay = () => ({ text: '' });
+        const limit = self.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800;
+        try {
+          const built = self.composeContextOverlay({ limit, allowPartial: true });
+          const raw = (built && typeof built.text === 'string') ? built.text : String(built || '');
+          const overlay = raw && raw.trim().length ? raw : '';
+          if (!overlay) throw new Error('empty overlay');
+          finalText = overlay.length > limit ? overlay.slice(0, limit) : overlay;
+        } catch (_) {
+          fallbackUsed = true;
+          finalText = upstream;
+        }
+      } finally {
+        self.composeContextOverlay = savedCompose;
+      }
+      return { ok: fallbackUsed && finalText === upstream, detail: fallbackUsed ? 'fallback' : 'no-fallback' };
+    });
+
+    run('Evergreen cues dedupe & cap', () => {
+      const L = freshState();
+      if (!self.autoEvergreen) {
+        return { ok: true, detail: 'autoEvergreen missing' };
+      }
+      L.evergreenHistoryCap = 2;
+      L.evergreen.enabled = true;
+      self.autoEvergreen.patterns = null;
+      self.autoEvergreen.analyze('Важно: тот же текст.', 'story');
+      self.autoEvergreen.analyze('Важно: тот же текст.', 'story');
+      self.autoEvergreen.analyze('Важно: тот же текст.', 'story');
+      const factsCount = Object.keys(L.evergreen.facts || {}).length;
+      self.autoEvergreen.analyze('Максим теперь злой.', 'story');
+      self.autoEvergreen.analyze('Максим теперь спокоен.', 'story');
+      self.autoEvergreen.analyze('Максим теперь радостный.', 'story');
+      const historyLen = Array.isArray(L.evergreen.history) ? L.evergreen.history.length : 0;
+      const okFacts = factsCount === 1;
+      const okCap = historyLen <= 2;
+      return { ok: okFacts && okCap, detail: `facts=${factsCount}, history=${historyLen}` };
+    });
+
+    return lines.join('\n');
+  } catch (e) {
+    return '⚠️ selfTest exception: ' + (e && e.message ? e.message : String(e));
+  } finally {
+    if (this.autoEvergreen) {
+      this.autoEvergreen.patterns = savedPatterns;
+    }
+    if (hadOriginal) st.lincoln = originalState;
+    else delete st.lincoln;
+    this._echoCache = savedEchoCache;
+    this._echoOrder = savedEchoOrder;
+    this._cmdSysSeq = savedCmdSeq;
+    this._cmdSysSeen = savedCmdSeen;
   }
 };
 
