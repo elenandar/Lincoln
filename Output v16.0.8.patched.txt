@@ -4,7 +4,11 @@ Contract:
 - Reads flags: ...
 - Writes flags: ...
 - Entry points: ...
-- Invariants: recap/epoch reset only on non-command path; retry baseline preserved; command bypass on marked handlers.
+- Invariants:
+  - Turn +1 on story input and the UI Continue button.
+  - Turn +0 on slash commands (including `/continue`) and retries.
+  - `/continue` slash command accepts recap/epoch drafts (not the UI button).
+  - Context overlay falls back to upstream text when empty or on error.
 - Config: LIMITS.*, CHAR_WINDOW_*, FEATURES.*, OUTPUT_BUDGET_MS (optional)
 */
 // === OUTPUT MODIFIER v16.0.8-compat6d ===
