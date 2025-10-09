@@ -54,20 +54,20 @@ const modifier = function (text) {
   }
 
 
-  const isCmd = LC.lcGetFlag("isCmd", false);
-  const cmdCyclePending = LC.lcGetFlag(CMD_CYCLE_FLAG, false);
-  const isRetry = LC.lcGetFlag("isRetry", false);
-  const wantsRecap = LC.lcGetFlag("doRecap", false);
-  const wantsEpoch = LC.lcGetFlag("doEpoch", false);
+  const isCmd = L.currentAction?.type === 'command';
+  const cmdCyclePending = L.currentAction?.__cmdCyclePending || false;
+  const isRetry = L.currentAction?.type === 'retry';
+  const wantsRecap = L.currentAction?.task === 'recap';
+  const wantsEpoch = L.currentAction?.task === 'epoch';
   // Derive lastActionType for analysis
   const lastActionType =
     (L && L.lastActionType) ||
     (isRetry ? "retry"
-             : (LC.lcGetFlag?.("isContinue", false) ? "continue"
-                : (LC.lcGetFlag?.("isCmd", false) ? "command" : "story")));
+             : (L.currentAction?.type === 'continue' ? "continue"
+                : (L.currentAction?.type === 'command' ? "command" : "story")));
   const isCommandAction = lastActionType === "command" || cmdCyclePending || isCmd;
 
-  if (LC.lcGetFlag?.("isCmd", false) && (LC.lcGetFlag?.("doRecap", false) || LC.lcGetFlag?.("doEpoch", false))) {
+  if (L.currentAction?.type === 'command' && (L.currentAction?.task === 'recap' || L.currentAction?.task === 'epoch')) {
     LC.lcWarn?.("Command+TASK collision: check /да handler clears isCmd before Context.");
   }
 
@@ -79,7 +79,9 @@ const modifier = function (text) {
   // Командный ответ: обработка /continue → SYS
   if (isCmd || cmdCyclePending) {
     const msgs = LC.lcConsumeMsgs?.() || [];
-    try { LC.lcSetFlag?.(CMD_CYCLE_FLAG, false); } catch (_) {}
+    try { 
+      if (L.currentAction) delete L.currentAction.__cmdCyclePending;
+    } catch (_) {}
     LC.Flags?.clearCmd?.(); // страховочный сброс, чтобы не «залипнуть» в командном режиме
     if (!msgs.length) return { text: "" }; // Командный ответ уже был показан на Input-стадии → молчим
 
@@ -92,12 +94,12 @@ const modifier = function (text) {
     return { text: body };
   }
 
-  if (wantsRecap) LC.lcSetFlag("doRecap", false);
-  if (wantsEpoch) LC.lcSetFlag("doEpoch", false);
+  if (wantsRecap && L.currentAction) delete L.currentAction.task;
+  if (wantsEpoch && L.currentAction) delete L.currentAction.task;
 
   LC.assertTurnInvariants?.(L, "output:pre-inc");
   // Инкремент хода на реальном действии
-  if (!isRetry && !LC.lcGetFlag?.("isCmd", false) && LC.shouldIncrementTurn()) {
+  if (!isRetry && L.currentAction?.type !== 'command' && LC.shouldIncrementTurn()) {
     LC.incrementTurn();
   }
   L.lastOutput = clean;

@@ -19,16 +19,16 @@ const modifier = function (text) {
   
   if (typeof LC === "undefined") return { text: String(text || "") };
 
-  const RETRY_KEEP_CONTEXT = (LC.lcGetFlag?.('RETRY_KEEP_CONTEXT', false) === true);
-  LC.DATA_VERSION = "16.0.8-compat6d";
   const L = LC.lcInit(__SCRIPT_SLOT__);
+  const RETRY_KEEP_CONTEXT = (L.currentAction?.RETRY_KEEP_CONTEXT === true);
+  LC.DATA_VERSION = "16.0.8-compat6d";
 
-  const isRetry = LC.lcGetFlag?.("isRetry", false) ?? false;
+  const isRetry = L.currentAction?.type === 'retry';
   if (isRetry && !RETRY_KEEP_CONTEXT) return { text: String(text || "") };
 
-  const isCmd = LC.lcGetFlag?.("isCmd", false) ?? false;
-  const wantsRecap = LC.lcGetFlag?.("doRecap", false) ?? false;
-  const wantsEpoch = LC.lcGetFlag?.("doEpoch", false) ?? false;
+  const isCmd = L.currentAction?.type === 'command';
+  const wantsRecap = L.currentAction?.task === 'recap';
+  const wantsEpoch = L.currentAction?.task === 'epoch';
 
   // Если это чистая команда (нет задач на драфты) — не трать бюджет на сборку оверлея
   if (isCmd && !wantsRecap && !wantsEpoch) {
