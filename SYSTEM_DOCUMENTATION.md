@@ -1375,7 +1375,9 @@ state.lincoln.rumors = [
     turn: 10,                  // When rumor originated
     knownBy: ['Эшли', 'София'], // Characters who know this rumor
     distortion: 0.5,           // Cumulative distortion (0-10+)
-    verified: false            // Whether rumor is confirmed
+    verified: false,           // Whether rumor is confirmed
+    status: 'ACTIVE',          // ACTIVE, FADED, or ARCHIVED
+    fadedAtTurn: 25            // Turn when status became FADED (optional)
   }
 ];
 ```
@@ -1487,6 +1489,74 @@ Output: ⭐ Максим: 72/100 (Good)
 ```
 Example: /reputation set Максим 90
 Output: ✅ Reputation set: Максим = 90
+```
+
+#### Rumor Lifecycle
+
+**Purpose:** Manages rumor lifecycle to prevent state bloat and maintain performance in long-running games.
+
+**Lifecycle Stages:**
+
+1. **ACTIVE** (Default)
+   - Newly created rumors start in this state
+   - Can be spread between characters
+   - Included in analysis and propagation
+   - Transition: When 75% of characters know the rumor → FADED
+
+2. **FADED**
+   - Rumor is widely known and no longer spreads
+   - Cannot be propagated to new characters
+   - Marked with `fadedAtTurn` timestamp
+   - Transition: After 50 turns in FADED state → ARCHIVED
+
+3. **ARCHIVED**
+   - Rumor is removed from `L.rumors` array
+   - Automatically cleaned up by garbage collector
+   - Cannot be recovered
+
+**Garbage Collection (GossipGC):**
+
+The `LC.GossipEngine.runGarbageCollection()` function manages the rumor lifecycle:
+
+- **Triggers:**
+  - Every 25 turns (`L.turn % 25 === 0`)
+  - When rumors array exceeds 100 items (`L.rumors.length > 100`)
+
+- **Process:**
+  1. Check each ACTIVE rumor for knowledge threshold (75% of characters)
+  2. Mark qualifying rumors as FADED, add `fadedAtTurn` field
+  3. Check each FADED rumor for age (50+ turns since fading)
+  4. Mark old rumors as ARCHIVED
+  5. Filter out all ARCHIVED rumors from array
+  6. Log summary to director level
+
+**Configuration:**
+```javascript
+const KNOWLEDGE_THRESHOLD = 0.75;  // 75% of characters must know
+const FADE_AGE_THRESHOLD = 50;     // 50 turns before archival
+```
+
+**Example:**
+```javascript
+// Turn 10: Rumor created (ACTIVE)
+rumor = { status: 'ACTIVE', knownBy: ['A'], turn: 10 }
+
+// Turn 15: 75% know it (ACTIVE → FADED)
+rumor = { status: 'FADED', knownBy: ['A','B','C'], fadedAtTurn: 15 }
+
+// Turn 65: 50 turns passed (FADED → ARCHIVED → Removed)
+// Rumor no longer exists in L.rumors
+```
+
+**State Structure:**
+```javascript
+{
+  id: 'rumor_123',
+  text: 'Макс поцеловал Хлою',
+  status: 'ACTIVE',      // or 'FADED', 'ARCHIVED'
+  fadedAtTurn: 25,       // Added when status becomes FADED
+  // ... other fields
+}
 ```
 
 #### Integration with Other Systems

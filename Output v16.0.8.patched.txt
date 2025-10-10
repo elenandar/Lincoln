@@ -168,6 +168,15 @@ const modifier = function (text) {
     } catch (e) {
       LC.lcWarn("Post-analyze TimeEngine error: " + (e && e.message));
     }
+    try {
+      // Run garbage collection periodically
+      if (L.turn % 25 === 0 || (L.rumors && L.rumors.length > 100)) {
+        LC.GossipEngine?.runGarbageCollection?.();
+        LC.lcSys({ text: "Проведена плановая очистка слухов.", level: 'director' });
+      }
+    } catch (e) {
+      LC.lcWarn("GossipGC error: " + (e && e.message));
+    }
   }
 
   // Авто-оффер recap и авто-epoch
