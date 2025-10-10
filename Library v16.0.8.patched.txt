@@ -1060,6 +1060,9 @@ Contract:
       L.version = CONFIG.VERSION;
       // echo cache auto-flush on new session
       try { if ((L.turn|0) <= 0) { this._echoCache = {}; this._echoOrder = []; } } catch(_) {}
+      
+      // stateVersion counter for context caching
+      L.stateVersion = L.stateVersion || 0;
 
 
       // turn/flags
@@ -2073,6 +2076,9 @@ L.debugMode = toBool(L.debugMode, false);
               }
             }
             box[key] = val;
+            
+            // Increment stateVersion to invalidate context cache
+            L.stateVersion++;
           }
         }
 
@@ -2365,6 +2371,127 @@ L.debugMode = toBool(L.debugMode, false);
       }
     },
 
+    // ========== Unified Analyzer ==========
+    UnifiedAnalyzer: {
+      patterns: null,
+      
+      _buildUnifiedPatterns(){
+        // Get patterns from EvergreenEngine
+        const autoEvergreen = LC.EvergreenEngine;
+        if (!autoEvergreen) return [];
+        if (!autoEvergreen.patterns) autoEvergreen.patterns = autoEvergreen._buildPatterns();
+        
+        const unified = [];
+        const P = autoEvergreen.patterns;
+        
+        // Add goals patterns
+        if (Array.isArray(P.goals)) {
+          for (let i = 0; i < P.goals.length; i++) {
+            unified.push({
+              pattern: P.goals[i],
+              engine: 'GoalsEngine',
+              category: 'goals'
+            });
+          }
+        }
+        
+        // Add relations patterns
+        if (Array.isArray(P.relations)) {
+          for (let i = 0; i < P.relations.length; i++) {
+            unified.push({
+              pattern: P.relations[i],
+              engine: 'EvergreenEngine',
+              category: 'relations',
+              metadata: P.relations[i]._relPattern
+            });
+          }
+        }
+        
+        // Add status patterns
+        if (Array.isArray(P.status)) {
+          for (let i = 0; i < P.status.length; i++) {
+            unified.push({
+              pattern: P.status[i],
+              engine: 'EvergreenEngine',
+              category: 'status'
+            });
+          }
+        }
+        
+        // Add obligations patterns
+        if (Array.isArray(P.obligations)) {
+          for (let i = 0; i < P.obligations.length; i++) {
+            unified.push({
+              pattern: P.obligations[i],
+              engine: 'EvergreenEngine',
+              category: 'obligations'
+            });
+          }
+        }
+        
+        // Add facts patterns
+        if (Array.isArray(P.facts)) {
+          for (let i = 0; i < P.facts.length; i++) {
+            unified.push({
+              pattern: P.facts[i],
+              engine: 'EvergreenEngine',
+              category: 'facts'
+            });
+          }
+        }
+        
+        // Add factsCues patterns
+        if (Array.isArray(P.factsCues)) {
+          for (let i = 0; i < P.factsCues.length; i++) {
+            unified.push({
+              pattern: P.factsCues[i],
+              engine: 'EvergreenEngine',
+              category: 'factsCues'
+            });
+          }
+        }
+        
+        return unified;
+      },
+      
+      analyze(text, actionType){
+        const L = LC.lcInit();
+        if (!text) return;
+        if (!L.evergreen || !L.evergreen.enabled || actionType === "retry") return;
+        
+        // Build patterns on first use
+        if (!this.patterns) {
+          this.patterns = this._buildUnifiedPatterns();
+        }
+        
+        // Delegate to individual engines for now
+        // The unified analyzer collects patterns but engines do the heavy processing
+        try {
+          LC.EvergreenEngine?.analyze?.(text, actionType);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer EvergreenEngine error: " + (e && e.message));
+        }
+        
+        try {
+          LC.GoalsEngine?.analyze?.(text, actionType);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer GoalsEngine error: " + (e && e.message));
+        }
+        
+        try {
+          LC.MoodEngine?.analyze?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer MoodEngine error: " + (e && e.message));
+        }
+        
+        try {
+          LC.RelationsEngine?.analyze?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer RelationsEngine error: " + (e && e.message));
+        }
+      }
+    },
+
     // ========== Goals Engine ==========
     GoalsEngine: {
       analyze(text, actionType){
@@ -2415,6 +2542,9 @@ L.debugMode = toBool(L.debugMode, false);
                 status: "active",
                 turnCreated: L.turn
               };
+              
+              // Increment stateVersion to invalidate context cache
+              L.stateVersion++;
             }
           } catch (err) {
             LC.lcWarn?.(`Goal analysis regex error: ${err && err.message ? err.message : err}`);
@@ -2525,6 +2655,9 @@ L.debugMode = toBool(L.debugMode, false);
                     
                     L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, currentVal1to2 + modifier));
                     L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, currentVal2to1 + modifier));
+                    
+                    // Increment stateVersion to invalidate context cache
+                    L.stateVersion++;
                   }
                   break;
                 }
@@ -2701,6 +2834,9 @@ L.debugMode = toBool(L.debugMode, false);
                   reason: reason,
                   expires: expires
                 };
+                
+                // Increment stateVersion to invalidate context cache
+                L.stateVersion++;
                 
                 break; // Found a mood for this sentence
               }
@@ -3126,6 +3262,17 @@ LC.composeContextOverlay = function(options) {
   const opts = (options && typeof options === "object") ? options : {};
   try {
     const L = LC.lcInit();
+    
+    // Context caching: Check if we can return cached result
+    if (!LC._contextCache) LC._contextCache = {};
+    const cacheKey = JSON.stringify(opts);
+    const cached = LC._contextCache[cacheKey];
+    
+    if (cached && cached.stateVersion === L.stateVersion) {
+      // State hasn't changed, return cached context
+      return cached.result;
+    }
+    
     const priority = [];
     const normal = [];
 
@@ -3324,7 +3471,17 @@ LC.composeContextOverlay = function(options) {
       const tag = (line.match(/^⟦([A-Z]+)⟧/)||[])[1] || "GUIDE";
       parts[tag] = (parts[tag]||0) + line.length + nl.length;
     }
-    return { text, parts, max:MAX };
+    
+    const result = { text, parts, max:MAX };
+    
+    // Cache the result for future use
+    if (!LC._contextCache) LC._contextCache = {};
+    LC._contextCache[cacheKey] = {
+      stateVersion: L.stateVersion,
+      result: result
+    };
+    
+    return result;
   } catch(e) {
     const err = e && e.message ? e.message : String(e);
     return { text:"", parts:{}, max:0, error:err };
