@@ -1280,7 +1280,8 @@ Contract:
     DECAY_HALF_LIFE: 12,
     WEIGHTS: {
       conflict: 1.0, romance: 1.2, authority: 0.8, achievement: 0.9,
-      reveal: 1.1, location: 0.4, timeskip: 0.5, betrayal: 1.3, loyalty: 0.9
+      reveal: 1.1, location: 0.4, timeskip: 0.5, betrayal: 1.3, loyalty: 0.9,
+      social_upheaval: 1.4, secret_reveal: 1.5, goal_outcome: 1.2, dramatic: 1.6
     },
     HOT_NPC_BONUS: 0.25,
     AUTO_EPOCH_SCORE: 1.5,
@@ -2023,14 +2024,10 @@ L.debugMode = toBool(L.debugMode, false);
 
         const okR1 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+и\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)", "giu", { _relPattern: "pairRu" });
         const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu", { _relPattern: "verbRu" });
-        const okR3 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+and\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)", "giu", { _relPattern: "pairEn" });
-        const okR4 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu", { _relPattern: "verbEn" });
 
         const okS1 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)", "giu");
         const okS2 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
         const okS3 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
-        const okS4 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)", "giu");
-        const okS5 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)", "giu");
 
         const ruRecipient = "(?:[\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2}|ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас)";
         const enRecipient = "(?:(?:(?!(?:to|that)\\b)[\\p{L}'-]+(?:\\s+(?!(?:to|that)\\b)[\\p{L}'-]+){0,2})|him|her|them|you|us|me)";
@@ -2039,70 +2036,60 @@ L.debugMode = toBool(L.debugMode, false);
         const okO1 = tryPush(P.obligations, okO1Src, "giu");
         const okO2Src = `([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+обещал(?:а)?\\s+(?:(?:(${ruRecipient})\\s+)?(.+?))(?:[.,!]|$)`;
         const okO2 = tryPush(P.obligations, okO2Src, "giu");
-        const okO3 = tryPush(P.obligations, "([\\p{L}'-]+)\\s+owes\\s+([\\p{L}'-]+)\\s+(.+?)(?:[.,!]|$)", "giu");
-        const okO4Src = `([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+promised\\s+(?:(?:(${enRecipient})\\s+)?(.+?))(?:[.,!]|$)`;
-        const okO4 = tryPush(P.obligations, okO4Src, "giu");
 
         const okF1 = tryPush(P.facts, "важно:\\s*([^.!\\n]+)", "giu");
         const okF2 = tryPush(P.facts, "запомни:\\s*([^.!\\n]+)", "giu");
         const okF3 = tryPush(P.facts, "факт:\\s*([^.!\\n]+)", "giu");
-        const okF4 = tryPush(P.facts, "important:\\s*([^.!\\n]+)", "giu");
-        const okF5 = tryPush(P.facts, "remember:\\s*([^.!\\n]+)", "giu");
 
-        // EVG: colon-friendly fact cues (ru/en), ':' optional to survive _normU
+        // EVG: colon-friendly fact cues (ru only), ':' optional to survive _normU
         // Помечаем короткие явные подсказки пользователя на «сохранение факта»
         P.factsCues = P.factsCues || [];
         tryPush(P.factsCues, "(?:важно|запомни|факт|итог|вывод)\\s*[:\\-]?\\s*(.{8,280})", "giu");
-        tryPush(P.factsCues, "(?:important|note|remember|fact|summary|takeaway)\\s*[:\\-]?\\s*(.{8,280})", "giu");
 
-        const needFallback = !(okR1 && okR2 && okR3 && okR4 && okS1 && okS2 && okS3 && okS4 && okS5 && okO1 && okO2 && okO3 && okO4 && okF1 && okF2 && okF3 && okF4 && okF5);
+        const needFallback = !(okR1 && okR2 && okS1 && okS2 && okS3 && okO1 && okO2 && okF1 && okF2 && okF3);
         if (needFallback) {
           const LTR = "A-Za-zА-Яа-яЁё";
           const ruRecipientFallback = `(?:[${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2}|ему|ей|им|нам|тебе|мне|вам|его|ее|них|нас|вас)`;
-          const enRecipientFallback = `(?:(?:(?!(?:to|that)\\b)[${LTR}'-]+(?:\\s+(?!(?:to|that)\\b)[${LTR}'-]+){0,2})|him|her|them|you|us|me)`;
           const fbR1 = new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "gi");
           fbR1._relPattern = "pairRu";
           P.relations.push(fbR1);
           const fbR2 = new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi");
           fbR2._relPattern = "verbRu";
           P.relations.push(fbR2);
-          const fbR3 = new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+and\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+are\\s+(dating|together|friends|enemies)`, "gi");
-          fbR3._relPattern = "pairEn";
-          P.relations.push(fbR3);
-          const fbR4 = new RegExp(`([${LTR}'-]+)\\s+(loves|hates|kissed|hugged)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi");
-          fbR4._relPattern = "verbEn";
-          P.relations.push(fbR4);
 
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)`, "gi"));
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)`, "gi"));
           P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+получил(?:а)?\\s+(.+?)(?:[.,!]|$)`, "gi"));
-          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+is\\s+now\\s+(.+?)(?:[.,!]|$)`, "gi"));
-          P.status.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+became\\s+(.+?)(?:[.,!]|$)`, "gi"));
 
           P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+должн?(?:ен|а|ы|о)\\s+(?:(?:(${ruRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
           P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+обещал(?:а)?\\s+(?:(?:(${ruRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
-          P.obligations.push(new RegExp(`([${LTR}'-]+)\\s+owes\\s+([${LTR}'-]+)\\s+(.+?)(?:[.,!]|$)`, "gi"));
-          P.obligations.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+promised\\s+(?:(?:(${enRecipientFallback})\\s+)?(.+?))(?:[.,!]|$)`, "gi"));
 
           P.facts.push(/важно:\s*([^.!\n]+)/ig);
           P.facts.push(/запомни:\s*([^.!\n]+)/ig);
           P.facts.push(/факт:\s*([^.!\n]+)/ig);
-          P.facts.push(/important:\s*([^.!\n]+)/ig);
-          P.facts.push(/remember:\s*([^.!\n]+)/ig);
           P.factsCues = P.factsCues || [];
           P.factsCues.push(/(?:важно|запомни|факт|итог|вывод)\s*[:\-]?\s*(.{8,280})/ig);
-          P.factsCues.push(/(?:important|note|remember|fact|summary|takeaway)\s*[:\-]?\s*(.{8,280})/ig);
         }
         
-        // GOALS - Russian patterns
+        // GOALS - Russian patterns only
         P.goals = P.goals || [];
         tryPush(P.goals, "(?:цель|задача)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})", "giu");
         tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:хочет|намерен(?:а)?|планирует|стремится|решил(?:а)?|мечтает)\\s+(.{8,200})", "giu");
         tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:его|её|ее|их)\\s+(?:цель|задача|план|мечта)\\s*[:\\-]?\\s*(.{8,200})", "giu");
-        // GOALS - English patterns
-        tryPush(P.goals, "(?:goal|objective|aim)\\s+(?:of\\s+)?([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})", "giu");
-        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:wants to|intends to|plans to|aims to|decided to|dreams of)\\s+(.{8,200})", "giu");
-        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})(?:'s)?\\s+(?:goal|objective|plan|dream)\\s*[:\\-]?\\s*(.{8,200})", "giu");
+        
+        // Social goals
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:хотел(?:а)?\\s+подружиться\\s+с|решил(?:а)?\\s+наладить\\s+отношения)\\s+(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:хотел(?:а)?\\s+произвести\\s+на\\s+(?:нее|него)\\s+впечатление|пытал(?:ся|ась)\\s+впечатлить)\\s+(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:решил(?:а)?\\s+отомстить|поклял(?:ся|ась)\\s+отомстить\\s+за)\\s+(.{8,200})", "giu");
+        
+        // Academic/Career goals
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:решил(?:а)?\\s+исправить\\s+оценки|хотел(?:а)?\\s+получить\\s+отлично)\\s+(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:его|её|ее)\\s+целью\\s+была\\s+победа\\s+в\\s+(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+хотел(?:а)?\\s+выиграть\\s+(.{8,200})", "giu");
+        
+        // Investigation goals
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:должен|должна)\\s+выяснить,?\\s+что\\s+(.{8,200})", "giu");
+        tryPush(P.goals, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+(?:хотел(?:а)?\\s+докопаться\\s+до\\s+истины|решил(?:а)?\\s+разузнать\\s+побольше\\s+о)\\s+(.{8,200})", "giu");
         
         // Fallback goal patterns for older regex engines
         if (P.goals.length === 0) {
@@ -2110,9 +2097,14 @@ L.debugMode = toBool(L.debugMode, false);
           P.goals.push(new RegExp(`(?:цель|задача)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
           P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:хочет|намерен(?:а)?|планирует|стремится|решил(?:а)?|мечтает)\\s+(.{8,200})`, "gi"));
           P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:его|её|ее|их)\\s+(?:цель|задача|план|мечта)\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
-          P.goals.push(new RegExp(`(?:goal|objective|aim)\\s+(?:of\\s+)?([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
-          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:wants to|intends to|plans to|aims to|decided to|dreams of)\\s+(.{8,200})`, "gi"));
-          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})(?:'s)?\\s+(?:goal|objective|plan|dream)\\s*[:\\-]?\\s*(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:хотел(?:а)?\\s+подружиться\\s+с|решил(?:а)?\\s+наладить\\s+отношения)\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:хотел(?:а)?\\s+произвести\\s+на\\s+(?:нее|него)\\s+впечатление|пытал(?:ся|ась)\\s+впечатлить)\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:решил(?:а)?\\s+отомстить|поклял(?:ся|ась)\\s+отомстить\\s+за)\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:решил(?:а)?\\s+исправить\\s+оценки|хотел(?:а)?\\s+получить\\s+отлично)\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:его|её|ее)\\s+целью\\s+была\\s+победа\\s+в\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+хотел(?:а)?\\s+выиграть\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:должен|должна)\\s+выяснить,?\\s+что\\s+(.{8,200})`, "gi"));
+          P.goals.push(new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+(?:хотел(?:а)?\\s+докопаться\\s+до\\s+истины|решил(?:а)?\\s+разузнать\\s+побольше\\s+о)\\s+(.{8,200})`, "gi"));
         }
         
         return P;
@@ -3201,7 +3193,7 @@ L.debugMode = toBool(L.debugMode, false);
         // Split text into sentences
         const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
 
-        // Mood patterns: Russian and English markers
+        // Mood patterns: Russian-only markers
         const moodPatterns = [
           // Angry - Russian
           { regex: /разозли(л(?:ся|сь)?|вш)/i, mood: 'angry', reason: 'ссора' },
@@ -3209,49 +3201,63 @@ L.debugMode = toBool(L.debugMode, false);
           { regex: /(?:в ярости|в гневе|в бешенстве)/i, mood: 'angry', reason: 'ярость' },
           { regex: /(?:рассерди|разъяри)/i, mood: 'angry', reason: 'раздражение' },
           
-          // Angry - English
-          { regex: /(?:became|got|was|turned)\s+(?:angry|mad|furious|enraged)/i, mood: 'angry', reason: 'conflict' },
-          { regex: /(?:in rage|in fury|in anger)/i, mood: 'angry', reason: 'rage' },
-          { regex: /(?:angered|infuriated|enraged)/i, mood: 'angry', reason: 'confrontation' },
-          
           // Happy - Russian
           { regex: /(?:был|была|стал|стала)\s+(?:счастлив|счастлива|рад|рада|доволен|довольна)/i, mood: 'happy', reason: 'радость' },
           { regex: /(?:обрадова|обрадовал|обрадовала|возликова)/i, mood: 'happy', reason: 'хорошие новости' },
           { regex: /(?:в восторге|в приподнятом настроении)/i, mood: 'happy', reason: 'успех' },
-          
-          // Happy - English
-          { regex: /(?:was|became|felt)\s+(?:happy|joyful|glad|delighted|thrilled)/i, mood: 'happy', reason: 'good news' },
-          { regex: /(?:in delight|in joy|overjoyed)/i, mood: 'happy', reason: 'success' },
-          { regex: /(?:rejoiced|celebrated)/i, mood: 'happy', reason: 'celebration' },
           
           // Scared - Russian
           { regex: /(?:испуга|напуга|перепуга|устраши)/i, mood: 'scared', reason: 'страх' },
           { regex: /(?:был|была|стал|стала)\s+(?:напуган|напугана|испуган|испугана)/i, mood: 'scared', reason: 'угроза' },
           { regex: /(?:в страхе|в ужасе|в панике)/i, mood: 'scared', reason: 'опасность' },
           
-          // Scared - English
-          { regex: /(?:was|became|got)\s+(?:scared|frightened|terrified|afraid)/i, mood: 'scared', reason: 'threat' },
-          { regex: /(?:in fear|in terror|in panic)/i, mood: 'scared', reason: 'danger' },
-          { regex: /(?:feared|panicked)/i, mood: 'scared', reason: 'fear' },
-          
           // Tired - Russian
           { regex: /(?:устал|устала|изнемог|изнемогла|вымотал|вымотала)/i, mood: 'tired', reason: 'усталость' },
           { regex: /(?:был|была|стал|стала)\s+(?:уставш|измучен|измучена|истощен|истощена)/i, mood: 'tired', reason: 'истощение' },
           { regex: /(?:без сил|изнурен|изнурена)/i, mood: 'tired', reason: 'перенапряжение' },
-          
-          // Tired - English
-          { regex: /(?:was|became|got|felt)\s+(?:tired|exhausted|weary|fatigued)/i, mood: 'tired', reason: 'fatigue' },
-          { regex: /(?:worn out|drained|depleted)/i, mood: 'tired', reason: 'exhaustion' },
           
           // Wounded/Hurt - Russian
           { regex: /(?:ранен|ранена|поранен|поранена|травмирован|травмирована)/i, mood: 'wounded', reason: 'ранение' },
           { regex: /(?:был|была)\s+(?:ранен|ранена|избит|избита)/i, mood: 'wounded', reason: 'травма' },
           { regex: /(?:получил|получила)\s+(?:рану|травму|ранение|увечье)/i, mood: 'wounded', reason: 'повреждение' },
           
-          // Wounded/Hurt - English
-          { regex: /(?:was|got|became)\s+(?:wounded|hurt|injured)/i, mood: 'wounded', reason: 'injury' },
-          { regex: /(?:received|sustained|suffered)\s+(?:a wound|an injury|damage)/i, mood: 'wounded', reason: 'wound' },
-          { regex: /(?:bleeding|bruised|injured)/i, mood: 'wounded', reason: 'trauma' }
+          // Embarrassed/Awkward - Russian
+          { regex: /смути(л(?:ся|сь)?|вш)/i, mood: 'embarrassed', reason: 'смущение' },
+          { regex: /покраснел(?:а)?/i, mood: 'embarrassed', reason: 'неловкость' },
+          { regex: /(?:стало|было)\s+неловко/i, mood: 'embarrassed', reason: 'неудобство' },
+          { regex: /почувствовал(?:а)?\s+себя\s+не\s+в\s+своей\s+тарелке/i, mood: 'embarrassed', reason: 'дискомфорт' },
+          { regex: /(?:в\s+)?смущени(?:и|е|ем)/i, mood: 'embarrassed', reason: 'смущение' },
+          
+          // Jealous - Russian
+          { regex: /приревновал(?:а)?/i, mood: 'jealous', reason: 'ревность' },
+          { regex: /почувствовал(?:а)?\s+укол\s+ревности/i, mood: 'jealous', reason: 'ревность' },
+          { regex: /заревновал(?:а)?/i, mood: 'jealous', reason: 'ревность' },
+          { regex: /(?:его|её|ее)\s+съедала\s+ревность/i, mood: 'jealous', reason: 'ревность' },
+          { regex: /(?:был|была)\s+ревнив(?:ым|ой)/i, mood: 'jealous', reason: 'ревность' },
+          { regex: /(?:из|от)\s+ревност(?:и|ь)/i, mood: 'jealous', reason: 'ревность' },
+          
+          // Offended - Russian
+          { regex: /обидел(?:ся|ась)/i, mood: 'offended', reason: 'обида' },
+          { regex: /(?:его|её|ее)\s+задели\s+слова/i, mood: 'offended', reason: 'обида' },
+          { regex: /(?:она|он)\s+надулась/i, mood: 'offended', reason: 'обида' },
+          { regex: /обиженно\s+(?:ответил|ответила|сказал|сказала)/i, mood: 'offended', reason: 'обида' },
+          { regex: /(?:был|была)\s+обижен(?:а)?/i, mood: 'offended', reason: 'обида' },
+          { regex: /почувствовал(?:а)?\s+обиду/i, mood: 'offended', reason: 'обида' },
+          
+          // Guilty - Russian
+          { regex: /почувствовал(?:а)?\s+себя\s+виноват(?:ым|ой)/i, mood: 'guilty', reason: 'вина' },
+          { regex: /(?:его|её|ее)\s+мучила\s+совесть/i, mood: 'guilty', reason: 'совесть' },
+          { regex: /сожалел(?:а)?\s+о\s+содеянном/i, mood: 'guilty', reason: 'сожаление' },
+          { regex: /(?:был|была)\s+виноват(?:ым|ой)/i, mood: 'guilty', reason: 'вина' },
+          { regex: /(?:чувство|ощущение)\s+вины/i, mood: 'guilty', reason: 'вина' },
+          { regex: /(?:мучил|терзал)(?:а|о)?\s+(?:чувство\s+)?вин(?:а|ы)/i, mood: 'guilty', reason: 'вина' },
+          
+          // Disappointed - Russian
+          { regex: /разочаровал(?:ся|ась)\s+в\s+(?:нем|ней|них)/i, mood: 'disappointed', reason: 'разочарование' },
+          { regex: /это\s+было\s+полное\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
+          { regex: /испытал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
+          { regex: /(?:был|была)\s+разочарован(?:а)?/i, mood: 'disappointed', reason: 'разочарование' },
+          { regex: /почувствовал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' }
         ];
 
         // Check each sentence for mood markers
@@ -3299,7 +3305,7 @@ L.debugMode = toBool(L.debugMode, false);
         if (!text) return null;
         const low = text.toLowerCase();
         
-        // Location patterns (Russian and English)
+        // Location patterns (Russian only)
         const locationPatterns = [
           { regex: /в\s+(класс(?:е|ной)|аудитори(?:и|ю))/i, location: 'classroom' },
           { regex: /(?:в|на)\s+(столов(?:ая|ую|ой)|кафетери(?:и|й))/i, location: 'cafeteria' },
@@ -3309,16 +3315,7 @@ L.debugMode = toBool(L.debugMode, false);
           { regex: /(?:в|на)\s+(?:школьн(?:ом|ый)|игров(?:ом|ая))\s+(площадк(?:а|е|у)|двор(?:е|))/i, location: 'schoolyard' },
           { regex: /(?:в|на)\s+(парк(?:е|)|сад(?:у|))/i, location: 'park' },
           { regex: /дом(?:а|е|у)|квартир(?:а|е|у)/i, location: 'home' },
-          { regex: /(?:в|на)\s+улиц(?:а|е|у)/i, location: 'street' },
-          { regex: /(?:in|at)\s+(?:the\s+)?classroom/i, location: 'classroom' },
-          { regex: /(?:in|at)\s+(?:the\s+)?cafeteria/i, location: 'cafeteria' },
-          { regex: /(?:in|at)\s+(?:the\s+)?gym(?:nasium)?/i, location: 'gym' },
-          { regex: /(?:in|at)\s+(?:the\s+)?library/i, location: 'library' },
-          { regex: /(?:in|at)\s+(?:the\s+)?(?:hallway|corridor)/i, location: 'hallway' },
-          { regex: /(?:in|at)\s+(?:the\s+)?(?:schoolyard|playground)/i, location: 'schoolyard' },
-          { regex: /(?:in|at)\s+(?:the\s+)?park/i, location: 'park' },
-          { regex: /(?:at\s+)?home/i, location: 'home' },
-          { regex: /(?:on|in)\s+(?:the\s+)?street/i, location: 'street' }
+          { regex: /(?:в|на)\s+улиц(?:а|е|у)/i, location: 'street' }
         ];
         
         for (const pattern of locationPatterns) {
@@ -3451,33 +3448,37 @@ L.debugMode = toBool(L.debugMode, false);
           
           const low = text.toLowerCase();
           
-          // Gossip-worthy event patterns
+          // Gossip-worthy event patterns (Russian-only)
           const eventPatterns = [
             // Romance
             { regex: /([\p{L}\s]+)\s+(?:поцелова(?:л|ла|лся|лась)|целова(?:л|ла))\s+([\p{L}\s]+)/iu, 
               type: 'romance', spin: 'neutral' },
             { regex: /([\p{L}\s]+)\s+(?:признал(?:ся|ась)|призналась)\s+в\s+любви\s+([\p{L}\s]+)/iu, 
               type: 'romance', spin: 'neutral' },
-            { regex: /([\p{L}\s]+)\s+and\s+([\p{L}\s]+)\s+(?:kissed|were\s+seen\s+kissing)/iu, 
-              type: 'romance', spin: 'neutral' },
               
             // Conflict
             { regex: /([\p{L}\s]+)\s+(?:подрал(?:ся|ась)|драл(?:ся|ась)|поссорил(?:ся|ась))\s+с\s+([\p{L}\s]+)/iu, 
-              type: 'conflict', spin: 'negative' },
-            { regex: /([\p{L}\s]+)\s+(?:fought|argued)\s+with\s+([\p{L}\s]+)/iu, 
               type: 'conflict', spin: 'negative' },
               
             // Betrayal
             { regex: /([\p{L}\s]+)\s+(?:предал(?:а|)|обманул(?:а|)|изменил(?:а|))\s+([\p{L}\s]+)/iu, 
               type: 'betrayal', spin: 'negative' },
-            { regex: /([\p{L}\s]+)\s+(?:betrayed|deceived|cheated\s+on)\s+([\p{L}\s]+)/iu, 
-              type: 'betrayal', spin: 'negative' },
               
             // Achievement
             { regex: /([\p{L}\s]+)\s+(?:выиграл(?:а|)|победил(?:а|)|получил(?:а|)\s+награду)/iu, 
               type: 'achievement', spin: 'positive' },
-            { regex: /([\p{L}\s]+)\s+(?:won|achieved|received\s+an?\s+award)/iu, 
-              type: 'achievement', spin: 'positive' }
+            
+            // Bad grade
+            { regex: /([\p{L}\s]+)\s+(?:получил(?:а|)\s+двойку|провалил(?:а|)\s+контрольную)/iu, 
+              type: 'academic_failure', spin: 'neutral' },
+            
+            // Teacher meeting
+            { regex: /([\p{L}\s]+)\s+(?:вызвали\s+к\s+директору|разговаривал(?:а|)\s+с\s+учителем\s+после\s+уроков)/iu, 
+              type: 'teacher_meeting', spin: 'neutral' },
+            
+            // Skipping class
+            { regex: /([\p{L}\s]+)\s+(?:прогулял(?:а|)\s+урок|не\s+пришел(?:а|)?\s+на\s+(?:пару|урок))/iu, 
+              type: 'truancy', spin: 'neutral' }
           ];
           
           for (const pattern of eventPatterns) {
@@ -3541,7 +3542,7 @@ L.debugMode = toBool(L.debugMode, false);
         },
         
         /**
-         * Applies interpretation matrix to modify rumor based on witness's relationship.
+         * Applies interpretation matrix to modify rumor based on witness's relationship and mood.
          * @param {object} rumor - The rumor object
          * @param {string} witness - Witness character name
          */
@@ -3556,12 +3557,51 @@ L.debugMode = toBool(L.debugMode, false);
           const relation2 = L.evergreen.relations[relationKey2] || 0;
           const avgRelation = (relation1 + relation2) / 2;
           
+          // Get witness's current mood
+          const witnessMood = L.character_status?.[witness]?.mood;
+          
+          // Apply mood-based interpretation modifiers
+          if (witnessMood === 'angry') {
+            // Angry witnesses interpret events more aggressively
+            rumor.spin = 'negative';
+            rumor.distortion += 0.5;
+          } else if (witnessMood === 'jealous') {
+            // Jealous witnesses interpret events negatively against the subject
+            if (rumor.type === 'romance' || rumor.type === 'achievement') {
+              rumor.spin = 'negative';
+              rumor.distortion += 0.3;
+            }
+          }
+          
+          // Base interpretation on relationship
           // Positive relationship with subject = positive spin
           // Negative relationship with subject = negative spin
           if (avgRelation > 20) {
             rumor.spin = 'positive';
           } else if (avgRelation < -20) {
             rumor.spin = 'negative';
+          }
+          
+          // Special interpretations for new event types based on relationship
+          if (rumor.type === 'academic_failure') {
+            if (avgRelation > 20) {
+              // Friend: sympathetic interpretation
+              rumor.spin = 'positive'; // "учитель его завалил"
+            } else {
+              rumor.spin = 'neutral'; // "он совсем не учится"
+            }
+          } else if (rumor.type === 'teacher_meeting') {
+            if (avgRelation < -10) {
+              rumor.spin = 'negative'; // "его отчитывали за поведение"
+            } else if (witnessMood === 'jealous') {
+              rumor.spin = 'negative'; // "он теперь любимчик" (enviously)
+            }
+          } else if (rumor.type === 'truancy') {
+            if (avgRelation > 10) {
+              rumor.spin = 'neutral'; // "кажется, он заболел"
+            } else {
+              rumor.spin = 'negative'; // "он постоянно прогуливает"
+            }
           }
           
           // Add small distortion based on relationship strength
@@ -3709,15 +3749,9 @@ L.debugMode = toBool(L.debugMode, false);
           /пош(?:ёл|ла|ли)\s+спать/iu,
           /до\s+глубокой\s+ночи/iu,
           /всю\s+ночь/iu,
-          /went\s+to\s+(?:bed|sleep)/iu,
-          /fell\s+asleep/iu,
-          /going\s+to\s+(?:bed|sleep)/iu,
           /до\s+утра/iu,
           /заснул(?:а|и)?\s+(?:на|в)/iu,
-          /sleep(?:ing|s)?/iu,
-          /до\s+рассвета/iu,
-          /until\s+(?:morning|dawn)/iu,
-          /through\s+the\s+night/iu
+          /до\s+рассвета/iu
         ],
         action: { type: 'ADVANCE_TO_NEXT_MORNING' }
       },
@@ -3728,14 +3762,7 @@ L.debugMode = toBool(L.debugMode, false);
           /после\s+школы/iu,
           /занятия\s+закончились/iu,
           /уроки\s+(?:окончились|закончились|завершились)/iu,
-          /(?:конец|окончание)\s+(?:уроков|занятий|школьного\s+дня)/iu,
-          /after\s+school/iu,
-          /after\s+classes/iu,
-          /classes\s+ended/iu,
-          /school\s+(?:ended|finished)/iu,
-          /school\s+day\s+(?:ended|finished|over)/iu,
-          /last\s+(?:class|lesson)\s+ended/iu,
-          /when\s+school\s+(?:ended|finished|was\s+over)/iu
+          /(?:конец|окончание)\s+(?:уроков|занятий|школьного\s+дня)/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'День' }
       },
@@ -3745,11 +3772,6 @@ L.debugMode = toBool(L.debugMode, false);
           /пообедал(?:а|и)?/iu,
           /во\s+время\s+(?:ланча|обеда)/iu,
           /(?:за|на)\s+обед(?:ом|е)/iu,
-          /had\s+lunch/iu,
-          /having\s+lunch/iu,
-          /at\s+lunch(?:time)?/iu,
-          /during\s+lunch/iu,
-          /lunch\s+(?:break|time)/iu,
           /съел(?:а|и)?\s+обед/iu,
           /обеденный\s+перерыв/iu
         ],
@@ -3761,11 +3783,6 @@ L.debugMode = toBool(L.debugMode, false);
           /поужинал(?:а|и)?/iu,
           /(?:за|на)\s+ужин(?:ом|е)/iu,
           /во\s+время\s+ужина/iu,
-          /had\s+dinner/iu,
-          /having\s+dinner/iu,
-          /at\s+dinner(?:time)?/iu,
-          /during\s+dinner/iu,
-          /dinner\s+time/iu,
           /съел(?:а|и)?\s+ужин/iu,
           /вечерний\s+прием\s+пищи/iu
         ],
@@ -3777,14 +3794,8 @@ L.debugMode = toBool(L.debugMode, false);
           /час\s+спустя/iu,
           /(?:через|спустя)\s+час/iu,
           /(?:через|спустя)\s+(?:несколько|пару)\s+час(?:ов|а)/iu,
-          /a\s+few\s+hours\s+later/iu,
-          /(?:an\s+)?hour\s+later/iu,
-          /hours\s+(?:later|passed)/iu,
           /к\s+вечеру/iu,
-          /by\s+evening/iu,
           /к\s+концу\s+дня/iu,
-          /by\s+the\s+end\s+of\s+(?:the\s+)?day/iu,
-          /some\s+time\s+later/iu,
           /(?:через|спустя)\s+некоторое\s+время/iu
         ],
         action: { type: 'ADVANCE_TIME_OF_DAY', steps: 1 }
@@ -3794,14 +3805,9 @@ L.debugMode = toBool(L.debugMode, false);
         patterns: [
           /на\s+следующий\s+день/iu,
           /следующим\s+(?:утром|днем|вечером)/iu,
-          /the\s+next\s+day/iu,
-          /next\s+(?:morning|day)/iu,
           /на\s+другой\s+день/iu,
           /назавтра/iu,
-          /the\s+following\s+day/iu,
-          /the\s+day\s+after/iu,
-          /на\s+следующее\s+утро/iu,
-          /next\s+day/iu
+          /на\s+следующее\s+утро/iu
         ],
         action: { type: 'ADVANCE_DAY', days: 1 }
       },
@@ -3811,13 +3817,8 @@ L.debugMode = toBool(L.debugMode, false);
           /(?:прошла|прошло)\s+неделя/iu,
           /через\s+неделю/iu,
           /спустя\s+неделю/iu,
-          /a\s+week\s+(?:later|passed)/iu,
-          /weeks?\s+(?:later|passed)/iu,
-          /after\s+a\s+week/iu,
           /неделей\s+(?:позже|спустя)/iu,
-          /(?:прошло|миновало)\s+(?:несколько\s+)?(?:недель|дней)/iu,
-          /several\s+(?:days|weeks)\s+(?:later|passed)/iu,
-          /a\s+few\s+days\s+later/iu
+          /(?:прошло|миновало)\s+(?:несколько\s+)?(?:недель|дней)/iu
         ],
         action: { type: 'ADVANCE_DAY', days: 7 }
       },
@@ -3827,11 +3828,7 @@ L.debugMode = toBool(L.debugMode, false);
           /(?:^|[^а-яё])утр(?:ом|а)(?:[^а-яё]|$)/iu,
           /ранним\s+утром/iu,
           /с\s+утра/iu,
-          /in\s+the\s+morning/iu,
-          /early\s+morning/iu,
-          /at\s+dawn/iu,
-          /на\s+рассвете/iu,
-          /morning\s+time/iu
+          /на\s+рассвете/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'Утро' }
       },
@@ -3841,11 +3838,7 @@ L.debugMode = toBool(L.debugMode, false);
           /(?:^|[^а-яё])вечер(?:ом|а)(?:[^а-яё]|$)/iu,
           /поздним\s+вечером/iu,
           /к\s+вечеру/iu,
-          /in\s+the\s+evening/iu,
-          /late\s+evening/iu,
-          /at\s+(?:dusk|twilight)/iu,
-          /в\s+сумерках/iu,
-          /evening\s+time/iu
+          /в\s+сумерках/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'Вечер' }
       },
@@ -3855,14 +3848,77 @@ L.debugMode = toBool(L.debugMode, false);
           /(?:^|[^а-яё])ноч(?:ью|ь)(?:[^а-яё]|$)/iu,
           /глубокой\s+ночью/iu,
           /поздней\s+ночью/iu,
-          /at\s+night/iu,
-          /late\s+at\s+night/iu,
-          /in\s+the\s+(?:middle\s+of\s+the\s+)?night/iu,
           /среди\s+ночи/iu,
-          /midnight/iu,
           /полночь/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'Ночь' }
+      },
+      
+      // New categories for enhanced understanding
+      PARTY: {
+        patterns: [
+          /вечеринк(?:а|е|у|ой)/iu,
+          /тусовк(?:а|е|у|ой)/iu,
+          /сбор\s+у\s+друзей/iu,
+          /пош(?:ёл|ла|ли)\s+в\s+клуб/iu,
+          /(?:на|в)\s+вечеринк(?:е|у)/iu,
+          /(?:на|в)\s+тусовк(?:е|у)/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Вечер' }
+      },
+      
+      TRAINING: {
+        patterns: [
+          /тренировк(?:а|е|у|ой)/iu,
+          /репетици(?:я|и|ю|ей)/iu,
+          /дополнительн(?:ые|ых)\s+занятий/iu,
+          /секци(?:я|и|ю|ей)/iu,
+          /(?:на|в)\s+тренировк(?:е|у)/iu,
+          /(?:на|в)\s+репетиц(?:ии|ию)/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'День' }
+      },
+      
+      DATE: {
+        patterns: [
+          /свидани(?:е|я|ю|ем)/iu,
+          /пош(?:ёл|ла)\s+на\s+свидание/iu,
+          /(?:у|было)\s+свидание/iu,
+          /пригласил(?:а)?\s+на\s+свидание/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Вечер' }
+      },
+      
+      MIDNIGHT: {
+        patterns: [
+          /к\s+полуночи/iu,
+          /в\s+полночь/iu,
+          /далеко\s+за\s+полночь/iu,
+          /после\s+полуночи/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Ночь' }
+      },
+      
+      DAWN: {
+        patterns: [
+          /до\s+рассвета/iu,
+          /на\s+рассвете/iu,
+          /проснул(?:ся|ась)\s+с\s+первыми\s+лучами\s+солнца/iu,
+          /с\s+рассветом/iu,
+          /перед\s+рассветом/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Утро' }
+      },
+      
+      FEW_DAYS_LATER: {
+        patterns: [
+          /через\s+пару\s+дней/iu,
+          /несколько\s+дней\s+спустя/iu,
+          /прошло\s+(?:два|три)\s+дня/iu,
+          /(?:через|спустя)\s+(?:два|три|2|3)\s+дня/iu,
+          /пару\s+дней\s+(?:спустя|позже)/iu
+        ],
+        action: { type: 'ADVANCE_DAY', days: 2 }
       }
     },
 
@@ -4020,15 +4076,23 @@ L.debugMode = toBool(L.debugMode, false);
 
     // ---------- Events & Recap Scheduler ----------
     _eventPatterns: {
-      conflict:   [/ударил|ударила|ударили|ссор|крик|плюха|fight|hit|punched/i],
-      romance:    [/поцеловал|поцеловала|kiss|призналс[яа]|dating|together/i],
-      authority:  [/директор|учитель|teacher|principal|detention|выговор/i],
-      achievement:[/побед[аил]|win|успех|трофей|награда|award/i],
-      reveal:     [/секрет|разоблачение|confess|reveal|truth/i],
-      location:   [/кабинет|столовая|коридор|спортзал|cafeteria|hallway|gym/i],
-      timeskip:   [/прошло\s+\d+|через\s+\d+|hours?\s+later|days?\s+later|weeks?\s+later/i],
-      betrayal:   [/предал|предала|предали|измен|betrayed|betray|backstab/i],
-      loyalty:    [/верност|преданност|лояльност|поддерж|loyal|loyalty|support|stood by/i]
+      conflict:   [/ударил|ударила|ударили|ссор|крик|плюха|драк(?:а|е|у)/i],
+      romance:    [/поцеловал|поцеловала|призналс[яа]|свидание/i],
+      authority:  [/директор|учитель|выговор|вызвали\s+к\s+директору/i],
+      achievement:[/побед[аил]|успех|трофей|награда|выиграл/i],
+      reveal:     [/секрет|разоблачение|тайна\s+раскрыта|все\s+узнал(?:и)?/i],
+      location:   [/кабинет|столовая|коридор|спортзал|библиотек/i],
+      timeskip:   [/прошло\s+\d+|через\s+\d+|спустя\s+\d+/i],
+      betrayal:   [/предал|предала|предали|измен|обман/i],
+      loyalty:    [/верност|преданност|лояльност|поддерж/i],
+      // Social upheavals
+      social_upheaval: [/поссорил(?:ся|ась|ись)|расстал(?:ся|ась|ись)|признал(?:ся|ась)\s+в\s+любви|стали\s+врагами|предал(?:а)?/i],
+      // Secret revelations
+      secret_reveal: [/он\s+всё\s+узнал|она\s+всё\s+узнала|тайна\s+раскрыта|теперь\s+все\s+знают|секрет\s+раскрыт/i],
+      // Goal achievement/failure
+      goal_outcome: [/он\s+наконец\s+добился\s+своего|у\s+(?:него|неё|нее)\s+получилось|всё\s+пошло\s+прахом|потерпел(?:а)?\s+неудачу|провал/i],
+      // Dramatic events
+      dramatic: [/драк(?:а|е|у)|авари(?:я|и|ю)|исключили\s+из\s+школы|побег|сбежал(?:а)?/i]
     },
     _pruneEventsWindow(){
       const L = this.lcInit();
