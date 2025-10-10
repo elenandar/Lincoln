@@ -1436,6 +1436,12 @@ L.debugMode = toBool(L.debugMode, false);
         }
       }
       
+      // population tracking (demographic pressure)
+      L.population = L.population || {
+        unnamedStudents: 50,
+        unnamedTeachers: 5
+      };
+      
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
       const evergreenCapDefault = Number.isFinite(defaultEvergreenCapNum) ? defaultEvergreenCapNum : 0;
@@ -1836,7 +1842,12 @@ L.debugMode = toBool(L.debugMode, false);
         for (let j=0;j<list.length;j++){ if (wordHit(low, list[j])) { hit = true; break; } }
         if (hit){
           let key; try { key = canon.replace(/^\p{Ll}/u, m=>m.toUpperCase()); } catch(e) { key = canon.charAt(0).toUpperCase() + canon.slice(1);} // легкий кап первой буквы
-          const rec = L.characters[key] || { mentions:0, lastSeen:-1, firstSeen:t };
+          const rec = L.characters[key] || { mentions:0, lastSeen:-1, firstSeen:t, type:'EXTRA', status:'ACTIVE' };
+          // Unfreeze character if they were frozen
+          if (rec.status === 'FROZEN') {
+            rec.status = 'ACTIVE';
+            L.stateVersion++;
+          }
           rec.lastSeen = t; rec.mentions++;
           L.characters[key] = rec;
         }
@@ -1848,6 +1859,8 @@ L.debugMode = toBool(L.debugMode, false);
       const arr = [];
       for (const name in (L.characters || {})) {
         const d = L.characters[name];
+        // Skip FROZEN characters
+        if (d.status === 'FROZEN') continue;
         const turnsAgo = t - d.lastSeen;
         if (turnsAgo < 50) {
           arr.push({
@@ -2910,6 +2923,69 @@ L.debugMode = toBool(L.debugMode, false);
         } catch (e) {
           LC.lcWarn?.("UnifiedAnalyzer RelationsEngine error: " + (e && e.message));
         }
+        
+        // Demographic Pressure Detection
+        try {
+          LC.DemographicPressure?.analyze?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer DemographicPressure error: " + (e && e.message));
+        }
+      }
+    },
+
+    // ========== Demographic Pressure System ==========
+    DemographicPressure: {
+      suggestions: [], // Temporary storage for suggestions to add to context
+      
+      /**
+       * Analyzes text to detect situations requiring new characters.
+       * Detects: loneliness, need for experts, specific roles.
+       */
+      analyze(text) {
+        if (!text) return;
+        const L = LC.lcInit();
+        
+        this.suggestions = []; // Clear previous suggestions
+        
+        const textLower = String(text).toLowerCase();
+        
+        // Pattern: Loneliness - single character focus for extended period
+        const activeChars = Object.keys(L.characters || {}).filter(name => {
+          const char = L.characters[name];
+          return char.lastSeen && (L.turn - char.lastSeen) <= 3;
+        });
+        
+        if (activeChars.length === 1) {
+          const charName = activeChars[0];
+          // Check for loneliness indicators
+          if (textLower.match(/один(?:а|и)?|сам(?:а|и)?|в\s+одиночестве|никого\s+(?:не\s+)?(?:было|нет)/iu)) {
+            this.suggestions.push(`⟦SUGGESTION⟧ ${charName} один. Возможно, он с кем-то столкнется.`);
+          }
+        }
+        
+        // Pattern: Need for Expert
+        const expertPatterns = [
+          { pattern: /(?:взломать|хакнуть|взлом|код|программ)/iu, expert: 'кто-то, кто разбирается в компьютерах' },
+          { pattern: /(?:найти\s+информацию|расследование|улик)/iu, expert: 'кто-то, кто может помочь с поиском информации' },
+          { pattern: /(?:вылечить|лечение|медицин|травм|ран)/iu, expert: 'кто-то с медицинскими знаниями' },
+          { pattern: /(?:починить|отремонтировать|сломан)/iu, expert: 'кто-то с техническими навыками' },
+          { pattern: /(?:защитить|охран|телохранитель)/iu, expert: 'кто-то, кто может защитить' }
+        ];
+        
+        for (let i = 0; i < expertPatterns.length; i++) {
+          const item = expertPatterns[i];
+          if (item.pattern.test(textLower)) {
+            this.suggestions.push(`⟦SUGGESTION⟧ Нужен ${item.expert}.`);
+            break; // Only one expert suggestion per turn
+          }
+        }
+      },
+      
+      /**
+       * Returns current suggestions for context overlay.
+       */
+      getSuggestions() {
+        return this.suggestions;
       }
     },
 
@@ -3802,6 +3878,84 @@ L.debugMode = toBool(L.debugMode, false);
       }
     },
 
+    // ========== Character Garbage Collector ==========
+    CharacterGC: {
+      /**
+       * Manages character lifecycle: promotion, freezing, unfreezing, and deletion.
+       * - EXTRA → SECONDARY: if mentioned >5 times in last 50 turns
+       * - SECONDARY → FROZEN: if not seen for >100 turns
+       * - FROZEN → ACTIVE: automatically on mention (handled in updateCharacterActivity)
+       * - EXTRA deletion: if not seen for >200 turns and has ≤2 mentions total
+       */
+      run() {
+        const L = LC.lcInit();
+        if (!L.characters || typeof L.characters !== 'object') return;
+        
+        const currentTurn = L.turn || 0;
+        const PROMOTION_MENTIONS = 5;
+        const PROMOTION_WINDOW = 50;
+        const FREEZE_THRESHOLD = 100;
+        const DELETE_THRESHOLD = 200;
+        const DELETE_MAX_MENTIONS = 2;
+        
+        let promotedCount = 0;
+        let frozenCount = 0;
+        let deletedCount = 0;
+        
+        const charactersToDelete = [];
+        
+        for (const charName in L.characters) {
+          if (!Object.prototype.hasOwnProperty.call(L.characters, charName)) continue;
+          
+          const char = L.characters[charName];
+          
+          // Ensure type and status fields exist
+          if (!char.type) char.type = 'EXTRA';
+          if (!char.status) char.status = 'ACTIVE';
+          
+          const turnsSinceLastSeen = currentTurn - (char.lastSeen || 0);
+          const turnsSinceFirstSeen = currentTurn - (char.firstSeen || 0);
+          
+          // Promotion Logic: EXTRA → SECONDARY
+          if (char.type === 'EXTRA' && char.mentions > PROMOTION_MENTIONS && turnsSinceFirstSeen <= PROMOTION_WINDOW) {
+            char.type = 'SECONDARY';
+            promotedCount++;
+            L.stateVersion++;
+          }
+          
+          // Freezing Logic: SECONDARY → FROZEN
+          if (char.type === 'SECONDARY' && char.status === 'ACTIVE' && turnsSinceLastSeen > FREEZE_THRESHOLD) {
+            char.status = 'FROZEN';
+            frozenCount++;
+            L.stateVersion++;
+          }
+          
+          // Deletion Logic: EXTRA with minimal interaction
+          if (char.type === 'EXTRA' && turnsSinceLastSeen > DELETE_THRESHOLD && char.mentions <= DELETE_MAX_MENTIONS) {
+            charactersToDelete.push(charName);
+            deletedCount++;
+          }
+        }
+        
+        // Delete characters
+        for (let i = 0; i < charactersToDelete.length; i++) {
+          delete L.characters[charactersToDelete[i]];
+        }
+        
+        if (deletedCount > 0) {
+          L.stateVersion++;
+        }
+        
+        // Log summary if any changes occurred
+        if (promotedCount > 0 || frozenCount > 0 || deletedCount > 0) {
+          LC.lcSys({ 
+            text: `📊 CharacterGC: ${promotedCount} promoted, ${frozenCount} frozen, ${deletedCount} deleted`, 
+            level: 'director' 
+          });
+        }
+      }
+    },
+
     // ========== Chronological Knowledge Base ==========
     ChronologicalKnowledgeBase: {
       SLEEP: {
@@ -4549,6 +4703,29 @@ LC.composeContextOverlay = function(options) {
       }
     }
 
+    // Population context (low priority, added to normal)
+    if (L.population && (L.population.unnamedStudents > 0 || L.population.unnamedTeachers > 0)) {
+      let popText = '';
+      if (L.population.unnamedStudents > 0 && L.population.unnamedTeachers > 0) {
+        popText = `⟦WORLD⟧ В школе учится около ${L.population.unnamedStudents} других учеников и работает ${L.population.unnamedTeachers} учителей.`;
+      } else if (L.population.unnamedStudents > 0) {
+        popText = `⟦WORLD⟧ В школе учится около ${L.population.unnamedStudents} других учеников.`;
+      } else if (L.population.unnamedTeachers > 0) {
+        popText = `⟦WORLD⟧ В школе работает около ${L.population.unnamedTeachers} учителей.`;
+      }
+      if (popText) normal.push(popText);
+    }
+
+    // Demographic pressure suggestions (priority)
+    if (LC.DemographicPressure) {
+      const suggestions = LC.DemographicPressure.getSuggestions();
+      if (suggestions && suggestions.length > 0) {
+        for (let i = 0; i < suggestions.length; i++) {
+          priority.push(suggestions[i]);
+        }
+      }
+    }
+
     // Active goals (created within last 20 turns)
     if (L.goals && typeof L.goals === 'object') {
       const goalEntries = Object.entries(L.goals);
@@ -4664,6 +4841,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦INTENT⟧") === 0) return 1000;
       if (line.indexOf("⟦TASK⟧") === 0)   return 900;
       if (line.indexOf("⟦CANON⟧") === 0)  return 800;
+      if (line.indexOf("⟦SUGGESTION⟧") === 0) return 760;
       if (line.indexOf("⟦GOAL⟧") === 0)   return 750;
       if (line.indexOf("⟦SECRET⟧") === 0) return 740;
       if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
@@ -4671,6 +4849,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
       if (line.indexOf("⟦SCENE⟧") === 0)  return 500;
       if (line.indexOf("⟦GUIDE⟧") === 0)  return 400;
+      if (line.indexOf("⟦WORLD⟧") === 0)  return 200;
       if (line.indexOf("⟦META⟧") === 0)   return 100;
       return 0;
     }
@@ -4678,7 +4857,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, MOOD:0, OPENING:0, SCENE:0, META:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
