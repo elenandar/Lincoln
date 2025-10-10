@@ -1621,6 +1621,11 @@ L.debugMode = toBool(L.debugMode, false);
       }catch(_){ }
     },
 
+    /**
+     * Determines if the current action should increment the turn counter.
+     * Returns false for commands and retries, true for new story inputs and continue actions.
+     * @returns {boolean} True if the turn counter should be incremented, false otherwise
+     */
     shouldIncrementTurn(){
       const L = this.lcInit();
       const isRetry = L.currentAction?.type === 'retry';
@@ -1628,6 +1633,11 @@ L.debugMode = toBool(L.debugMode, false);
       // теперь: Continue = реальный ход; +1 только если не команда и не retry
       return !isCmd && !isRetry;
     },
+    /**
+     * Increments the turn counter and updates the last processed turn.
+     * Should only be called when shouldIncrementTurn() returns true.
+     * @returns {void}
+     */
     incrementTurn(){
       const L = this.lcInit();
       L.turn = (L.turn || 0) + 1;
@@ -2126,6 +2136,12 @@ L.debugMode = toBool(L.debugMode, false);
 
       patterns: null,
 
+      /**
+       * Normalizes character names to their canonical form, handling aliases and case variations.
+       * Supports both Russian and English names and their grammatical cases.
+       * @param {string} name - The raw character name to normalize
+       * @returns {string} The normalized canonical character name, or empty string if invalid
+       */
       normalizeCharName(name){
         const n = String(name || "").trim();
         if (!n) return "";
@@ -2206,6 +2222,12 @@ L.debugMode = toBool(L.debugMode, false);
 
         return n;
       },
+      /**
+       * Checks if a character name is in the list of important/core characters.
+       * Important characters are those whose state changes should be tracked.
+       * @param {string} name - The character name to check (should be normalized)
+       * @returns {boolean} True if the character is important, false otherwise
+       */
       isImportantCharacter(name){
         const core = ["Максим","Хлоя","Эшли","Миссис Грейсон","Директор Ковальски","Maxim","Chloe","Ashley"];
         return core.indexOf(name) !== -1;
@@ -2227,6 +2249,13 @@ L.debugMode = toBool(L.debugMode, false);
         L.evergreen.obligations = limit(L.evergreen.obligations || {});
         L.evergreen.facts       = limit(L.evergreen.facts || {});
       },
+      /**
+       * Analyzes text for relations, status changes, obligations, and facts using regex patterns.
+       * Updates the evergreen state with detected information and increments stateVersion on changes.
+       * @param {string} text - The text to analyze
+       * @param {'story'|'input'|'output'|'retry'} actionType - The type of action that triggered the analysis
+       * @returns {void}
+       */
       analyze(text, actionType){
         const L = LC.lcInit();
         if (!this.patterns) this.patterns = this._buildPatterns();
@@ -3066,6 +3095,13 @@ L.debugMode = toBool(L.debugMode, false);
         loyalty: 10
       },
 
+      /**
+       * Analyzes text for relationship events between characters.
+       * Detects events like conflicts, romance, authority interactions, and achievements.
+       * Applies relationship modifiers based on event types and updates character relations.
+       * @param {string} text - The text to analyze for relationship events
+       * @returns {void}
+       */
       analyze(text){
         if (!text) return;
         const L = LC.lcInit();
