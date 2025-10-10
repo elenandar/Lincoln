@@ -2451,6 +2451,26 @@ L.debugMode = toBool(L.debugMode, false);
           }
         }
         
+        // Add CKB (Chronological Knowledge Base) patterns
+        const CKB = LC.ChronologicalKnowledgeBase;
+        if (CKB) {
+          for (const category in CKB) {
+            if (CKB.hasOwnProperty(category)) {
+              const ckbEntry = CKB[category];
+              if (ckbEntry && Array.isArray(ckbEntry.patterns)) {
+                for (let i = 0; i < ckbEntry.patterns.length; i++) {
+                  unified.push({
+                    pattern: ckbEntry.patterns[i],
+                    engine: 'TimeEngine',
+                    category: 'chronological',
+                    action: ckbEntry.action
+                  });
+                }
+              }
+            }
+          }
+        }
+        
         return unified;
       },
       
@@ -2462,6 +2482,28 @@ L.debugMode = toBool(L.debugMode, false);
         // Build patterns on first use
         if (!this.patterns) {
           this.patterns = this._buildUnifiedPatterns();
+        }
+        
+        // Process ChronologicalKnowledgeBase patterns first
+        try {
+          if (this.patterns && Array.isArray(this.patterns)) {
+            const textLower = String(text || "").toLowerCase();
+            
+            for (let i = 0; i < this.patterns.length; i++) {
+              const item = this.patterns[i];
+              if (item.engine === 'TimeEngine' && item.category === 'chronological' && item.action) {
+                if (item.pattern && item.pattern.test) {
+                  item.pattern.lastIndex = 0;
+                  if (item.pattern.test(textLower)) {
+                    LC.TimeEngine?.processSemanticAction?.(item.action);
+                    break; // Process only first matching time action
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer TimeEngine error: " + (e && e.message));
         }
         
         // Delegate to individual engines for now
@@ -2846,6 +2888,175 @@ L.debugMode = toBool(L.debugMode, false);
       }
     },
 
+    // ========== Chronological Knowledge Base ==========
+    ChronologicalKnowledgeBase: {
+      SLEEP: {
+        patterns: [
+          /лег\s+спать/iu,
+          /легла\s+спать/iu,
+          /легли\s+спать/iu,
+          /заснул(?:а|и)?/iu,
+          /отправил(?:ся|ась|ись)\s+(?:в\s+)?(?:кровать|постель|спать)/iu,
+          /пош(?:ёл|ла|ли)\s+спать/iu,
+          /до\s+глубокой\s+ночи/iu,
+          /всю\s+ночь/iu,
+          /went\s+to\s+(?:bed|sleep)/iu,
+          /fell\s+asleep/iu,
+          /going\s+to\s+(?:bed|sleep)/iu,
+          /до\s+утра/iu,
+          /заснул(?:а|и)?\s+(?:на|в)/iu,
+          /sleep(?:ing|s)?/iu,
+          /до\s+рассвета/iu,
+          /until\s+(?:morning|dawn)/iu,
+          /through\s+the\s+night/iu
+        ],
+        action: { type: 'ADVANCE_TO_NEXT_MORNING' }
+      },
+      
+      END_OF_SCHOOL_DAY: {
+        patterns: [
+          /после\s+уроков/iu,
+          /после\s+школы/iu,
+          /занятия\s+закончились/iu,
+          /уроки\s+(?:окончились|закончились|завершились)/iu,
+          /(?:конец|окончание)\s+(?:уроков|занятий|школьного\s+дня)/iu,
+          /after\s+school/iu,
+          /after\s+classes/iu,
+          /classes\s+ended/iu,
+          /school\s+(?:ended|finished)/iu,
+          /school\s+day\s+(?:ended|finished|over)/iu,
+          /last\s+(?:class|lesson)\s+ended/iu,
+          /when\s+school\s+(?:ended|finished|was\s+over)/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'День' }
+      },
+      
+      LUNCH: {
+        patterns: [
+          /пообедал(?:а|и)?/iu,
+          /во\s+время\s+(?:ланча|обеда)/iu,
+          /(?:за|на)\s+обед(?:ом|е)/iu,
+          /had\s+lunch/iu,
+          /having\s+lunch/iu,
+          /at\s+lunch(?:time)?/iu,
+          /during\s+lunch/iu,
+          /lunch\s+(?:break|time)/iu,
+          /съел(?:а|и)?\s+обед/iu,
+          /обеденный\s+перерыв/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'День' }
+      },
+      
+      DINNER: {
+        patterns: [
+          /поужинал(?:а|и)?/iu,
+          /(?:за|на)\s+ужин(?:ом|е)/iu,
+          /во\s+время\s+ужина/iu,
+          /had\s+dinner/iu,
+          /having\s+dinner/iu,
+          /at\s+dinner(?:time)?/iu,
+          /during\s+dinner/iu,
+          /dinner\s+time/iu,
+          /съел(?:а|и)?\s+ужин/iu,
+          /вечерний\s+прием\s+пищи/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Вечер' }
+      },
+      
+      SHORT_TIME_JUMP: {
+        patterns: [
+          /час\s+спустя/iu,
+          /(?:через|спустя)\s+час/iu,
+          /(?:через|спустя)\s+(?:несколько|пару)\s+час(?:ов|а)/iu,
+          /a\s+few\s+hours\s+later/iu,
+          /(?:an\s+)?hour\s+later/iu,
+          /hours\s+(?:later|passed)/iu,
+          /к\s+вечеру/iu,
+          /by\s+evening/iu,
+          /к\s+концу\s+дня/iu,
+          /by\s+the\s+end\s+of\s+(?:the\s+)?day/iu,
+          /some\s+time\s+later/iu,
+          /(?:через|спустя)\s+некоторое\s+время/iu
+        ],
+        action: { type: 'ADVANCE_TIME_OF_DAY', steps: 1 }
+      },
+      
+      NEXT_DAY: {
+        patterns: [
+          /на\s+следующий\s+день/iu,
+          /следующим\s+(?:утром|днем|вечером)/iu,
+          /the\s+next\s+day/iu,
+          /next\s+(?:morning|day)/iu,
+          /на\s+другой\s+день/iu,
+          /назавтра/iu,
+          /the\s+following\s+day/iu,
+          /the\s+day\s+after/iu,
+          /на\s+следующее\s+утро/iu,
+          /next\s+day/iu
+        ],
+        action: { type: 'ADVANCE_DAY', days: 1 }
+      },
+      
+      WEEK_JUMP: {
+        patterns: [
+          /(?:прошла|прошло)\s+неделя/iu,
+          /через\s+неделю/iu,
+          /спустя\s+неделю/iu,
+          /a\s+week\s+(?:later|passed)/iu,
+          /weeks?\s+(?:later|passed)/iu,
+          /after\s+a\s+week/iu,
+          /неделей\s+(?:позже|спустя)/iu,
+          /(?:прошло|миновало)\s+(?:несколько\s+)?(?:недель|дней)/iu,
+          /several\s+(?:days|weeks)\s+(?:later|passed)/iu,
+          /a\s+few\s+days\s+later/iu
+        ],
+        action: { type: 'ADVANCE_DAY', days: 7 }
+      },
+      
+      MORNING: {
+        patterns: [
+          /(?:^|[^а-яё])утр(?:ом|а)(?:[^а-яё]|$)/iu,
+          /ранним\s+утром/iu,
+          /с\s+утра/iu,
+          /in\s+the\s+morning/iu,
+          /early\s+morning/iu,
+          /at\s+dawn/iu,
+          /на\s+рассвете/iu,
+          /morning\s+time/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Утро' }
+      },
+      
+      EVENING: {
+        patterns: [
+          /(?:^|[^а-яё])вечер(?:ом|а)(?:[^а-яё]|$)/iu,
+          /поздним\s+вечером/iu,
+          /к\s+вечеру/iu,
+          /in\s+the\s+evening/iu,
+          /late\s+evening/iu,
+          /at\s+(?:dusk|twilight)/iu,
+          /в\s+сумерках/iu,
+          /evening\s+time/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Вечер' }
+      },
+      
+      NIGHT: {
+        patterns: [
+          /(?:^|[^а-яё])ноч(?:ью|ь)(?:[^а-яё]|$)/iu,
+          /глубокой\s+ночью/iu,
+          /поздней\s+ночью/iu,
+          /at\s+night/iu,
+          /late\s+at\s+night/iu,
+          /in\s+the\s+(?:middle\s+of\s+the\s+)?night/iu,
+          /среди\s+ночи/iu,
+          /midnight/iu,
+          /полночь/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Ночь' }
+      }
+    },
+
     // ========== Time Engine ==========
     TimeEngine: {
       advance(){
@@ -2861,31 +3072,87 @@ L.debugMode = toBool(L.debugMode, false);
           };
         }
         
-        // Increment turn counter for current time of day
-        L.time.turnsInCurrentToD = (L.time.turnsInCurrentToD || 0) + 1;
+        // OLD TURN-BASED MECHANICS DISABLED
+        // Time now flows based on semantic actions from ChronologicalKnowledgeBase
+        // The old turn counter is preserved for backward compatibility but not used
+        // L.time.turnsInCurrentToD = (L.time.turnsInCurrentToD || 0) + 1;
+        // if (L.time.turnsInCurrentToD >= L.time.turnsPerToD) { ... }
+      },
+      
+      processSemanticAction(action){
+        const L = LC.lcInit();
+        if (!L.time) {
+          L.time = {
+            currentDay: 1,
+            dayName: 'Понедельник',
+            timeOfDay: 'Утро',
+            turnsPerToD: 5,
+            turnsInCurrentToD: 0,
+            scheduledEvents: []
+          };
+        }
         
-        // Check if we need to advance time of day
-        if (L.time.turnsInCurrentToD >= L.time.turnsPerToD) {
-          L.time.turnsInCurrentToD = 0;
-          
-          // Advance time of day: Утро -> День -> Вечер -> Ночь -> Утро
-          const timeSequence = ['Утро', 'День', 'Вечер', 'Ночь'];
-          const currentIndex = timeSequence.indexOf(L.time.timeOfDay);
-          
-          if (currentIndex >= 0 && currentIndex < timeSequence.length - 1) {
-            // Move to next time of day
-            L.time.timeOfDay = timeSequence[currentIndex + 1];
-          } else {
-            // Wrap around to morning and increment day
-            L.time.timeOfDay = 'Утро';
+        if (!action || !action.type) return;
+        
+        const timeSequence = ['Утро', 'День', 'Вечер', 'Ночь'];
+        const dayNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+        
+        switch(action.type) {
+          case 'ADVANCE_TO_NEXT_MORNING':
+            // Go to next day, morning
             L.time.currentDay = (L.time.currentDay || 1) + 1;
+            L.time.timeOfDay = 'Утро';
+            L.time.turnsInCurrentToD = 0;
             
-            // Update day name (циклично: Понедельник -> Вторник -> ... -> Воскресенье -> Понедельник)
-            const dayNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+            // Update day name
             const dayIndex = ((L.time.currentDay - 1) % 7);
             L.time.dayName = dayNames[dayIndex];
-          }
+            break;
+            
+          case 'SET_TIME_OF_DAY':
+            // Set specific time of day
+            if (action.value && timeSequence.indexOf(action.value) >= 0) {
+              L.time.timeOfDay = action.value;
+              L.time.turnsInCurrentToD = 0;
+            }
+            break;
+            
+          case 'ADVANCE_TIME_OF_DAY':
+            // Advance time of day by N steps
+            const steps = action.steps || 1;
+            const currentIndex = timeSequence.indexOf(L.time.timeOfDay);
+            
+            if (currentIndex >= 0) {
+              let newIndex = currentIndex + steps;
+              
+              // Handle day wrap
+              while (newIndex >= timeSequence.length) {
+                newIndex -= timeSequence.length;
+                L.time.currentDay = (L.time.currentDay || 1) + 1;
+                const dayIdx = ((L.time.currentDay - 1) % 7);
+                L.time.dayName = dayNames[dayIdx];
+              }
+              
+              L.time.timeOfDay = timeSequence[newIndex];
+              L.time.turnsInCurrentToD = 0;
+            }
+            break;
+            
+          case 'ADVANCE_DAY':
+            // Advance by N days
+            const days = action.days || 1;
+            L.time.currentDay = (L.time.currentDay || 1) + days;
+            L.time.timeOfDay = 'Утро';
+            L.time.turnsInCurrentToD = 0;
+            
+            // Update day name
+            const newDayIndex = ((L.time.currentDay - 1) % 7);
+            L.time.dayName = dayNames[newDayIndex];
+            break;
         }
+        
+        // Increment stateVersion to invalidate context cache
+        L.stateVersion++;
       }
     },
 
