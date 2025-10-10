@@ -4197,6 +4197,14 @@ L.debugMode = toBool(L.debugMode, false);
         // The old turn counter is preserved for backward compatibility but not used
         // L.time.turnsInCurrentToD = (L.time.turnsInCurrentToD || 0) + 1;
         // if (L.time.turnsInCurrentToD >= L.time.turnsPerToD) { ... }
+        
+        // Check if a time jump occurred and return information about it
+        const lastJump = L.time.lastTimeJump || { type: 'NONE' };
+        // Clear the jump flag after reading it
+        if (L.time.lastTimeJump) {
+          delete L.time.lastTimeJump;
+        }
+        return lastJump;
       },
       
       /**
@@ -4235,6 +4243,9 @@ L.debugMode = toBool(L.debugMode, false);
             // Update day name
             const dayIndex = ((L.time.currentDay - 1) % 7);
             L.time.dayName = dayNames[dayIndex];
+            
+            // Store time jump information for Living World Engine
+            L.time.lastTimeJump = { type: 'ADVANCE_TO_NEXT_MORNING', duration: 'night' };
             break;
             
           case 'SET_TIME_OF_DAY':
@@ -4276,11 +4287,266 @@ L.debugMode = toBool(L.debugMode, false);
             // Update day name
             const newDayIndex = ((L.time.currentDay - 1) % 7);
             L.time.dayName = dayNames[newDayIndex];
+            
+            // Store time jump information for Living World Engine
+            L.time.lastTimeJump = { type: 'ADVANCE_DAY', days: days, duration: days === 1 ? 'day' : 'days' };
             break;
         }
         
         // Increment stateVersion to invalidate context cache
         L.stateVersion++;
+      }
+    },
+
+    // ========== Living World Engine ==========
+    LivingWorld: {
+      /**
+       * Main entry point for off-screen simulation cycle.
+       * Simulates NPC actions during time jumps (e.g., overnight, between days).
+       * @param {object} timeJump - Information about the time jump that occurred
+       * @param {string} timeJump.type - Type of time jump ('ADVANCE_TO_NEXT_MORNING', 'ADVANCE_DAY', etc.)
+       * @param {string} [timeJump.duration] - Duration description ('night', 'day', 'days')
+       */
+      runOffScreenCycle(timeJump) {
+        if (!timeJump || timeJump.type === 'NONE') return;
+        
+        const L = LC.lcInit();
+        
+        // Get list of all ACTIVE characters (not FROZEN)
+        const activeCharacters = [];
+        for (const name in (L.characters || {})) {
+          const char = L.characters[name];
+          if (char && char.status === 'ACTIVE') {
+            activeCharacters.push({ name: name, data: char });
+          }
+        }
+        
+        // Simulate each character's actions
+        for (let i = 0; i < activeCharacters.length; i++) {
+          try {
+            this.simulateCharacter(activeCharacters[i]);
+          } catch (e) {
+            LC.lcWarn?.("LivingWorld simulation error for " + activeCharacters[i].name + ": " + (e && e.message));
+          }
+        }
+      },
+      
+      /**
+       * Simulates a single character's decision-making and actions during off-screen time.
+       * Uses a "Motivation Pyramid" to prioritize character actions:
+       * 1. Active goals (highest priority)
+       * 2. Strong relationships (positive or negative)
+       * 3. Upcoming calendar events
+       * @param {object} character - Character object with name and data
+       * @param {string} character.name - Character's normalized name
+       * @param {object} character.data - Character's state data
+       */
+      simulateCharacter(character) {
+        const L = LC.lcInit();
+        const charName = character.name;
+        
+        // Motivation Pyramid: Analyze what drives this character's actions
+        let action = null;
+        let targetChar = null;
+        
+        // Priority 1: Check for active goals
+        if (L.goals && typeof L.goals === 'object') {
+          for (const goalKey in L.goals) {
+            const goal = L.goals[goalKey];
+            if (goal && goal.character === charName && goal.status === 'active') {
+              action = { type: 'PURSUE_GOAL', goal: goal, goalKey: goalKey };
+              break;
+            }
+          }
+        }
+        
+        // Priority 2: Check for strong relationships (if no goal)
+        if (!action && L.evergreen && L.evergreen.relations && L.evergreen.relations[charName]) {
+          const relations = L.evergreen.relations[charName];
+          let strongestRelation = null;
+          let strongestValue = 0;
+          
+          for (const otherChar in relations) {
+            if (typeof relations[otherChar] === 'number') {
+              const absValue = Math.abs(relations[otherChar]);
+              if (absValue > strongestValue && absValue >= 30) { // Threshold for "strong" relation
+                strongestValue = absValue;
+                strongestRelation = {
+                  target: otherChar,
+                  value: relations[otherChar]
+                };
+              }
+            }
+          }
+          
+          if (strongestRelation) {
+            targetChar = strongestRelation.target;
+            if (strongestRelation.value > 0) {
+              action = { type: 'SOCIAL_POSITIVE', target: targetChar, strength: strongestRelation.value };
+            } else {
+              action = { type: 'SOCIAL_NEGATIVE', target: targetChar, strength: Math.abs(strongestRelation.value) };
+            }
+          }
+        }
+        
+        // Priority 3: Check for upcoming calendar events (if no goal or strong relation)
+        if (!action && L.time && L.time.scheduledEvents && L.time.scheduledEvents.length > 0) {
+          const currentDay = L.time.currentDay || 1;
+          for (let i = 0; i < L.time.scheduledEvents.length; i++) {
+            const event = L.time.scheduledEvents[i];
+            if (event && event.day && event.day <= currentDay + 3 && event.day >= currentDay) {
+              // Event is coming up soon (within 3 days)
+              action = { type: 'PREPARE_EVENT', event: event };
+              break;
+            }
+          }
+        }
+        
+        // Mood Modifier: Check current mood to affect action intensity
+        if (action && L.character_status && L.character_status[charName]) {
+          const mood = L.character_status[charName].mood;
+          if (mood) {
+            action.mood = mood; // Attach mood to the action for intensity calculation
+          }
+        }
+        
+        // If we determined an action, generate the corresponding fact
+        if (action) {
+          this.generateFact(charName, action);
+        }
+      },
+      
+      /**
+       * Generates concrete state changes ("facts") based on character actions.
+       * Does NOT generate narrative text - only modifies state silently.
+       * @param {string} characterName - The name of the character performing the action
+       * @param {object} action - The action object with type and relevant data
+       * @param {string} action.type - Action type ('PURSUE_GOAL', 'SOCIAL_POSITIVE', 'SOCIAL_NEGATIVE', 'GOSSIP', etc.)
+       */
+      generateFact(characterName, action) {
+        if (!action || !action.type) return;
+        
+        const L = LC.lcInit();
+        
+        switch (action.type) {
+          case 'PURSUE_GOAL':
+            // Character worked on their goal - add progress flag
+            if (action.goal && action.goalKey) {
+              const char = L.characters[characterName];
+              if (char) {
+                // Create flags object if it doesn't exist
+                if (!char.flags) char.flags = {};
+                
+                // Add goal progress indicator
+                const progressKey = 'goal_progress_' + action.goalKey;
+                char.flags[progressKey] = (char.flags[progressKey] || 0) + 0.25;
+                
+                // Cap progress at 1.0
+                if (char.flags[progressKey] > 1.0) {
+                  char.flags[progressKey] = 1.0;
+                }
+              }
+            }
+            break;
+            
+          case 'SOCIAL_NEGATIVE':
+            // Negative social interaction - decrease relationship
+            if (action.target && LC.RelationsEngine) {
+              // Ensure relations structure exists
+              if (!L.evergreen) L.evergreen = {};
+              if (!L.evergreen.relations) L.evergreen.relations = {};
+              if (typeof L.evergreen.relations[characterName] !== 'object' || L.evergreen.relations[characterName] === null) {
+                L.evergreen.relations[characterName] = {};
+              }
+              if (typeof L.evergreen.relations[action.target] !== 'object' || L.evergreen.relations[action.target] === null) {
+                L.evergreen.relations[action.target] = {};
+              }
+              
+              // Apply relationship change (magnitude based on mood if present)
+              let modifier = -5; // Base negative interaction
+              if (action.mood === 'ANGRY' || action.mood === 'FRUSTRATED') {
+                modifier = -10; // More intense when angry
+              }
+              
+              const currentVal1 = typeof L.evergreen.relations[characterName][action.target] === 'number' 
+                ? L.evergreen.relations[characterName][action.target] : 50;
+              const currentVal2 = typeof L.evergreen.relations[action.target][characterName] === 'number'
+                ? L.evergreen.relations[action.target][characterName] : 50;
+              
+              L.evergreen.relations[characterName][action.target] = Math.max(-100, Math.min(100, currentVal1 + modifier));
+              L.evergreen.relations[action.target][characterName] = Math.max(-100, Math.min(100, currentVal2 + modifier));
+              
+              L.stateVersion++;
+            }
+            break;
+            
+          case 'SOCIAL_POSITIVE':
+            // Positive social interaction - increase relationship
+            if (action.target && LC.RelationsEngine) {
+              // Ensure relations structure exists
+              if (!L.evergreen) L.evergreen = {};
+              if (!L.evergreen.relations) L.evergreen.relations = {};
+              if (typeof L.evergreen.relations[characterName] !== 'object' || L.evergreen.relations[characterName] === null) {
+                L.evergreen.relations[characterName] = {};
+              }
+              if (typeof L.evergreen.relations[action.target] !== 'object' || L.evergreen.relations[action.target] === null) {
+                L.evergreen.relations[action.target] = {};
+              }
+              
+              // Apply relationship change (magnitude based on mood if present)
+              let modifier = 5; // Base positive interaction
+              if (action.mood === 'HAPPY' || action.mood === 'EXCITED') {
+                modifier = 8; // More intense when happy
+              }
+              
+              const currentVal1 = typeof L.evergreen.relations[characterName][action.target] === 'number'
+                ? L.evergreen.relations[characterName][action.target] : 50;
+              const currentVal2 = typeof L.evergreen.relations[action.target][characterName] === 'number'
+                ? L.evergreen.relations[action.target][characterName] : 50;
+              
+              L.evergreen.relations[characterName][action.target] = Math.max(-100, Math.min(100, currentVal1 + modifier));
+              L.evergreen.relations[action.target][characterName] = Math.max(-100, Math.min(100, currentVal2 + modifier));
+              
+              L.stateVersion++;
+            }
+            break;
+            
+          case 'GOSSIP':
+            // Character spreads gossip - create or spread a rumor
+            if (action.rumor && LC.GossipEngine && LC.GossipEngine.Propagator) {
+              if (!L.rumors) L.rumors = [];
+              
+              // Try to find an existing rumor to spread
+              let rumorToSpread = null;
+              for (let i = 0; i < L.rumors.length; i++) {
+                const rumor = L.rumors[i];
+                if (rumor && rumor.knownBy && rumor.knownBy.indexOf(characterName) >= 0) {
+                  rumorToSpread = rumor;
+                  break;
+                }
+              }
+              
+              if (rumorToSpread && action.target) {
+                // Spread existing rumor to target
+                if (!rumorToSpread.knownBy.includes(action.target)) {
+                  rumorToSpread.knownBy.push(action.target);
+                  rumorToSpread.distortion = (rumorToSpread.distortion || 0) + 0.1;
+                }
+              }
+            }
+            break;
+            
+          case 'PREPARE_EVENT':
+            // Character prepares for upcoming event
+            if (action.event) {
+              const char = L.characters[characterName];
+              if (char) {
+                if (!char.flags) char.flags = {};
+                char.flags['event_preparation_' + (action.event.id || action.event.title)] = true;
+              }
+            }
+            break;
+        }
       }
     },
 
