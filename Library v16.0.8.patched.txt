@@ -552,6 +552,75 @@ Contract:
       }
     });
 
+    // /weather
+    reg.set("/weather", {
+      description: "/weather — show current weather | /weather set <type> — change weather (clear/rain/snow/storm/fog/cloudy)",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Weather command", stop: true };
+        
+        // /weather set <type>
+        const setMatch = cmdRaw.match(/\/weather\s+set\s+(\w+)/i);
+        if (setMatch) {
+          const newWeather = setMatch[1].toLowerCase();
+          const validWeather = ['clear', 'rain', 'snow', 'storm', 'fog', 'cloudy'];
+          
+          if (!validWeather.includes(newWeather)) {
+            return LC.replyStop(`❌ Invalid weather. Valid options: ${validWeather.join(', ')}`);
+          }
+          
+          if (LC.EnvironmentEngine && typeof LC.EnvironmentEngine.changeWeather === 'function') {
+            LC.EnvironmentEngine.changeWeather(newWeather, false);
+            return LC.replyStop(`✅ Weather changed to: ${newWeather}`);
+          }
+          return LC.replyStop("❌ EnvironmentEngine not available");
+        }
+        
+        // /weather — show current
+        if (!L.environment) L.environment = { weather: 'clear', location: '', ambiance: '' };
+        const weatherEmoji = {
+          clear: '☀️',
+          rain: '🌧️',
+          snow: '❄️',
+          storm: '⛈️',
+          fog: '🌫️',
+          cloudy: '☁️'
+        };
+        return LC.replyStop(`${weatherEmoji[L.environment.weather] || '🌤️'} Current weather: ${L.environment.weather}`);
+      }
+    });
+
+    // /location
+    reg.set("/location", {
+      description: "/location — show current location | /location set <name> — set location",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Location command", stop: true };
+        
+        // /location set <name>
+        const setMatch = cmdRaw.match(/\/location\s+set\s+(.+)/i);
+        if (setMatch) {
+          const newLocation = setMatch[1].trim();
+          
+          if (newLocation.length > 100) {
+            return LC.replyStop("❌ Location name too long (max 100 characters).");
+          }
+          
+          if (!L.environment) L.environment = { weather: 'clear', location: '', ambiance: '' };
+          L.environment.location = newLocation;
+          L.stateVersion++;
+          return LC.replyStop(`📍 Location set to: ${newLocation}`);
+        }
+        
+        // /location — show current
+        if (!L.environment) L.environment = { weather: 'clear', location: '', ambiance: '' };
+        const loc = L.environment.location || 'unknown';
+        return LC.replyStop(`📍 Current location: ${loc}`);
+      }
+    });
+
     // /event
     reg.set("/event", {
       description: "/event add \"<Name>\" on day N — schedule event",
@@ -1223,6 +1292,22 @@ L.debugMode = toBool(L.debugMode, false);
         turnsInCurrentToD: 0,
         scheduledEvents: []
       };
+      
+      // environment tracking
+      L.environment = L.environment || {
+        weather: 'clear',
+        location: '',
+        ambiance: ''
+      };
+      
+      // rumors and reputation tracking
+      L.rumors = Array.isArray(L.rumors) ? L.rumors : [];
+      // Initialize reputation for all characters
+      for (const charName in L.characters) {
+        if (!L.characters[charName].reputation) {
+          L.characters[charName].reputation = 50; // neutral default
+        }
+      }
       
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
@@ -2691,6 +2776,12 @@ L.debugMode = toBool(L.debugMode, false);
         }
         
         try {
+          LC.EnvironmentEngine?.analyze?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer EnvironmentEngine error: " + (e && e.message));
+        }
+        
+        try {
           LC.RelationsEngine?.analyze?.(text);
         } catch (e) {
           LC.lcWarn?.("UnifiedAnalyzer RelationsEngine error: " + (e && e.message));
@@ -3062,6 +3153,141 @@ L.debugMode = toBool(L.debugMode, false);
               }
             }
           }
+        }
+      }
+    },
+
+    // ========== Environment Engine ==========
+    EnvironmentEngine: {
+      /**
+       * Analyzes text for location changes and returns detected location.
+       * @param {string} text - The text to analyze
+       * @returns {string|null} Detected location or null
+       */
+      detectLocation(text) {
+        if (!text) return null;
+        const low = text.toLowerCase();
+        
+        // Location patterns (Russian and English)
+        const locationPatterns = [
+          { regex: /в\s+(класс(?:е|ной)|аудитори(?:и|ю))/i, location: 'classroom' },
+          { regex: /(?:в|на)\s+(столов(?:ая|ую|ой)|кафетери(?:и|й))/i, location: 'cafeteria' },
+          { regex: /(?:в|на)\s+(спортзал(?:е|)|тренажёрн(?:ый|ом)\s+зал)/i, location: 'gym' },
+          { regex: /(?:в|на)\s+(библиотек(?:а|е|у)|читальн(?:ый|ом)\s+зал)/i, location: 'library' },
+          { regex: /(?:в|на)\s+(коридор(?:е|)|холл(?:е|))/i, location: 'hallway' },
+          { regex: /(?:в|на)\s+(?:школьн(?:ом|ый)|игров(?:ом|ая))\s+(площадк(?:а|е|у)|двор(?:е|))/i, location: 'schoolyard' },
+          { regex: /(?:в|на)\s+(парк(?:е|)|сад(?:у|))/i, location: 'park' },
+          { regex: /дом(?:а|е|у)|квартир(?:а|е|у)/i, location: 'home' },
+          { regex: /(?:в|на)\s+улиц(?:а|е|у)/i, location: 'street' },
+          { regex: /(?:in|at)\s+(?:the\s+)?classroom/i, location: 'classroom' },
+          { regex: /(?:in|at)\s+(?:the\s+)?cafeteria/i, location: 'cafeteria' },
+          { regex: /(?:in|at)\s+(?:the\s+)?gym(?:nasium)?/i, location: 'gym' },
+          { regex: /(?:in|at)\s+(?:the\s+)?library/i, location: 'library' },
+          { regex: /(?:in|at)\s+(?:the\s+)?(?:hallway|corridor)/i, location: 'hallway' },
+          { regex: /(?:in|at)\s+(?:the\s+)?(?:schoolyard|playground)/i, location: 'schoolyard' },
+          { regex: /(?:in|at)\s+(?:the\s+)?park/i, location: 'park' },
+          { regex: /(?:at\s+)?home/i, location: 'home' },
+          { regex: /(?:on|in)\s+(?:the\s+)?street/i, location: 'street' }
+        ];
+        
+        for (const pattern of locationPatterns) {
+          if (pattern.regex.test(low)) {
+            return pattern.location;
+          }
+        }
+        
+        return null;
+      },
+      
+      /**
+       * Changes weather with optional notification.
+       * Weather changes may affect character moods.
+       * @param {string} newWeather - New weather state (clear, rain, snow, storm, fog)
+       * @param {boolean} [silent=false] - If true, no system message is generated
+       */
+      changeWeather(newWeather, silent = false) {
+        const L = LC.lcInit();
+        const validWeather = ['clear', 'rain', 'snow', 'storm', 'fog', 'cloudy'];
+        
+        if (!validWeather.includes(newWeather)) {
+          LC.lcWarn?.(`Invalid weather: ${newWeather}`);
+          return;
+        }
+        
+        const oldWeather = L.environment.weather;
+        L.environment.weather = newWeather;
+        L.stateVersion++;
+        
+        if (!silent) {
+          const weatherDesc = {
+            clear: '☀️ Ясная погода',
+            rain: '🌧️ Дождь',
+            snow: '❄️ Снег',
+            storm: '⛈️ Гроза',
+            fog: '🌫️ Туман',
+            cloudy: '☁️ Облачно'
+          };
+          LC.lcSys({ text: `Погода изменилась: ${weatherDesc[newWeather] || newWeather}`, level: 'director' });
+        }
+        
+        // Weather may affect moods (with probability)
+        this.applyWeatherMoodEffects(newWeather);
+      },
+      
+      /**
+       * Apply weather effects on character moods (probabilistic).
+       * @param {string} weather - Current weather
+       */
+      applyWeatherMoodEffects(weather) {
+        const L = LC.lcInit();
+        if (!L.characters) return;
+        
+        // Weather mood effects (20% chance to apply)
+        if (Math.random() > 0.2) return;
+        
+        const moodEffects = {
+          rain: { mood: 'melancholic', reason: 'дождливая погода' },
+          storm: { mood: 'anxious', reason: 'гроза' },
+          clear: { mood: 'cheerful', reason: 'хорошая погода' },
+          snow: { mood: 'excited', reason: 'снег' }
+        };
+        
+        const effect = moodEffects[weather];
+        if (!effect) return;
+        
+        // Apply to one random active character
+        const activeChars = Object.keys(L.characters).filter(name => {
+          const char = L.characters[name];
+          return char.lastSeen && (L.turn - char.lastSeen) < 5;
+        });
+        
+        if (activeChars.length > 0) {
+          const randomChar = activeChars[Math.floor(Math.random() * activeChars.length)];
+          if (!L.character_status) L.character_status = {};
+          L.character_status[randomChar] = {
+            mood: effect.mood,
+            reason: effect.reason,
+            expires: L.turn + 3
+          };
+          L.stateVersion++;
+          LC.lcSys({ text: `${randomChar} affected by weather`, level: 'director' });
+        }
+      },
+      
+      /**
+       * Analyzes text for environment changes and updates state.
+       * @param {string} text - The text to analyze
+       */
+      analyze(text) {
+        if (!text) return;
+        const L = LC.lcInit();
+        
+        // Detect location change
+        const newLocation = this.detectLocation(text);
+        if (newLocation && newLocation !== L.environment.location) {
+          L.environment.location = newLocation;
+          L.stateVersion++;
+          LC.lcSys({ text: `Location: ${newLocation}`, level: 'director' });
         }
       }
     },
