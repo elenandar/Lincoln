@@ -168,7 +168,11 @@ Contract:
    */
   LC.sysBlock = function sysBlock(lines){
     const arr = Array.isArray(lines) ? lines : [String(lines ?? "")];
-    const body = arr.map(v => String(v ?? "").trim()).filter(Boolean).join("\n");
+    const body = arr.map(v => {
+      // Handle both string and object format
+      const text = (v && typeof v === 'object') ? (v.text || '') : String(v ?? "");
+      return text.trim();
+    }).filter(Boolean).join("\n");
     if (!body) return "";
     return body + "\n" + "=".repeat(40) + "\n";
   };
@@ -335,6 +339,25 @@ Contract:
           return LC.replyStop("🔍 Debug OFF.");
         }
         return LC.replyStop(`Debug is ${L.debugMode ? "on" : "off"}.`);
+      }
+    });
+
+    // /mode
+    reg.set("/mode", {
+      description: "/mode director|character — switch information access level",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Mode command", stop: true };
+        if (/\/mode\s+director/i.test(cmdRaw)) {
+          L.playerInfoLevel = 'director';
+          return LC.replyStop("🎬 Director mode enabled. All system messages visible.");
+        }
+        if (/\/mode\s+character/i.test(cmdRaw)) {
+          L.playerInfoLevel = 'character';
+          return LC.replyStop("🎭 Character mode enabled. Director-level messages hidden for immersion.");
+        }
+        return LC.replyStop(`Current mode: ${L.playerInfoLevel === 'director' ? 'Director 🎬' : 'Character 🎭'}`);
       }
     });
 
@@ -1142,6 +1165,7 @@ Contract:
 }
 L.debugMode = toBool(L.debugMode, false);
       L.sysShow = toBool(L.sysShow, true);
+      L.playerInfoLevel = (L.playerInfoLevel === 'director') ? 'director' : 'character';
 
       // opening
       L.opening = toStr(L.opening);
@@ -1242,12 +1266,32 @@ L.debugMode = toBool(L.debugMode, false);
     // ---------- SYS ----------
     /**
      * Adds a system message to the message queue.
-     * @param {string} msg - The message to add
+     * @param {string|object} msg - The message to add, or an object with {text, level}
+     * @param {object} [options] - Optional parameters {level: 'director'|'character'}
      */
-    lcSys(msg)  { const L=this.lcInit(); const m = `⟦SYS⟧ ${toStr(msg)}`; L.sysMsgs.push(m);
-                  if (L.sysMsgs.length > CONFIG.LIMITS.SYS_MSGS_MAX) {
-                    L.sysMsgs = L.sysMsgs.slice(-Math.floor(CONFIG.LIMITS.SYS_MSGS_MAX/2));
-                  } },
+    lcSys(msg, options)  { 
+      const L=this.lcInit(); 
+      let text = msg;
+      let level = 'character';
+      
+      // Handle object parameter (msg as {text, level})
+      if (msg && typeof msg === 'object' && !Array.isArray(msg)) {
+        text = msg.text || '';
+        level = msg.level || 'character';
+      }
+      // Handle options parameter
+      else if (options && typeof options === 'object') {
+        level = options.level || 'character';
+      }
+      
+      const msgText = `⟦SYS⟧ ${toStr(text)}`;
+      const msgObj = { text: msgText, level: level };
+      L.sysMsgs.push(msgObj);
+      if (L.sysMsgs.length > CONFIG.LIMITS.SYS_MSGS_MAX) {
+        L.sysMsgs = L.sysMsgs.slice(-Math.floor(CONFIG.LIMITS.SYS_MSGS_MAX/2));
+      } 
+      return msgObj; // Return for debugging
+    },
     /**
      * Adds a warning message to the system message queue.
      * @param {string} m - The warning message
@@ -1265,9 +1309,20 @@ L.debugMode = toBool(L.debugMode, false);
     lcDebug(m)  { const L=this.lcInit(); if (L.debugMode) this.lcSys("🔍 " + m); },
     /**
      * Retrieves and clears all queued system messages.
-     * @returns {string[]} Array of system messages
+     * Normalizes messages to consistent format {text, level}.
+     * @returns {Array<{text: string, level: string}>} Array of system message objects
      */
-    lcConsumeMsgs(){ const L=this.lcInit(); const a=L.sysMsgs.slice(); L.sysMsgs=[]; return a; },
+    lcConsumeMsgs(){ 
+      const L=this.lcInit(); 
+      const msgs = L.sysMsgs.slice();
+      L.sysMsgs=[]; 
+      // Normalize to object format for backward compatibility
+      return msgs.map(m => {
+        if (typeof m === 'string') return { text: m, level: 'character' };
+        if (m && typeof m === 'object') return { text: m.text || '', level: m.level || 'character' };
+        return { text: '', level: 'character' };
+      });
+    },
 
     // ---------- Text utils ----------
     _normU(s){
