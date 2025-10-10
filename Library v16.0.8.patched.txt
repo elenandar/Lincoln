@@ -1858,6 +1858,15 @@ L.debugMode = toBool(L.debugMode, false);
             rec.status = 'ACTIVE';
             L.stateVersion++;
           }
+          // Initialize personality core if not present
+          if (!rec.personality) {
+            rec.personality = {
+              trust: 0.5,       // Доверчивость
+              bravery: 0.5,     // Смелость
+              idealism: 0.5,    // Идеализм
+              aggression: 0.3   // Агрессивность
+            };
+          }
           rec.lastSeen = t; rec.mentions++;
           L.characters[key] = rec;
         }
@@ -3196,6 +3205,24 @@ L.debugMode = toBool(L.debugMode, false);
                     L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, currentVal1to2 + modifier));
                     L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, currentVal2to1 + modifier));
                     
+                    // Notify Crucible about significant relationship changes
+                    if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
+                      LC.Crucible.analyzeEvent({
+                        type: 'RELATION_CHANGE',
+                        character: char1,
+                        otherCharacter: char2,
+                        change: modifier,
+                        finalValue: L.evergreen.relations[char1][char2]
+                      });
+                      LC.Crucible.analyzeEvent({
+                        type: 'RELATION_CHANGE',
+                        character: char2,
+                        otherCharacter: char1,
+                        change: modifier,
+                        finalValue: L.evergreen.relations[char2][char1]
+                      });
+                    }
+                    
                     // Increment stateVersion to invalidate context cache
                     L.stateVersion++;
                   }
@@ -4476,6 +4503,24 @@ L.debugMode = toBool(L.debugMode, false);
               L.evergreen.relations[characterName][action.target] = Math.max(-100, Math.min(100, currentVal1 + modifier));
               L.evergreen.relations[action.target][characterName] = Math.max(-100, Math.min(100, currentVal2 + modifier));
               
+              // Notify Crucible about relationship changes
+              if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
+                LC.Crucible.analyzeEvent({
+                  type: 'RELATION_CHANGE',
+                  character: characterName,
+                  otherCharacter: action.target,
+                  change: modifier,
+                  finalValue: L.evergreen.relations[characterName][action.target]
+                });
+                LC.Crucible.analyzeEvent({
+                  type: 'RELATION_CHANGE',
+                  character: action.target,
+                  otherCharacter: characterName,
+                  change: modifier,
+                  finalValue: L.evergreen.relations[action.target][characterName]
+                });
+              }
+              
               L.stateVersion++;
             }
             break;
@@ -4506,6 +4551,24 @@ L.debugMode = toBool(L.debugMode, false);
               
               L.evergreen.relations[characterName][action.target] = Math.max(-100, Math.min(100, currentVal1 + modifier));
               L.evergreen.relations[action.target][characterName] = Math.max(-100, Math.min(100, currentVal2 + modifier));
+              
+              // Notify Crucible about relationship changes
+              if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
+                LC.Crucible.analyzeEvent({
+                  type: 'RELATION_CHANGE',
+                  character: characterName,
+                  otherCharacter: action.target,
+                  change: modifier,
+                  finalValue: L.evergreen.relations[characterName][action.target]
+                });
+                LC.Crucible.analyzeEvent({
+                  type: 'RELATION_CHANGE',
+                  character: action.target,
+                  otherCharacter: characterName,
+                  change: modifier,
+                  finalValue: L.evergreen.relations[action.target][characterName]
+                });
+              }
               
               L.stateVersion++;
             }
@@ -4546,6 +4609,143 @@ L.debugMode = toBool(L.debugMode, false);
               }
             }
             break;
+        }
+      }
+    },
+
+    // ========== The Crucible: Character Evolution Engine ==========
+    Crucible: {
+      /**
+       * Analyzes events for their potential to trigger personality evolution.
+       * This is the core "Catalyst" detector that determines if an event is significant
+       * enough to fundamentally change a character's personality traits.
+       * @param {object} eventData - Event data from other engines
+       * @param {string} eventData.type - Event type ('RELATION_CHANGE', 'GOAL_COMPLETE', 'RUMOR_SPREAD')
+       * @param {string} eventData.character - The character experiencing the event
+       * @param {string} [eventData.otherCharacter] - Other character involved (for relationship events)
+       * @param {number} [eventData.change] - The magnitude of change (for relationship events)
+       * @param {number} [eventData.finalValue] - Final value after change (for relationship events)
+       */
+      analyzeEvent(eventData) {
+        if (!eventData || !eventData.type || !eventData.character) return;
+        
+        const L = LC.lcInit();
+        const character = L.characters[eventData.character];
+        if (!character) return;
+        
+        // Ensure personality exists
+        if (!character.personality) {
+          character.personality = {
+            trust: 0.5,
+            bravery: 0.5,
+            idealism: 0.5,
+            aggression: 0.3
+          };
+        }
+        
+        // Check if character is important enough for evolution
+        // Only MAIN and SECONDARY characters evolve significantly
+        const isImportant = character.type === 'MAIN' || character.type === 'SECONDARY';
+        
+        switch (eventData.type) {
+          case 'RELATION_CHANGE':
+            this._handleRelationChange(character, eventData, isImportant);
+            break;
+            
+          case 'GOAL_COMPLETE':
+            this._handleGoalComplete(character, eventData, isImportant);
+            break;
+            
+          case 'RUMOR_SPREAD':
+            this._handleRumorSpread(character, eventData, isImportant);
+            break;
+        }
+        
+        // Ensure all personality values stay within [0, 1]
+        for (const trait in character.personality) {
+          character.personality[trait] = Math.max(0, Math.min(1, character.personality[trait]));
+        }
+      },
+      
+      /**
+       * Handles personality evolution from relationship changes.
+       * Major betrayals decrease trust and idealism.
+       * Major acts of heroism/rescue increase trust and bravery.
+       */
+      _handleRelationChange(character, eventData, isImportant) {
+        const change = eventData.change || 0;
+        const finalValue = eventData.finalValue || 0;
+        const otherChar = eventData.otherCharacter;
+        
+        // Only process significant changes
+        if (Math.abs(change) < 30) return;
+        
+        // Major negative event (betrayal, abandonment)
+        if (change < -40 && isImportant) {
+          character.personality.trust = Math.max(0, character.personality.trust - 0.2);
+          character.personality.idealism = Math.max(0, character.personality.idealism - 0.1);
+          
+          LC.lcSys?.({ 
+            text: `${eventData.character} пережил(а) предательство и стал(а) менее доверчив(ой).`, 
+            level: 'director' 
+          });
+        }
+        // Major positive event (heroic rescue, deep loyalty)
+        else if (change > 40 && isImportant) {
+          character.personality.trust = Math.min(1, character.personality.trust + 0.15);
+          character.personality.bravery = Math.min(1, character.personality.bravery + 0.1);
+          
+          LC.lcSys?.({ 
+            text: `${eventData.character} был(а) спасен(а) и стал(а) более смел(ой) и доверчив(ой).`, 
+            level: 'director' 
+          });
+        }
+        // Extreme hatred can increase aggression
+        else if (finalValue < -70 && isImportant) {
+          character.personality.aggression = Math.min(1, character.personality.aggression + 0.1);
+        }
+      },
+      
+      /**
+       * Handles personality evolution from goal completion.
+       * Completing difficult goals increases bravery.
+       * Repeated failures decrease idealism.
+       */
+      _handleGoalComplete(character, eventData, isImportant) {
+        const success = eventData.success;
+        
+        if (success && isImportant) {
+          character.personality.bravery = Math.min(1, character.personality.bravery + 0.1);
+          character.personality.idealism = Math.min(1, character.personality.idealism + 0.05);
+          
+          LC.lcSys?.({ 
+            text: `${eventData.character} достиг(ла) важной цели и стал(а) более смел(ой).`, 
+            level: 'director' 
+          });
+        } else if (!success && isImportant) {
+          character.personality.idealism = Math.max(0, character.personality.idealism - 0.1);
+        }
+      },
+      
+      /**
+       * Handles personality evolution from rumor spread.
+       * Being the subject of widespread negative gossip can change personality.
+       */
+      _handleRumorSpread(character, eventData, isImportant) {
+        const spreadCount = eventData.spreadCount || 0;
+        const spin = eventData.spin || 'neutral';
+        
+        // Only very widespread rumors affect personality
+        if (spreadCount < 5) return;
+        
+        if (spin === 'negative' && isImportant) {
+          character.personality.trust = Math.max(0, character.personality.trust - 0.1);
+          character.personality.aggression = Math.min(1, character.personality.aggression + 0.05);
+          
+          LC.lcSys?.({ 
+            text: `${eventData.character} стал(а) более замкнут(ой) из-за слухов.`, 
+            level: 'director' 
+          });
         }
       }
     },
@@ -5126,6 +5326,48 @@ LC.composeContextOverlay = function(options) {
       }
       if (hot.length)    priority.push(`⟦SCENE⟧ Focus on: ${hot.join(", ")}`);
       if (active.length) normal.push(`⟦SCENE⟧ Recently active: ${active.join(", ")}`);
+      
+      // Add personality traits for HOT characters (those in current scene focus)
+      for (let i = 0; i < hot.length; i++) {
+        const charName = hot[i];
+        const character = L.characters[charName];
+        if (character && character.personality) {
+          const p = character.personality;
+          const traits = [];
+          
+          // Analyze trust
+          if (p.trust < 0.3) {
+            traits.push('циничен и не доверяет людям');
+          } else if (p.trust > 0.8) {
+            traits.push('наивен и открыт');
+          }
+          
+          // Analyze bravery
+          if (p.bravery < 0.3) {
+            traits.push('осторожен и боится рисковать');
+          } else if (p.bravery > 0.8) {
+            traits.push('смел и готов рисковать');
+          }
+          
+          // Analyze idealism
+          if (p.idealism < 0.3) {
+            traits.push('прагматичен и циничен');
+          } else if (p.idealism > 0.8) {
+            traits.push('идеалист и верит в лучшее');
+          }
+          
+          // Analyze aggression
+          if (p.aggression > 0.7) {
+            traits.push('агрессивен и конфликтен');
+          } else if (p.aggression < 0.2) {
+            traits.push('миролюбив и избегает конфликтов');
+          }
+          
+          if (traits.length > 0) {
+            priority.push(`⟦TRAITS: ${charName}⟧ ${traits.join(', ')}`);
+          }
+        }
+      }
     }
 
     if (L.turn > 0) {
@@ -5146,6 +5388,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦SUGGESTION⟧") === 0) return 760;
       if (line.indexOf("⟦GOAL⟧") === 0)   return 750;
       if (line.indexOf("⟦SECRET⟧") === 0) return 740;
+      if (line.indexOf("⟦TRAITS:") === 0) return 730;
       if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
       if (line.indexOf("⟦OPENING⟧") === 0)return 700;
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
@@ -5159,7 +5402,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, TRAITS:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
