@@ -795,16 +795,67 @@ When Максим not in focus → Secret hidden
 
 ### 3.4 In-Game Time and Calendar System (TimeEngine)
 
-The Lincoln system tracks in-game time progression, enabling time-aware storytelling with deadlines, schedules, and temporal context for the AI.
+The Lincoln system tracks in-game time progression through **semantic understanding** of narrative events, enabling natural time-aware storytelling with meaningful temporal progression based on what happens in the story.
 
 #### Overview
 
 **Key Capabilities:**
-1. **Time of Day Tracking** - Automatic progression through Утро → День → Вечер → Ночь
-2. **Day Counter** - Sequential day numbering with automatic week cycling
-3. **Event Scheduling** - Track upcoming events with countdown display
-4. **Context Integration** - Time and schedule information in AI context
-5. **Manual Control** - Commands to view, set, and advance time
+1. **Semantic Time Control** - Time flows based on narrative meaning, not mechanical turn counting
+2. **Chronological Knowledge Base** - Comprehensive bilingual dictionary of temporal markers
+3. **Time of Day Tracking** - Progression through Утро → День → Вечер → Ночь based on story events
+4. **Day Counter** - Sequential day numbering with automatic week cycling
+5. **Event Scheduling** - Track upcoming events with countdown display
+6. **Context Integration** - Time and schedule information in AI context
+7. **Manual Control** - Commands to view, set, and advance time
+
+#### Chronological Knowledge Base (CKB)
+
+The TimeEngine now uses a **Chronological Knowledge Base** that maps narrative events to temporal changes. Instead of counting turns, time advances when the story contains semantic markers like "лег спать" or "after school".
+
+**Core Concept:** 
+Time in the game world now reflects what's happening in the narrative. When a character goes to sleep, it becomes morning. When school ends, it becomes afternoon. This creates a natural flow where time progression emerges from the story itself.
+
+**Supported Event Categories:**
+
+1. **Sleep/Night** → Advances to next morning
+   - Russian: "лег спать", "заснул", "отправился в кровать", "до глубокой ночи", "всю ночь"
+   - English: "went to sleep", "fell asleep", "going to bed", "through the night"
+   - Action: ADVANCE_TO_NEXT_MORNING (increment currentDay, set time to Утро)
+
+2. **End of School Day** → Sets time to afternoon
+   - Russian: "после уроков", "после школы", "занятия закончились", "уроки закончились"
+   - English: "after school", "after classes", "classes ended", "school day ended"
+   - Action: SET_TIME_OF_DAY (set to День)
+
+3. **Lunch** → Sets time to afternoon
+   - Russian: "пообедал", "во время ланча", "за обедом", "обеденный перерыв"
+   - English: "had lunch", "at lunchtime", "during lunch", "lunch break"
+   - Action: SET_TIME_OF_DAY (set to День)
+
+4. **Dinner** → Sets time to evening
+   - Russian: "поужинал", "за ужином", "во время ужина", "вечерний прием пищи"
+   - English: "had dinner", "at dinner", "during dinner", "dinner time"
+   - Action: SET_TIME_OF_DAY (set to Вечер)
+
+5. **Short Time Jumps** → Advances time by 1-2 periods
+   - Russian: "час спустя", "через несколько часов", "к вечеру", "через некоторое время"
+   - English: "a few hours later", "an hour later", "by evening", "some time later"
+   - Action: ADVANCE_TIME_OF_DAY (advance 1 step)
+
+6. **Next Day** → Advances to next day
+   - Russian: "на следующий день", "следующим утром", "назавтра", "на другой день"
+   - English: "the next day", "next morning", "the following day", "the day after"
+   - Action: ADVANCE_DAY (increment day, set to Утро)
+
+7. **Week Jumps** → Advances by 7 days
+   - Russian: "прошла неделя", "через неделю", "спустя неделю", "прошло несколько дней"
+   - English: "a week later", "weeks passed", "after a week", "several days later"
+   - Action: ADVANCE_DAY (increment by 7 days)
+
+8. **Explicit Time References** → Sets specific time of day
+   - Morning: "утром", "ранним утром", "in the morning", "at dawn"
+   - Evening: "вечером", "поздним вечером", "in the evening", "at dusk"
+   - Night: "ночью", "глубокой ночью", "at night", "midnight"
 
 #### State Structure
 
@@ -815,8 +866,8 @@ state.lincoln.time = {
   currentDay: 1,              // Current day number
   dayName: 'Понедельник',     // Day name (cycles through week)
   timeOfDay: 'Утро',          // Current time period
-  turnsPerToD: 5,             // Turns needed to advance time period
-  turnsInCurrentToD: 0,       // Turns elapsed in current period
+  turnsPerToD: 5,             // Legacy field (preserved for compatibility)
+  turnsInCurrentToD: 0,       // Legacy field (not used for time advancement)
   scheduledEvents: []         // Array of scheduled events
 }
 ```
@@ -833,22 +884,20 @@ state.lincoln.time = {
 
 #### Time Progression
 
-**Automatic Advancement:**
-- `LC.TimeEngine.advance()` is called after each story turn in Output module
-- Each call increments `turnsInCurrentToD`
-- When `turnsInCurrentToD >= turnsPerToD`, time period advances
+**Semantic Advancement:**
+- `LC.UnifiedAnalyzer.analyze()` is called after each story turn
+- Text is scanned for temporal markers from ChronologicalKnowledgeBase
+- When a marker is found, `LC.TimeEngine.processSemanticAction()` is invoked
+- Time changes based on the semantic meaning of the action
+
+**Old Turn-Based System:**
+- The old mechanical turn counter (`turnsInCurrentToD`) is **disabled**
+- Time no longer advances automatically after N turns
+- All time progression is now driven by narrative content
 
 **Time Cycle:**
 ```
-Утро (Morning)
-  ↓ 5 turns
-День (Afternoon)
-  ↓ 5 turns
-Вечер (Evening)
-  ↓ 5 turns
-Ночь (Night)
-  ↓ 5 turns → New Day
-Утро (Morning) [Day +1]
+Утро (Morning) → День (Afternoon) → Вечер (Evening) → Ночь (Night) → Утро [Next Day]
 ```
 
 **Day Naming:**
@@ -920,9 +969,12 @@ The time system integrates across multiple modules:
 
 ```
 Output v16.0.8.patched.txt
-    ↓ After each turn: LC.TimeEngine.advance()
-Library v16.0.8.patched.txt
-    ↓ Update turnsInCurrentToD, timeOfDay, currentDay
+    ↓ After each turn: LC.UnifiedAnalyzer.analyze(text)
+Library v16.0.8.patched.txt - UnifiedAnalyzer
+    ↓ Scans for ChronologicalKnowledgeBase patterns
+    ↓ Calls LC.TimeEngine.processSemanticAction(action)
+Library v16.0.8.patched.txt - TimeEngine
+    ↓ Update timeOfDay, currentDay based on semantic action
 state.lincoln.time
     ↓ Read by composeContextOverlay()
 Library v16.0.8.patched.txt
@@ -933,53 +985,53 @@ Context v16.0.8.patched.txt
 
 #### Practical Examples
 
-**Example 1: Basic Time Flow**
+**Example 1: Semantic Time Flow**
 
-Turn 1 (Day 1, Утро):
+Story text: "Максим лег спать после долгого дня."
 ```
-⟦TIME⟧ Сейчас Понедельник, утро.
-```
-
-After 5 turns → Day 1, День:
-```
-⟦TIME⟧ Сейчас Понедельник, день.
+⟦TIME⟧ Сейчас Вторник, утро.  ← Advanced to next morning
 ```
 
-After 20 turns → Day 2, Утро:
+Story text: "После уроков она пошла в библиотеку."
 ```
-⟦TIME⟧ Сейчас Вторник, утро.
-```
-
-**Example 2: Event Scheduling**
-
-Day 3, planning a party for Day 5:
-```
-User: /event add "День рождения Хлои" on day 5
-System: 📌 Событие "День рождения Хлои" запланировано на день 5 (через 2 дней)
-
-Context shows:
-⟦TIME⟧ Сейчас Среда, день.
-⟦SCHEDULE⟧ До День рождения Хлои осталось 2 дня
+⟦TIME⟧ Сейчас Вторник, день.  ← Set to afternoon
 ```
 
-Day 5 arrives:
+Story text: "За ужином они обсуждали планы."
 ```
-⟦TIME⟧ Сейчас Пятница, утро.
+⟦TIME⟧ Сейчас Вторник, вечер.  ← Set to evening
+```
+
+**Example 2: Time Jumps**
+
+Story text: "Прошла неделя. Максим снова встретился с Хлоей."
+```
+⟦TIME⟧ Сейчас Вторник, утро.  ← Jumped 7 days forward
+```
+
+Story text: "Час спустя они добрались до школы."
+```
+⟦TIME⟧ Сейчас Вторник, день.  ← Advanced one time period
+```
+
+**Example 3: Event Scheduling with Semantic Time**
+
+Day 1, story text: "Максим лег спать, думая о завтрашней вечеринке."
+```
+⟦TIME⟧ Сейчас Вторник, утро.  ← Now day 2
 ⟦SCHEDULE⟧ День рождения Хлои происходит сегодня
 ```
 
-**Example 3: Multiple Events**
+**Example 4: Bilingual Support**
 
+English: "After school, Max went to sleep."
 ```
-/event add "Экзамен" on day 10
-/event add "Концерт" on day 12
-/event add "Каникулы" on day 20
+⟦TIME⟧ Сейчас Среда, утро.  ← "after school" → День, then "went to sleep" → next day, Утро
+```
 
-/schedule
-→ 📅 РАСПИСАНИЕ СОБЫТИЙ
-  День 10: Экзамен (через 5 дней)
-  День 12: Концерт (через 7 дней)
-  День 20: Каникулы (через 15 дней)
+Russian: "После уроков Макс лег спать."
+```
+⟦TIME⟧ Сейчас Среда, утро.  ← Same result with Russian patterns
 ```
 
 #### Integration with Other Systems
@@ -996,16 +1048,36 @@ Day 5 arrives:
 - Secrets about events ("Максим знает о сюрпризе на вечеринке")
 - Event-related knowledge filtering
 
+**With UnifiedAnalyzer:**
+- CKB patterns integrated into unified pipeline
+- Time analysis happens alongside goals, relations, and mood detection
+
 #### Technical Notes
 
-**Turn Budget:**
-- TimeEngine.advance() called in try-catch to prevent errors
-- Minimal performance impact (~1ms per turn)
+**Semantic Processing:**
+- ChronologicalKnowledgeBase patterns checked on every turn
+- First matching pattern triggers the action
+- Text matching is case-insensitive
+- Both Russian and English patterns supported
+
+**State Management:**
+- Time changes increment stateVersion to invalidate context cache
+- Ensures TIME tags reflect current state immediately
+
+**Performance:**
+- Pattern matching integrated into existing UnifiedAnalyzer pipeline
+- Minimal overhead (~1-2ms per turn)
+- No additional regex compilation cost (patterns built once)
 
 **State Persistence:**
 - Time state persists across sessions
 - Manual time control via `/time set` for testing/debugging
 - Events persist until manually cleared (future enhancement)
+
+**Backward Compatibility:**
+- Old turn-based fields preserved in state structure
+- Legacy code continues to work but doesn't affect time progression
+- Migration path: existing games continue with current time state
 
 **Future Enhancements (Out of Scope):**
 - `/event delete <id>` - Remove scheduled events
@@ -1013,6 +1085,7 @@ Day 5 arrives:
 - Custom time period lengths per scene
 - Historical event log
 - Multiple timeline support
+- Season/weather integration with time
 
 ---
 
