@@ -59,6 +59,11 @@ Contract:
     STRICT_CMD_BYPASS: true
   };
 
+  /**
+   * Sanitizes and deduplicates character aliases.
+   * Handles both array and object formats for aliases.
+   * @param {object} L - The Lincoln state object
+   */
   LC.sanitizeAliases = function (L){
     try{
       if (!L) return;
@@ -146,11 +151,21 @@ Contract:
   };
 
   // --- SYS formatting helpers (shared by Input/Output) ---
+  /**
+   * Formats a message as a single-line system message.
+   * @param {string} msg - The message to format
+   * @returns {string} Formatted system message or empty string
+   */
   LC.sysLine = function sysLine(msg){
     const s = String(msg ?? "").trim();
     return s ? `⟦SYS⟧ ${s}` : "";
   };
 
+  /**
+   * Formats multiple lines as a system message block.
+   * @param {string[]|string} lines - Array of lines or single line
+   * @returns {string} Formatted system block with separator
+   */
   LC.sysBlock = function sysBlock(lines){
     const arr = Array.isArray(lines) ? lines : [String(lines ?? "")];
     const body = arr.map(v => String(v ?? "").trim()).filter(Boolean).join("\n");
@@ -158,6 +173,11 @@ Contract:
     return body + "\n" + "=".repeat(40) + "\n";
   };
 
+  /**
+   * Applies a recap draft by saving it and clearing the draft state.
+   * @param {object} L - The Lincoln state object
+   * @returns {object|boolean} Object with savedCount or false if no draft
+   */
   LC.applyRecapDraft ??= function applyRecapDraft(L) {
     if (!L || !L.recapDraft || !L.recapDraft.text) return false;
     let savedCount = 0;
@@ -174,6 +194,11 @@ Contract:
     return { savedCount };
   };
 
+  /**
+   * Applies an epoch draft by saving it and clearing the draft state.
+   * @param {object} L - The Lincoln state object
+   * @returns {boolean} True if epoch was applied, false otherwise
+   */
   LC.applyEpochDraft ??= function applyEpochDraft(L) {
     if (!L || !L.epochDraft || !L.epochDraft.text) return false;
     L.lastEpochTurn = L.epochDraft.turn || L.turn;
@@ -442,6 +467,12 @@ Contract:
     // /time
     reg.set("/time", {
       description: "/time — show current time | /time set day N [Name] — set day | /time next — advance time",
+      /**
+       * Handles time-related commands with defensive input validation.
+       * @param {string[]} args - Command arguments
+       * @param {string} text - Full command text
+       * @returns {object} Command response
+       */
       handler(args, text) {
         const L = LC.lcInit();
         const cmdRaw = text || "";
@@ -457,16 +488,25 @@ Contract:
           return LC.replyStop("❌ TimeEngine not available");
         }
         
-        // /time set day N [Name]
+        // /time set day N [Name] - with defensive validation
         const setMatch = cmdRaw.match(/\/time\s+set\s+day\s+(\d+)(?:\s+(.+))?/i);
         if (setMatch) {
           const dayNum = parseInt(setMatch[1], 10);
           const dayNameCustom = setMatch[2] ? setMatch[2].trim() : null;
           
+          // Defensive programming: validate day number is reasonable
+          if (!Number.isFinite(dayNum) || dayNum < 1 || dayNum > 10000) {
+            return LC.replyStop("❌ Invalid day number. Must be between 1 and 10000.");
+          }
+          
           if (!L.time) L.time = { currentDay: 1, dayName: 'Понедельник', timeOfDay: 'Утро', turnsPerToD: 5, turnsInCurrentToD: 0, scheduledEvents: [] };
           L.time.currentDay = dayNum;
           
           if (dayNameCustom) {
+            // Defensive programming: validate day name length
+            if (dayNameCustom.length > 50) {
+              return LC.replyStop("❌ Day name too long (max 50 characters).");
+            }
             L.time.dayName = dayNameCustom;
           } else {
             // Auto-calculate day name based on day number
@@ -1038,6 +1078,12 @@ Contract:
     CONFIG,
     DATA_VERSION: "16.0.8-compat6d",
 
+    /**
+     * Initializes and returns the Lincoln state object with all necessary defaults.
+     * This is the primary entry point for accessing the Lincoln system state.
+     * @param {string} [slot] - The script slot identifier (e.g., "Library", "Input", "Output", "Context")
+     * @returns {object} The initialized Lincoln state object with all required properties
+     */
     lcInit(slot = __SCRIPT_SLOT__) {
       const st = getState();
       const L = (st.lincoln = st.lincoln || {});
@@ -1194,13 +1240,33 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     // ---------- SYS ----------
+    /**
+     * Adds a system message to the message queue.
+     * @param {string} msg - The message to add
+     */
     lcSys(msg)  { const L=this.lcInit(); const m = `⟦SYS⟧ ${toStr(msg)}`; L.sysMsgs.push(m);
                   if (L.sysMsgs.length > CONFIG.LIMITS.SYS_MSGS_MAX) {
                     L.sysMsgs = L.sysMsgs.slice(-Math.floor(CONFIG.LIMITS.SYS_MSGS_MAX/2));
                   } },
+    /**
+     * Adds a warning message to the system message queue.
+     * @param {string} m - The warning message
+     */
     lcWarn(m)   { this.lcSys("⚠️ " + m); },
+    /**
+     * Adds an error message and increments the error counter.
+     * @param {string} m - The error message
+     */
     lcError(m)  { this.lcSys("❌ " + m); const L=this.lcInit(); L.tm.errors=(L.tm.errors||0)+1; },
+    /**
+     * Adds a debug message if debug mode is enabled.
+     * @param {string} m - The debug message
+     */
     lcDebug(m)  { const L=this.lcInit(); if (L.debugMode) this.lcSys("🔍 " + m); },
+    /**
+     * Retrieves and clears all queued system messages.
+     * @returns {string[]} Array of system messages
+     */
     lcConsumeMsgs(){ const L=this.lcInit(); const a=L.sysMsgs.slice(); L.sysMsgs=[]; return a; },
 
     // ---------- Text utils ----------
@@ -1223,6 +1289,11 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     // ---------- Continue/Retry helpers ----------
+    /**
+     * Checks if the input is a soft continue (empty, whitespace, or continue keyword).
+     * @param {string} raw - The raw input text
+     * @returns {boolean} True if input is a soft continue
+     */
     _isSoftContinue(raw){
       const r = String(raw == null ? "" : raw);
       const tokens = ["", " ", "...", "—", ">"];
@@ -1234,6 +1305,11 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     // ---------- Input type & turn ----------
+    /**
+     * Detects the type of user input (new, continue, or retry) and updates state accordingly.
+     * @param {string} raw - The raw input text
+     * @returns {string} The detected input type ('new', 'continue', or 'retry')
+     */
     detectInputType(raw){
       const L = this.lcInit();
       const currentNorm = this._normU(raw);
@@ -1600,26 +1676,39 @@ L.debugMode = toBool(L.debugMode, false);
       if (L.debugMode) this.lcDebug(`antiEcho: sim=${sim.toFixed(3)} thr=${thr.toFixed(2)} act=${actionType||"new"} mode=${L.antiEchoMode}`);
       return res;
     },
+    /**
+     * Applies anti-echo trimming to prevent AI from repeating previous output.
+     * Uses configurable trim ratios and looks for sentence boundaries.
+     * @param {string} currentOutput - The current output text
+     * @param {string} previousOutput - The previous output text
+     * @param {string} actionType - The action type ('continue', 'story', etc.)
+     * @returns {string} The trimmed output or original if no echo detected
+     */
     applyAntiEcho(currentOutput, previousOutput, actionType){
       if (actionType === "retry") return currentOutput;
       const { isEcho } = this.antiEchoCheck(currentOutput, previousOutput, actionType);
       if (!isEcho) return currentOutput;
 
+      // Use different trim ratios for continue vs normal actions
       const ratio = (actionType === "continue")
-        ? CONFIG.LIMITS.ANTI_ECHO.CONTINUE_TRIM
-        : CONFIG.LIMITS.ANTI_ECHO.TRIM_PERCENTAGE;
+        ? CONFIG.LIMITS.ANTI_ECHO.CONTINUE_TRIM   // 60% for continue
+        : CONFIG.LIMITS.ANTI_ECHO.TRIM_PERCENTAGE; // 75% for normal
 
       let cut = Math.floor(currentOutput.length * ratio);
+      
+      // Look for a sentence boundary near the cut point (±100 chars window)
       const search = 100;
       const winS = Math.max(0, cut - search);
       const window = currentOutput.slice(winS, cut + search);
-      const ends = window.match(/[.!?…]\s|—\s/g);
+      const ends = window.match(/[.!?…]\s|—\s/g);  // Find sentence endings
       if (ends && ends.length > 0){
         const last = ends[ends.length-1];
         const lastIdx = window.lastIndexOf(last);
         if (lastIdx !== -1) cut = winS + lastIdx + last.length;
       }
       const trimmed = currentOutput.slice(0, cut).trim();
+      
+      // Safety check: don't trim if result is too short
       if (trimmed.length < 80) return currentOutput;
 
       const L = this.lcInit();
@@ -1627,6 +1716,10 @@ L.debugMode = toBool(L.debugMode, false);
       this.lcSys("🔄 Echo detected and trimmed.");
       return trimmed;
     },
+    /**
+     * Returns statistics about the anti-echo cache.
+     * @returns {{cacheEntries: number, lruSize: number, hits: number}} Cache statistics
+     */
     antiEchoStats(){
       const L = this.lcInit();
       return {
@@ -1643,6 +1736,11 @@ L.debugMode = toBool(L.debugMode, false);
 
     // ---------- Evergreen (patterns + fallback) ----------
     EvergreenEngine: {
+      /**
+       * Builds regex patterns for detecting relations, status changes, obligations, and facts.
+       * Uses Unicode-aware patterns with fallback to ASCII-only patterns if needed.
+       * @returns {object} Object containing pattern arrays for relations, status, obligations, facts, goals
+       */
       _buildPatterns(){
         const P = { relations:[], status:[], obligations:[], facts:[], goals:[] };
         const tryPush = (arr, src, flags, meta) => {
@@ -2474,10 +2572,21 @@ L.debugMode = toBool(L.debugMode, false);
         return unified;
       },
       
+      /**
+       * Analyzes text using all available engines (TimeEngine, EvergreenEngine, GoalsEngine, MoodEngine).
+       * Processes patterns in order of priority and delegates to appropriate engines.
+       * @param {string} text - The text to analyze (input or output)
+       * @param {string} actionType - The type of action ('input', 'output', 'retry', etc.)
+       */
       analyze(text, actionType){
         const L = LC.lcInit();
         if (!text) return;
-        if (!L.evergreen || !L.evergreen.enabled || actionType === "retry") return;
+        
+        // Defensive programming: ensure evergreen exists
+        if (!L.evergreen || typeof L.evergreen !== 'object') {
+          L.evergreen = { enabled: true, relations: {}, status: {}, obligations: {}, facts: {}, history: [] };
+        }
+        if (!L.evergreen.enabled || actionType === "retry") return;
         
         // Build patterns on first use
         if (!this.patterns) {
@@ -2535,7 +2644,14 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     // ========== Goals Engine ==========
+    // ========== Goals Tracking Engine ==========
     GoalsEngine: {
+      /**
+       * Analyzes text to extract character goals and store them in state.
+       * Only processes goals from important characters and increments stateVersion on changes.
+       * @param {string} text - The text to analyze
+       * @param {string} actionType - The type of action ('input', 'output', 'retry', etc.)
+       */
       analyze(text, actionType){
         const L = LC.lcInit();
         const autoEvergreen = LC.EvergreenEngine;
@@ -2750,7 +2866,14 @@ L.debugMode = toBool(L.debugMode, false);
       }
     },
 
+    // ========== Character Mood Tracking Engine ==========
     MoodEngine: {
+      /**
+       * Analyzes text to detect character mood changes and stores them with expiration.
+       * Detects moods like angry, happy, scared, tired, wounded from text patterns.
+       * Increments stateVersion when moods are detected to invalidate context cache.
+       * @param {string} text - The text to analyze
+       */
       analyze(text){
         if (!text) return;
         const L = LC.lcInit();
@@ -3079,6 +3202,14 @@ L.debugMode = toBool(L.debugMode, false);
         // if (L.time.turnsInCurrentToD >= L.time.turnsPerToD) { ... }
       },
       
+      /**
+       * Processes semantic time-related actions (e.g., advancing time, setting time of day).
+       * Updates L.time state based on the action type and parameters.
+       * @param {object} action - The semantic action object
+       * @param {string} action.type - The action type ('ADVANCE_TO_NEXT_MORNING', 'SET_TIME_OF_DAY', 'ADVANCE_TIME_OF_DAY')
+       * @param {string} [action.value] - The value for SET_TIME_OF_DAY actions
+       * @param {number} [action.steps] - The number of steps for ADVANCE_TIME_OF_DAY actions
+       */
       processSemanticAction(action){
         const L = LC.lcInit();
         if (!L.time) {
@@ -3525,12 +3656,21 @@ LC.turnUndo = turnUndo;
 
 
 
+/**
+ * Assembles the complete context overlay string for the AI.
+ * Applies caching based on L.stateVersion to skip redundant work.
+ * @param {object} [options] - The composition options
+ * @param {number} [options.limit] - The maximum character limit for the overlay
+ * @param {boolean} [options.allowPartial] - Whether to allow partial results if budget is exceeded
+ * @returns {{text: string, parts: object, max: number, error?: string}} The composed overlay object
+ */
 LC.composeContextOverlay = function(options) {
   const opts = (options && typeof options === "object") ? options : {};
   try {
     const L = LC.lcInit();
     
     // Context caching: Check if we can return cached result
+    // Cache is invalidated when L.stateVersion changes (on state mutations)
     if (!LC._contextCache) LC._contextCache = {};
     const cacheKey = JSON.stringify(opts);
     const cached = LC._contextCache[cacheKey];
@@ -3600,10 +3740,15 @@ LC.composeContextOverlay = function(options) {
       const activeGoals = [];
       for (let i = 0; i < goalEntries.length; i++) {
         const [key, goal] = goalEntries[i];
-        if (!goal || goal.status !== 'active') continue;
+        // Defensive programming: validate goal object structure
+        if (!goal || typeof goal !== 'object') continue;
+        if (goal.status !== 'active') continue;
+        if (!goal.text || typeof goal.text !== 'string') continue;
+        
         const turnsSince = L.turn - (goal.turnCreated || 0);
         if (turnsSince >= 0 && turnsSince < 20) {
-          activeGoals.push(`${goal.character}: ${goal.text}`);
+          const char = goal.character || 'Unknown';
+          activeGoals.push(`${char}: ${goal.text}`);
         }
       }
       if (activeGoals.length > 0) {
@@ -3619,29 +3764,31 @@ LC.composeContextOverlay = function(options) {
       for (const character in L.character_status) {
         if (Object.prototype.hasOwnProperty.call(L.character_status, character)) {
           const status = L.character_status[character];
-          if (status && typeof status.expires === 'number' && currentTurn < status.expires) {
-            // Status is still active
-            const mood = status.mood || 'unknown';
-            const reason = status.reason || '';
-            let moodText = '';
-            
-            // Create mood description
-            if (mood === 'angry') {
-              moodText = reason ? `${character} зол из-за ${reason}` : `${character} зол`;
-            } else if (mood === 'happy') {
-              moodText = reason ? `${character} счастлив благодаря ${reason}` : `${character} счастлив`;
-            } else if (mood === 'scared') {
-              moodText = reason ? `${character} напуган из-за ${reason}` : `${character} напуган`;
-            } else if (mood === 'tired') {
-              moodText = reason ? `${character} устал от ${reason}` : `${character} устал`;
-            } else if (mood === 'wounded') {
-              moodText = reason ? `${character} ранен (${reason})` : `${character} ранен`;
-            } else {
-              moodText = reason ? `${character}: ${mood} (${reason})` : `${character}: ${mood}`;
-            }
-            
-            priority.push(`⟦MOOD⟧ ${moodText}`);
+          // Defensive programming: validate status object
+          if (!status || typeof status !== 'object') continue;
+          if (typeof status.expires !== 'number' || currentTurn >= status.expires) continue;
+          
+          // Status is still active
+          const mood = status.mood || 'unknown';
+          const reason = status.reason || '';
+          let moodText = '';
+          
+          // Create mood description
+          if (mood === 'angry') {
+            moodText = reason ? `${character} зол из-за ${reason}` : `${character} зол`;
+          } else if (mood === 'happy') {
+            moodText = reason ? `${character} счастлив благодаря ${reason}` : `${character} счастлив`;
+          } else if (mood === 'scared') {
+            moodText = reason ? `${character} напуган из-за ${reason}` : `${character} напуган`;
+          } else if (mood === 'tired') {
+            moodText = reason ? `${character} устал от ${reason}` : `${character} устал`;
+          } else if (mood === 'wounded') {
+            moodText = reason ? `${character} ранен (${reason})` : `${character} ранен`;
+          } else {
+            moodText = reason ? `${character}: ${mood} (${reason})` : `${character}: ${mood}`;
           }
+          
+          priority.push(`⟦MOOD⟧ ${moodText}`);
         }
       }
     }
@@ -3650,7 +3797,7 @@ LC.composeContextOverlay = function(options) {
     if (L.secrets && Array.isArray(L.secrets) && L.secrets.length > 0) {
       // First, build preliminary context to check for scene focus
       const prelimChars = LC.getActiveCharacters(10);
-      const HOT = LC.CONFIG?.CHAR_WINDOW_HOT ?? 3;
+      const HOT = LC.CONFIG?.CHAR_WINDOW_HOT ?? 3;  // HOT characters are those seen in the last 3 turns
       const focusChars = [];
       if (prelimChars && prelimChars.length > 0) {
         for (let i = 0; i < prelimChars.length; i++) {
@@ -3673,15 +3820,15 @@ LC.composeContextOverlay = function(options) {
     const opening = LC.getOpeningLine?.() || "";
     if (opening) normal.push(opening);
 
-    const HOT = LC.CONFIG?.CHAR_WINDOW_HOT ?? 3;
-    const ACTIVE = LC.CONFIG?.CHAR_WINDOW_ACTIVE ?? 10;
+    const HOT = LC.CONFIG?.CHAR_WINDOW_HOT ?? 3;     // HOT window: last 3 turns
+    const ACTIVE = LC.CONFIG?.CHAR_WINDOW_ACTIVE ?? 10;  // ACTIVE window: last 10 turns
     const chars = LC.getActiveCharacters(10);
     if (chars.length) {
       const hot = []; const active = [];
       for (let i=0;i<chars.length;i++){
         const c = chars[i];
-        if (c.turnsAgo <= HOT) hot.push(c.name);
-        else if (c.turnsAgo <= ACTIVE) active.push(c.name);
+        if (c.turnsAgo <= HOT) hot.push(c.name);       // Characters in HOT window
+        else if (c.turnsAgo <= ACTIVE) active.push(c.name);  // Characters in ACTIVE window
       }
       if (hot.length)    priority.push(`⟦SCENE⟧ Focus on: ${hot.join(", ")}`);
       if (active.length) normal.push(`⟦SCENE⟧ Recently active: ${active.join(", ")}`);
