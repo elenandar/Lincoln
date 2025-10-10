@@ -15,7 +15,7 @@ console.log("=== GossipEngine Garbage Collection Demo ===\n");
 const fs = require('fs');
 
 // Load library code
-const libraryCode = fs.readFileSync('./Library v16.0.8.patched.txt', 'utf8');
+const libraryCode = fs.readFileSync('../Library v16.0.8.patched.txt', 'utf8');
 
 // Set up global state that the library expects
 global.state = { lincoln: {} };

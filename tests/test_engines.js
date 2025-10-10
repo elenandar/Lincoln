@@ -34,7 +34,7 @@ const mockFunctions = {
 };
 
 // Load library code
-const libraryCode = fs.readFileSync('./Library v16.0.8.patched.txt', 'utf8');
+const libraryCode = fs.readFileSync('../Library v16.0.8.patched.txt', 'utf8');
 
 // Execute the library code in our context
 const getState = mockFunctions.getState;

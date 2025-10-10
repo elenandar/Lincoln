@@ -27,7 +27,7 @@ const mockFunctions = {
 };
 
 // Load library code
-const libraryCode = fs.readFileSync('./Library v16.0.8.patched.txt', 'utf8');
+const libraryCode = fs.readFileSync('../Library v16.0.8.patched.txt', 'utf8');
 
 const __SCRIPT_SLOT__ = "demo-perf";
 const getState = mockFunctions.getState;

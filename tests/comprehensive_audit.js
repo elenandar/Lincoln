@@ -18,11 +18,11 @@ console.log("");
 const fs = require('fs');
 
 // Load all script files
-const libraryCode = fs.readFileSync('./Library v16.0.8.patched.txt', 'utf8');
-const inputCode = fs.readFileSync('./Input v16.0.8.patched.txt', 'utf8');
-const outputCode = fs.readFileSync('./Output v16.0.8.patched.txt', 'utf8');
-const contextCode = fs.readFileSync('./Context v16.0.8.patched.txt', 'utf8');
-const documentation = fs.readFileSync('./SYSTEM_DOCUMENTATION.md', 'utf8');
+const libraryCode = fs.readFileSync('../Library v16.0.8.patched.txt', 'utf8');
+const inputCode = fs.readFileSync('../Input v16.0.8.patched.txt', 'utf8');
+const outputCode = fs.readFileSync('../Output v16.0.8.patched.txt', 'utf8');
+const contextCode = fs.readFileSync('../Context v16.0.8.patched.txt', 'utf8');
+const documentation = fs.readFileSync('../SYSTEM_DOCUMENTATION.md', 'utf8');
 
 // Initialize audit results
 const auditResults = {
