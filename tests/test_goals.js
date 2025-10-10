@@ -26,7 +26,8 @@ const mockFunctions = {
 
 // Load Library module (minimal simulation)
 const fs = require('fs');
-const libraryCode = fs.readFileSync('./Library v16.0.8.patched.txt', 'utf8');
+const path = require('path');
+const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
 
 // Execute the library code in our context
 const getState = mockFunctions.getState;

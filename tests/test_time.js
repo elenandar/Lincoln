@@ -14,6 +14,7 @@
 console.log("=== Testing TimeEngine (Ticket #3) ===\n");
 
 const fs = require('fs');
+const path = require('path');
 
 // Mock functions
 const mockFunctions = {
@@ -39,7 +40,7 @@ const mockFunctions = {
 global.state = mockFunctions.getState();
 
 // Load library code
-const libraryCode = fs.readFileSync('./Library v16.0.8.patched.txt', 'utf8');
+const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
 
 // Evaluate library code (it will use global.state)
 eval(libraryCode);
