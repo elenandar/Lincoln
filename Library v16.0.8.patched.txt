@@ -1676,26 +1676,39 @@ L.debugMode = toBool(L.debugMode, false);
       if (L.debugMode) this.lcDebug(`antiEcho: sim=${sim.toFixed(3)} thr=${thr.toFixed(2)} act=${actionType||"new"} mode=${L.antiEchoMode}`);
       return res;
     },
+    /**
+     * Applies anti-echo trimming to prevent AI from repeating previous output.
+     * Uses configurable trim ratios and looks for sentence boundaries.
+     * @param {string} currentOutput - The current output text
+     * @param {string} previousOutput - The previous output text
+     * @param {string} actionType - The action type ('continue', 'story', etc.)
+     * @returns {string} The trimmed output or original if no echo detected
+     */
     applyAntiEcho(currentOutput, previousOutput, actionType){
       if (actionType === "retry") return currentOutput;
       const { isEcho } = this.antiEchoCheck(currentOutput, previousOutput, actionType);
       if (!isEcho) return currentOutput;
 
+      // Use different trim ratios for continue vs normal actions
       const ratio = (actionType === "continue")
-        ? CONFIG.LIMITS.ANTI_ECHO.CONTINUE_TRIM
-        : CONFIG.LIMITS.ANTI_ECHO.TRIM_PERCENTAGE;
+        ? CONFIG.LIMITS.ANTI_ECHO.CONTINUE_TRIM   // 60% for continue
+        : CONFIG.LIMITS.ANTI_ECHO.TRIM_PERCENTAGE; // 75% for normal
 
       let cut = Math.floor(currentOutput.length * ratio);
+      
+      // Look for a sentence boundary near the cut point (±100 chars window)
       const search = 100;
       const winS = Math.max(0, cut - search);
       const window = currentOutput.slice(winS, cut + search);
-      const ends = window.match(/[.!?…]\s|—\s/g);
+      const ends = window.match(/[.!?…]\s|—\s/g);  // Find sentence endings
       if (ends && ends.length > 0){
         const last = ends[ends.length-1];
         const lastIdx = window.lastIndexOf(last);
         if (lastIdx !== -1) cut = winS + lastIdx + last.length;
       }
       const trimmed = currentOutput.slice(0, cut).trim();
+      
+      // Safety check: don't trim if result is too short
       if (trimmed.length < 80) return currentOutput;
 
       const L = this.lcInit();
@@ -1703,6 +1716,10 @@ L.debugMode = toBool(L.debugMode, false);
       this.lcSys("🔄 Echo detected and trimmed.");
       return trimmed;
     },
+    /**
+     * Returns statistics about the anti-echo cache.
+     * @returns {{cacheEntries: number, lruSize: number, hits: number}} Cache statistics
+     */
     antiEchoStats(){
       const L = this.lcInit();
       return {
