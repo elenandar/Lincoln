@@ -177,6 +177,15 @@ const modifier = function (text) {
     } catch (e) {
       LC.lcWarn("GossipGC error: " + (e && e.message));
     }
+    try {
+      // Run character garbage collection periodically
+      if (L.turn % 50 === 0) {
+        LC.CharacterGC?.run?.();
+        LC.lcSys({ text: "Проведена плановая архивация персонажей.", level: 'director' });
+      }
+    } catch (e) {
+      LC.lcWarn("CharacterGC error: " + (e && e.message));
+    }
   }
 
   // Авто-оффер recap и авто-epoch
