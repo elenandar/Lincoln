@@ -164,7 +164,14 @@ const modifier = function (text) {
       LC.lcWarn("Post-analyze UnifiedAnalyzer error: " + (e && e.message));
     }
     try {
-      LC.TimeEngine.advance();
+      const timeJump = LC.TimeEngine.advance();
+      // Trigger Living World simulation on significant time jumps
+      if (timeJump && (timeJump.type === 'ADVANCE_TO_NEXT_MORNING' || timeJump.type === 'ADVANCE_DAY')) {
+        if (LC.LivingWorld && typeof LC.LivingWorld.runOffScreenCycle === 'function') {
+          LC.LivingWorld.runOffScreenCycle(timeJump);
+          LC.lcSys({ text: `Симуляция мира за кадром завершена (${timeJump.duration}).`, level: 'director' });
+        }
+      }
     } catch (e) {
       LC.lcWarn("Post-analyze TimeEngine error: " + (e && e.message));
     }
