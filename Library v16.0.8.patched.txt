@@ -2981,6 +2981,16 @@ L.debugMode = toBool(L.debugMode, false);
         } catch (e) {
           LC.lcWarn?.("UnifiedAnalyzer DemographicPressure error: " + (e && e.message));
         }
+        
+        // Social Hierarchy Recalculation (periodic)
+        // Recalculate status every 20 turns to reflect changes in social capital
+        try {
+          if (L.turn && L.turn % 20 === 0) {
+            LC.HierarchyEngine?.recalculateStatus?.();
+          }
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer HierarchyEngine error: " + (e && e.message));
+        }
       }
     },
 
@@ -3787,11 +3797,30 @@ L.debugMode = toBool(L.debugMode, false);
           // Check if 'to' already knows
           if (rumor.knownBy.includes(to)) return;
           
+          // Check social status of source for credibility
+          // Leaders spread rumors more effectively, outcasts are less believed
+          const fromChar = L.characters[from];
+          let credibilityMultiplier = 1.0;
+          if (fromChar && fromChar.social) {
+            if (fromChar.social.status === 'leader') {
+              credibilityMultiplier = 1.5; // Leaders' rumors spread faster and are more believed
+            } else if (fromChar.social.status === 'outcast') {
+              credibilityMultiplier = 0.2; // Outcasts' rumors are largely dismissed
+            }
+          }
+          
+          // Only spread if credibility check passes
+          if (Math.random() > credibilityMultiplier) {
+            return; // Rumor not believed/spread
+          }
+          
           // Spread the rumor
           rumor.knownBy.push(to);
           
           // Distort the rumor (small chance with each spread)
-          if (Math.random() < 0.3) {
+          // Outcasts add more distortion
+          const distortionChance = fromChar?.social?.status === 'outcast' ? 0.5 : 0.3;
+          if (Math.random() < distortionChance) {
             rumor.distortion += 0.5;
           }
           
@@ -4534,6 +4563,13 @@ L.debugMode = toBool(L.debugMode, false);
                 });
               }
               
+              // Update social capital for negative interaction
+              if (LC.HierarchyEngine && typeof LC.HierarchyEngine.updateCapital === 'function') {
+                LC.HierarchyEngine.updateCapital(characterName, {
+                  type: 'NEGATIVE_ACTION'
+                });
+              }
+              
               L.stateVersion++;
             }
             break;
@@ -4580,6 +4616,13 @@ L.debugMode = toBool(L.debugMode, false);
                   otherCharacter: characterName,
                   change: modifier,
                   finalValue: L.evergreen.relations[action.target][characterName]
+                });
+              }
+              
+              // Update social capital for positive interaction
+              if (LC.HierarchyEngine && typeof LC.HierarchyEngine.updateCapital === 'function') {
+                LC.HierarchyEngine.updateCapital(characterName, {
+                  type: 'POSITIVE_ACTION'
                 });
               }
               
