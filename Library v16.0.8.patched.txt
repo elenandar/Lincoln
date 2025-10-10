@@ -647,7 +647,8 @@ Contract:
             turn: L.turn,
             knownBy: [],
             distortion: 0,
-            verified: false
+            verified: false,
+            status: 'ACTIVE'
           };
           
           L.rumors.push(rumor);
@@ -3512,7 +3513,8 @@ L.debugMode = toBool(L.debugMode, false);
                 turn: L.turn,
                 knownBy: [], // Will be populated by witnesses
                 distortion: 0,
-                verified: false
+                verified: false,
+                status: 'ACTIVE'
               };
               
               // Find witnesses (characters active in recent turns)
@@ -3627,6 +3629,9 @@ L.debugMode = toBool(L.debugMode, false);
           const rumor = L.rumors.find(r => r.id === rumorId);
           if (!rumor) return;
           
+          // Only spread ACTIVE rumors
+          if (rumor.status !== 'ACTIVE') return;
+          
           // Check if 'to' already knows
           if (rumor.knownBy.includes(to)) return;
           
@@ -3693,9 +3698,9 @@ L.debugMode = toBool(L.debugMode, false);
           const L = LC.lcInit();
           if (!L.rumors || L.rumors.length === 0) return;
           
-          // Find rumors known by char1 but not char2
+          // Find rumors known by char1 but not char2, and only ACTIVE rumors
           const rumorsToSpread = L.rumors.filter(r => 
-            r.knownBy.includes(char1) && !r.knownBy.includes(char2)
+            r.status === 'ACTIVE' && r.knownBy.includes(char1) && !r.knownBy.includes(char2)
           );
           
           // Spread one random rumor (20% chance)
@@ -3733,6 +3738,66 @@ L.debugMode = toBool(L.debugMode, false);
               this.Propagator.autoPropagate(activeChars[i], activeChars[j]);
             }
           }
+        }
+      },
+      
+      /**
+       * Garbage Collection: manages rumor lifecycle and removes stale rumors.
+       * ACTIVE → FADED (when 75% of characters know it)
+       * FADED → ARCHIVED (after 50 turns)
+       * ARCHIVED rumors are removed from L.rumors
+       */
+      runGarbageCollection() {
+        const L = LC.lcInit();
+        if (!L.rumors || L.rumors.length === 0) return;
+        
+        const KNOWLEDGE_THRESHOLD = 0.75; // 75% of characters
+        const FADE_AGE_THRESHOLD = 50; // 50 turns
+        
+        // Count total important characters
+        const totalCharacters = Object.keys(L.characters || {}).length;
+        if (totalCharacters === 0) return;
+        
+        let fadedCount = 0;
+        let archivedCount = 0;
+        
+        // Process each rumor
+        for (const rumor of L.rumors) {
+          // Ensure status field exists (for backward compatibility)
+          if (!rumor.status) rumor.status = 'ACTIVE';
+          
+          // ACTIVE → FADED transition
+          if (rumor.status === 'ACTIVE') {
+            const knowledgePercent = rumor.knownBy.length / totalCharacters;
+            if (knowledgePercent >= KNOWLEDGE_THRESHOLD) {
+              rumor.status = 'FADED';
+              rumor.fadedAtTurn = L.turn;
+              fadedCount++;
+              L.stateVersion++;
+            }
+          }
+          // FADED → ARCHIVED transition
+          else if (rumor.status === 'FADED') {
+            const turnsSinceFaded = L.turn - (rumor.fadedAtTurn || L.turn);
+            if (turnsSinceFaded >= FADE_AGE_THRESHOLD) {
+              rumor.status = 'ARCHIVED';
+              archivedCount++;
+              L.stateVersion++;
+            }
+          }
+        }
+        
+        // Remove ARCHIVED rumors
+        const beforeCount = L.rumors.length;
+        L.rumors = L.rumors.filter(r => r.status !== 'ARCHIVED');
+        const removedCount = beforeCount - L.rumors.length;
+        
+        // Log summary if any changes occurred
+        if (fadedCount > 0 || archivedCount > 0 || removedCount > 0) {
+          LC.lcSys({ 
+            text: `🗑️ GossipGC: ${fadedCount} faded, ${removedCount} archived/removed`, 
+            level: 'director' 
+          });
         }
       }
     },
