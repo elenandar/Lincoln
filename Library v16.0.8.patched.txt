@@ -168,7 +168,11 @@ Contract:
    */
   LC.sysBlock = function sysBlock(lines){
     const arr = Array.isArray(lines) ? lines : [String(lines ?? "")];
-    const body = arr.map(v => String(v ?? "").trim()).filter(Boolean).join("\n");
+    const body = arr.map(v => {
+      // Handle both string and object format
+      const text = (v && typeof v === 'object') ? (v.text || '') : String(v ?? "");
+      return text.trim();
+    }).filter(Boolean).join("\n");
     if (!body) return "";
     return body + "\n" + "=".repeat(40) + "\n";
   };
@@ -335,6 +339,25 @@ Contract:
           return LC.replyStop("🔍 Debug OFF.");
         }
         return LC.replyStop(`Debug is ${L.debugMode ? "on" : "off"}.`);
+      }
+    });
+
+    // /mode
+    reg.set("/mode", {
+      description: "/mode director|character — switch information access level",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Mode command", stop: true };
+        if (/\/mode\s+director/i.test(cmdRaw)) {
+          L.playerInfoLevel = 'director';
+          return LC.replyStop("🎬 Director mode enabled. All system messages visible.");
+        }
+        if (/\/mode\s+character/i.test(cmdRaw)) {
+          L.playerInfoLevel = 'character';
+          return LC.replyStop("🎭 Character mode enabled. Director-level messages hidden for immersion.");
+        }
+        return LC.replyStop(`Current mode: ${L.playerInfoLevel === 'director' ? 'Director 🎬' : 'Character 🎭'}`);
       }
     });
 
@@ -526,6 +549,200 @@ Contract:
           `Время суток: ${L.time.timeOfDay}`,
           `Ходов в текущем времени: ${L.time.turnsInCurrentToD}/${L.time.turnsPerToD}`
         ].join("\n"));
+      }
+    });
+
+    // /weather
+    reg.set("/weather", {
+      description: "/weather — show current weather | /weather set <type> — change weather (clear/rain/snow/storm/fog/cloudy)",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Weather command", stop: true };
+        
+        // /weather set <type>
+        const setMatch = cmdRaw.match(/\/weather\s+set\s+(\w+)/i);
+        if (setMatch) {
+          const newWeather = setMatch[1].toLowerCase();
+          const validWeather = ['clear', 'rain', 'snow', 'storm', 'fog', 'cloudy'];
+          
+          if (!validWeather.includes(newWeather)) {
+            return LC.replyStop(`❌ Invalid weather. Valid options: ${validWeather.join(', ')}`);
+          }
+          
+          if (LC.EnvironmentEngine && typeof LC.EnvironmentEngine.changeWeather === 'function') {
+            LC.EnvironmentEngine.changeWeather(newWeather, false);
+            return LC.replyStop(`✅ Weather changed to: ${newWeather}`);
+          }
+          return LC.replyStop("❌ EnvironmentEngine not available");
+        }
+        
+        // /weather — show current
+        if (!L.environment) L.environment = { weather: 'clear', location: '', ambiance: '' };
+        const weatherEmoji = {
+          clear: '☀️',
+          rain: '🌧️',
+          snow: '❄️',
+          storm: '⛈️',
+          fog: '🌫️',
+          cloudy: '☁️'
+        };
+        return LC.replyStop(`${weatherEmoji[L.environment.weather] || '🌤️'} Current weather: ${L.environment.weather}`);
+      }
+    });
+
+    // /location
+    reg.set("/location", {
+      description: "/location — show current location | /location set <name> — set location",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Location command", stop: true };
+        
+        // /location set <name>
+        const setMatch = cmdRaw.match(/\/location\s+set\s+(.+)/i);
+        if (setMatch) {
+          const newLocation = setMatch[1].trim();
+          
+          if (newLocation.length > 100) {
+            return LC.replyStop("❌ Location name too long (max 100 characters).");
+          }
+          
+          if (!L.environment) L.environment = { weather: 'clear', location: '', ambiance: '' };
+          L.environment.location = newLocation;
+          L.stateVersion++;
+          return LC.replyStop(`📍 Location set to: ${newLocation}`);
+        }
+        
+        // /location — show current
+        if (!L.environment) L.environment = { weather: 'clear', location: '', ambiance: '' };
+        const loc = L.environment.location || 'unknown';
+        return LC.replyStop(`📍 Current location: ${loc}`);
+      }
+    });
+
+    // /rumor
+    reg.set("/rumor", {
+      description: "/rumor — list all rumors | /rumor add <text> about <char> — create rumor | /rumor spread <id> from <char1> to <char2> — spread rumor",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Rumor command", stop: true };
+        
+        // /rumor add <text> about <char>
+        const addMatch = cmdRaw.match(/\/rumor\s+add\s+(.+?)\s+about\s+(.+)/i);
+        if (addMatch) {
+          const rumorText = addMatch[1].trim();
+          const subject = addMatch[2].trim();
+          
+          if (!L.rumors) L.rumors = [];
+          
+          const rumor = {
+            id: LC.GossipEngine?.generateRumorId?.() || 'rumor_' + Date.now(),
+            text: rumorText,
+            type: 'custom',
+            subject: subject,
+            target: null,
+            spin: 'neutral',
+            turn: L.turn,
+            knownBy: [],
+            distortion: 0,
+            verified: false
+          };
+          
+          L.rumors.push(rumor);
+          L.stateVersion++;
+          return LC.replyStop(`🗣️ Rumor created: "${rumorText}" (ID: ${rumor.id})`);
+        }
+        
+        // /rumor spread <id> from <char1> to <char2>
+        const spreadMatch = cmdRaw.match(/\/rumor\s+spread\s+(\S+)\s+from\s+(.+?)\s+to\s+(.+)/i);
+        if (spreadMatch) {
+          const rumorId = spreadMatch[1].trim();
+          const from = spreadMatch[2].trim();
+          const to = spreadMatch[3].trim();
+          
+          if (LC.GossipEngine?.Propagator?.spreadRumor) {
+            LC.GossipEngine.Propagator.spreadRumor(rumorId, from, to);
+            return LC.replyStop(`✅ Rumor spread from ${from} to ${to}`);
+          }
+          return LC.replyStop("❌ GossipEngine not available");
+        }
+        
+        // /rumor — list all
+        if (!L.rumors) L.rumors = [];
+        if (L.rumors.length === 0) {
+          return LC.replyStop("📋 No rumors yet.");
+        }
+        
+        const rumorList = L.rumors.map((r, i) => {
+          const known = r.knownBy.length;
+          const distortion = r.distortion.toFixed(1);
+          return `${i + 1}. [${r.id.substr(-6)}] "${r.text.substr(0, 50)}..." - Known by ${known}, Distortion: ${distortion}`;
+        }).join("\n");
+        
+        return LC.replyStop(`🗣️ ACTIVE RUMORS (${L.rumors.length}):\n${rumorList}`);
+      }
+    });
+
+    // /reputation
+    reg.set("/reputation", {
+      description: "/reputation — show all reputations | /reputation <char> — show character reputation | /reputation set <char> <value> — set reputation",
+      handler(args, text) {
+        const L = LC.lcInit();
+        const cmdRaw = text || "";
+        if (typeof LC.replyStop !== "function") return { text: "⟦SYS⟧ Reputation command", stop: true };
+        
+        // /reputation set <char> <value>
+        const setMatch = cmdRaw.match(/\/reputation\s+set\s+(.+?)\s+(\d+)/i);
+        if (setMatch) {
+          const char = setMatch[1].trim();
+          const value = parseInt(setMatch[2], 10);
+          
+          if (!Number.isFinite(value) || value < 0 || value > 100) {
+            return LC.replyStop("❌ Reputation must be between 0 and 100");
+          }
+          
+          if (!L.characters[char]) {
+            L.characters[char] = { mentions: 0, lastSeen: L.turn };
+          }
+          L.characters[char].reputation = value;
+          L.stateVersion++;
+          return LC.replyStop(`✅ Reputation set: ${char} = ${value}`);
+        }
+        
+        // /reputation <char>
+        const charMatch = cmdRaw.match(/\/reputation\s+(.+)/i);
+        if (charMatch) {
+          const char = charMatch[1].trim();
+          const reputation = L.characters[char]?.reputation;
+          
+          if (reputation === undefined) {
+            return LC.replyStop(`❌ Character "${char}" not found or has no reputation`);
+          }
+          
+          let reputationDesc = '';
+          if (reputation >= 80) reputationDesc = 'Excellent';
+          else if (reputation >= 60) reputationDesc = 'Good';
+          else if (reputation >= 40) reputationDesc = 'Neutral';
+          else if (reputation >= 20) reputationDesc = 'Poor';
+          else reputationDesc = 'Bad';
+          
+          return LC.replyStop(`⭐ ${char}: ${reputation}/100 (${reputationDesc})`);
+        }
+        
+        // /reputation — show all
+        const chars = Object.keys(L.characters).filter(c => L.characters[c].reputation !== undefined);
+        if (chars.length === 0) {
+          return LC.replyStop("📋 No reputations tracked yet.");
+        }
+        
+        const repList = chars.map(char => {
+          const rep = L.characters[char].reputation;
+          return `${char}: ${rep}/100`;
+        }).join("\n");
+        
+        return LC.replyStop(`⭐ CHARACTER REPUTATIONS:\n${repList}`);
       }
     });
 
@@ -1142,6 +1359,7 @@ Contract:
 }
 L.debugMode = toBool(L.debugMode, false);
       L.sysShow = toBool(L.sysShow, true);
+      L.playerInfoLevel = (L.playerInfoLevel === 'director') ? 'director' : 'character';
 
       // opening
       L.opening = toStr(L.opening);
@@ -1200,6 +1418,22 @@ L.debugMode = toBool(L.debugMode, false);
         scheduledEvents: []
       };
       
+      // environment tracking
+      L.environment = L.environment || {
+        weather: 'clear',
+        location: '',
+        ambiance: ''
+      };
+      
+      // rumors and reputation tracking
+      L.rumors = Array.isArray(L.rumors) ? L.rumors : [];
+      // Initialize reputation for all characters
+      for (const charName in L.characters) {
+        if (!L.characters[charName].reputation) {
+          L.characters[charName].reputation = 50; // neutral default
+        }
+      }
+      
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
       const evergreenCapDefault = Number.isFinite(defaultEvergreenCapNum) ? defaultEvergreenCapNum : 0;
@@ -1242,12 +1476,32 @@ L.debugMode = toBool(L.debugMode, false);
     // ---------- SYS ----------
     /**
      * Adds a system message to the message queue.
-     * @param {string} msg - The message to add
+     * @param {string|object} msg - The message to add, or an object with {text, level}
+     * @param {object} [options] - Optional parameters {level: 'director'|'character'}
      */
-    lcSys(msg)  { const L=this.lcInit(); const m = `⟦SYS⟧ ${toStr(msg)}`; L.sysMsgs.push(m);
-                  if (L.sysMsgs.length > CONFIG.LIMITS.SYS_MSGS_MAX) {
-                    L.sysMsgs = L.sysMsgs.slice(-Math.floor(CONFIG.LIMITS.SYS_MSGS_MAX/2));
-                  } },
+    lcSys(msg, options)  { 
+      const L=this.lcInit(); 
+      let text = msg;
+      let level = 'character';
+      
+      // Handle object parameter (msg as {text, level})
+      if (msg && typeof msg === 'object' && !Array.isArray(msg)) {
+        text = msg.text || '';
+        level = msg.level || 'character';
+      }
+      // Handle options parameter
+      else if (options && typeof options === 'object') {
+        level = options.level || 'character';
+      }
+      
+      const msgText = `⟦SYS⟧ ${toStr(text)}`;
+      const msgObj = { text: msgText, level: level };
+      L.sysMsgs.push(msgObj);
+      if (L.sysMsgs.length > CONFIG.LIMITS.SYS_MSGS_MAX) {
+        L.sysMsgs = L.sysMsgs.slice(-Math.floor(CONFIG.LIMITS.SYS_MSGS_MAX/2));
+      } 
+      return msgObj; // Return for debugging
+    },
     /**
      * Adds a warning message to the system message queue.
      * @param {string} m - The warning message
@@ -1265,9 +1519,20 @@ L.debugMode = toBool(L.debugMode, false);
     lcDebug(m)  { const L=this.lcInit(); if (L.debugMode) this.lcSys("🔍 " + m); },
     /**
      * Retrieves and clears all queued system messages.
-     * @returns {string[]} Array of system messages
+     * Normalizes messages to consistent format {text, level}.
+     * @returns {Array<{text: string, level: string}>} Array of system message objects
      */
-    lcConsumeMsgs(){ const L=this.lcInit(); const a=L.sysMsgs.slice(); L.sysMsgs=[]; return a; },
+    lcConsumeMsgs(){ 
+      const L=this.lcInit(); 
+      const msgs = L.sysMsgs.slice();
+      L.sysMsgs=[]; 
+      // Normalize to object format for backward compatibility
+      return msgs.map(m => {
+        if (typeof m === 'string') return { text: m, level: 'character' };
+        if (m && typeof m === 'object') return { text: m.text || '', level: m.level || 'character' };
+        return { text: '', level: 'character' };
+      });
+    },
 
     // ---------- Text utils ----------
     _normU(s){
@@ -2636,6 +2901,18 @@ L.debugMode = toBool(L.debugMode, false);
         }
         
         try {
+          LC.EnvironmentEngine?.analyze?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer EnvironmentEngine error: " + (e && e.message));
+        }
+        
+        try {
+          LC.GossipEngine?.analyze?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer GossipEngine error: " + (e && e.message));
+        }
+        
+        try {
           LC.RelationsEngine?.analyze?.(text);
         } catch (e) {
           LC.lcWarn?.("UnifiedAnalyzer RelationsEngine error: " + (e && e.message));
@@ -3005,6 +3282,415 @@ L.debugMode = toBool(L.debugMode, false);
                 
                 break; // Found a mood for this sentence
               }
+            }
+          }
+        }
+      }
+    },
+
+    // ========== Environment Engine ==========
+    EnvironmentEngine: {
+      /**
+       * Analyzes text for location changes and returns detected location.
+       * @param {string} text - The text to analyze
+       * @returns {string|null} Detected location or null
+       */
+      detectLocation(text) {
+        if (!text) return null;
+        const low = text.toLowerCase();
+        
+        // Location patterns (Russian and English)
+        const locationPatterns = [
+          { regex: /в\s+(класс(?:е|ной)|аудитори(?:и|ю))/i, location: 'classroom' },
+          { regex: /(?:в|на)\s+(столов(?:ая|ую|ой)|кафетери(?:и|й))/i, location: 'cafeteria' },
+          { regex: /(?:в|на)\s+(спортзал(?:е|)|тренажёрн(?:ый|ом)\s+зал)/i, location: 'gym' },
+          { regex: /(?:в|на)\s+(библиотек(?:а|е|у)|читальн(?:ый|ом)\s+зал)/i, location: 'library' },
+          { regex: /(?:в|на)\s+(коридор(?:е|)|холл(?:е|))/i, location: 'hallway' },
+          { regex: /(?:в|на)\s+(?:школьн(?:ом|ый)|игров(?:ом|ая))\s+(площадк(?:а|е|у)|двор(?:е|))/i, location: 'schoolyard' },
+          { regex: /(?:в|на)\s+(парк(?:е|)|сад(?:у|))/i, location: 'park' },
+          { regex: /дом(?:а|е|у)|квартир(?:а|е|у)/i, location: 'home' },
+          { regex: /(?:в|на)\s+улиц(?:а|е|у)/i, location: 'street' },
+          { regex: /(?:in|at)\s+(?:the\s+)?classroom/i, location: 'classroom' },
+          { regex: /(?:in|at)\s+(?:the\s+)?cafeteria/i, location: 'cafeteria' },
+          { regex: /(?:in|at)\s+(?:the\s+)?gym(?:nasium)?/i, location: 'gym' },
+          { regex: /(?:in|at)\s+(?:the\s+)?library/i, location: 'library' },
+          { regex: /(?:in|at)\s+(?:the\s+)?(?:hallway|corridor)/i, location: 'hallway' },
+          { regex: /(?:in|at)\s+(?:the\s+)?(?:schoolyard|playground)/i, location: 'schoolyard' },
+          { regex: /(?:in|at)\s+(?:the\s+)?park/i, location: 'park' },
+          { regex: /(?:at\s+)?home/i, location: 'home' },
+          { regex: /(?:on|in)\s+(?:the\s+)?street/i, location: 'street' }
+        ];
+        
+        for (const pattern of locationPatterns) {
+          if (pattern.regex.test(low)) {
+            return pattern.location;
+          }
+        }
+        
+        return null;
+      },
+      
+      /**
+       * Changes weather with optional notification.
+       * Weather changes may affect character moods.
+       * @param {string} newWeather - New weather state (clear, rain, snow, storm, fog)
+       * @param {boolean} [silent=false] - If true, no system message is generated
+       */
+      changeWeather(newWeather, silent = false) {
+        const L = LC.lcInit();
+        const validWeather = ['clear', 'rain', 'snow', 'storm', 'fog', 'cloudy'];
+        
+        if (!validWeather.includes(newWeather)) {
+          LC.lcWarn?.(`Invalid weather: ${newWeather}`);
+          return;
+        }
+        
+        const oldWeather = L.environment.weather;
+        L.environment.weather = newWeather;
+        L.stateVersion++;
+        
+        if (!silent) {
+          const weatherDesc = {
+            clear: '☀️ Ясная погода',
+            rain: '🌧️ Дождь',
+            snow: '❄️ Снег',
+            storm: '⛈️ Гроза',
+            fog: '🌫️ Туман',
+            cloudy: '☁️ Облачно'
+          };
+          LC.lcSys({ text: `Погода изменилась: ${weatherDesc[newWeather] || newWeather}`, level: 'director' });
+        }
+        
+        // Weather may affect moods (with probability)
+        this.applyWeatherMoodEffects(newWeather);
+      },
+      
+      /**
+       * Apply weather effects on character moods (probabilistic).
+       * @param {string} weather - Current weather
+       */
+      applyWeatherMoodEffects(weather) {
+        const L = LC.lcInit();
+        if (!L.characters) return;
+        
+        // Weather mood effects (20% chance to apply)
+        if (Math.random() > 0.2) return;
+        
+        const moodEffects = {
+          rain: { mood: 'melancholic', reason: 'дождливая погода' },
+          storm: { mood: 'anxious', reason: 'гроза' },
+          clear: { mood: 'cheerful', reason: 'хорошая погода' },
+          snow: { mood: 'excited', reason: 'снег' }
+        };
+        
+        const effect = moodEffects[weather];
+        if (!effect) return;
+        
+        // Apply to one random active character
+        const activeChars = Object.keys(L.characters).filter(name => {
+          const char = L.characters[name];
+          return char.lastSeen && (L.turn - char.lastSeen) < 5;
+        });
+        
+        if (activeChars.length > 0) {
+          const randomChar = activeChars[Math.floor(Math.random() * activeChars.length)];
+          if (!L.character_status) L.character_status = {};
+          L.character_status[randomChar] = {
+            mood: effect.mood,
+            reason: effect.reason,
+            expires: L.turn + 3
+          };
+          L.stateVersion++;
+          LC.lcSys({ text: `${randomChar} affected by weather`, level: 'director' });
+        }
+      },
+      
+      /**
+       * Analyzes text for environment changes and updates state.
+       * @param {string} text - The text to analyze
+       */
+      analyze(text) {
+        if (!text) return;
+        const L = LC.lcInit();
+        
+        // Detect location change
+        const newLocation = this.detectLocation(text);
+        if (newLocation && newLocation !== L.environment.location) {
+          L.environment.location = newLocation;
+          L.stateVersion++;
+          LC.lcSys({ text: `Location: ${newLocation}`, level: 'director' });
+        }
+      }
+    },
+
+    // ========== Gossip Engine ==========
+    GossipEngine: {
+      /**
+       * Generates a unique ID for a rumor.
+       * @returns {string} Unique rumor ID
+       */
+      generateRumorId() {
+        return 'rumor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      },
+      
+      /**
+       * Observer sub-module: watches for events and generates gossip.
+       * Uses "Interpretation Matrix" based on witness's relationship to participants.
+       * @param {string} text - The text to analyze for gossip-worthy events
+       */
+      Observer: {
+        /**
+         * Detects gossip-worthy events in text and creates rumors.
+         * @param {string} text - Text to analyze
+         */
+        observe(text) {
+          if (!text) return;
+          const L = LC.lcInit();
+          if (!L.rumors) L.rumors = [];
+          if (!L.characters) L.characters = {};
+          
+          const low = text.toLowerCase();
+          
+          // Gossip-worthy event patterns
+          const eventPatterns = [
+            // Romance
+            { regex: /([\p{L}\s]+)\s+(?:поцелова(?:л|ла|лся|лась)|целова(?:л|ла))\s+([\p{L}\s]+)/iu, 
+              type: 'romance', spin: 'neutral' },
+            { regex: /([\p{L}\s]+)\s+(?:признал(?:ся|ась)|призналась)\s+в\s+любви\s+([\p{L}\s]+)/iu, 
+              type: 'romance', spin: 'neutral' },
+            { regex: /([\p{L}\s]+)\s+and\s+([\p{L}\s]+)\s+(?:kissed|were\s+seen\s+kissing)/iu, 
+              type: 'romance', spin: 'neutral' },
+              
+            // Conflict
+            { regex: /([\p{L}\s]+)\s+(?:подрал(?:ся|ась)|драл(?:ся|ась)|поссорил(?:ся|ась))\s+с\s+([\p{L}\s]+)/iu, 
+              type: 'conflict', spin: 'negative' },
+            { regex: /([\p{L}\s]+)\s+(?:fought|argued)\s+with\s+([\p{L}\s]+)/iu, 
+              type: 'conflict', spin: 'negative' },
+              
+            // Betrayal
+            { regex: /([\p{L}\s]+)\s+(?:предал(?:а|)|обманул(?:а|)|изменил(?:а|))\s+([\p{L}\s]+)/iu, 
+              type: 'betrayal', spin: 'negative' },
+            { regex: /([\p{L}\s]+)\s+(?:betrayed|deceived|cheated\s+on)\s+([\p{L}\s]+)/iu, 
+              type: 'betrayal', spin: 'negative' },
+              
+            // Achievement
+            { regex: /([\p{L}\s]+)\s+(?:выиграл(?:а|)|победил(?:а|)|получил(?:а|)\s+награду)/iu, 
+              type: 'achievement', spin: 'positive' },
+            { regex: /([\p{L}\s]+)\s+(?:won|achieved|received\s+an?\s+award)/iu, 
+              type: 'achievement', spin: 'positive' }
+          ];
+          
+          for (const pattern of eventPatterns) {
+            const match = text.match(pattern.regex);
+            if (match) {
+              // Extract character names
+              const autoEvergreen = LC.EvergreenEngine;
+              const char1Raw = match[1] ? match[1].trim() : null;
+              const char2Raw = match[2] ? match[2].trim() : null;
+              
+              if (!char1Raw) continue;
+              
+              // Normalize character names
+              const char1 = autoEvergreen?.normalizeCharName?.(char1Raw) || char1Raw;
+              const char2 = char2Raw ? (autoEvergreen?.normalizeCharName?.(char2Raw) || char2Raw) : null;
+              
+              // Check if characters are important
+              const char1Important = autoEvergreen?.isImportantCharacter?.(char1);
+              const char2Important = char2 ? autoEvergreen?.isImportantCharacter?.(char2) : false;
+              
+              if (!char1Important && !char2Important) continue;
+              
+              // Create rumor
+              const rumor = {
+                id: LC.GossipEngine.generateRumorId(),
+                text: match[0],
+                type: pattern.type,
+                subject: char1,
+                target: char2,
+                spin: pattern.spin,
+                turn: L.turn,
+                knownBy: [], // Will be populated by witnesses
+                distortion: 0,
+                verified: false
+              };
+              
+              // Find witnesses (characters active in recent turns)
+              const witnesses = Object.keys(L.characters).filter(name => {
+                const char = L.characters[name];
+                return char.lastSeen && (L.turn - char.lastSeen) <= 2 && name !== char1 && name !== char2;
+              });
+              
+              // Apply interpretation matrix based on witness relationships
+              for (const witness of witnesses) {
+                rumor.knownBy.push(witness);
+                // Interpretation affects spin based on witness's relationship to participants
+                this.applyInterpretationMatrix(rumor, witness);
+              }
+              
+              L.rumors.push(rumor);
+              L.stateVersion++;
+              
+              LC.lcSys({ 
+                text: `🗣️ Новый слух: "${rumor.text}" (witnessed by ${witnesses.length} people)`, 
+                level: 'director' 
+              });
+              
+              break; // Only one rumor per analyze call
+            }
+          }
+        },
+        
+        /**
+         * Applies interpretation matrix to modify rumor based on witness's relationship.
+         * @param {object} rumor - The rumor object
+         * @param {string} witness - Witness character name
+         */
+        applyInterpretationMatrix(rumor, witness) {
+          const L = LC.lcInit();
+          if (!L.evergreen?.relations) return;
+          
+          // Get witness's relationship to subject
+          const relationKey1 = `${witness}→${rumor.subject}`;
+          const relationKey2 = `${rumor.subject}→${witness}`;
+          const relation1 = L.evergreen.relations[relationKey1] || 0;
+          const relation2 = L.evergreen.relations[relationKey2] || 0;
+          const avgRelation = (relation1 + relation2) / 2;
+          
+          // Positive relationship with subject = positive spin
+          // Negative relationship with subject = negative spin
+          if (avgRelation > 20) {
+            rumor.spin = 'positive';
+          } else if (avgRelation < -20) {
+            rumor.spin = 'negative';
+          }
+          
+          // Add small distortion based on relationship strength
+          const distortionAmount = Math.abs(avgRelation) / 50; // 0-2 distortion
+          rumor.distortion += distortionAmount;
+        }
+      },
+      
+      /**
+       * Propagator sub-module: spreads and distorts rumors when characters interact.
+       */
+      Propagator: {
+        /**
+         * Spreads a rumor from one character to another, potentially distorting it.
+         * @param {string} rumorId - ID of rumor to spread
+         * @param {string} from - Character spreading the rumor
+         * @param {string} to - Character receiving the rumor
+         */
+        spreadRumor(rumorId, from, to) {
+          const L = LC.lcInit();
+          if (!L.rumors) return;
+          
+          const rumor = L.rumors.find(r => r.id === rumorId);
+          if (!rumor) return;
+          
+          // Check if 'to' already knows
+          if (rumor.knownBy.includes(to)) return;
+          
+          // Spread the rumor
+          rumor.knownBy.push(to);
+          
+          // Distort the rumor (small chance with each spread)
+          if (Math.random() < 0.3) {
+            rumor.distortion += 0.5;
+          }
+          
+          L.stateVersion++;
+          
+          LC.lcSys({ 
+            text: `🗣️ Слух распространился: ${from} → ${to}`, 
+            level: 'director' 
+          });
+          
+          // Update reputation based on rumor type and spin
+          this.updateReputation(rumor);
+        },
+        
+        /**
+         * Updates character reputation based on rumor spread.
+         * @param {object} rumor - The rumor object
+         */
+        updateReputation(rumor) {
+          const L = LC.lcInit();
+          if (!L.characters[rumor.subject]) return;
+          if (!L.characters[rumor.subject].reputation) {
+            L.characters[rumor.subject].reputation = 50;
+          }
+          
+          // Reputation change based on rumor type and spin
+          let reputationChange = 0;
+          
+          if (rumor.type === 'romance') {
+            reputationChange = rumor.spin === 'positive' ? 2 : -1;
+          } else if (rumor.type === 'conflict') {
+            reputationChange = -3;
+          } else if (rumor.type === 'betrayal') {
+            reputationChange = -5;
+          } else if (rumor.type === 'achievement') {
+            reputationChange = 5;
+          }
+          
+          // Apply distortion penalty
+          reputationChange -= Math.floor(rumor.distortion);
+          
+          L.characters[rumor.subject].reputation += reputationChange;
+          
+          // Clamp reputation between 0 and 100
+          L.characters[rumor.subject].reputation = Math.max(0, Math.min(100, L.characters[rumor.subject].reputation));
+          
+          L.stateVersion++;
+        },
+        
+        /**
+         * Automatically propagate rumors when characters interact.
+         * @param {string} char1 - First character
+         * @param {string} char2 - Second character
+         */
+        autoPropagate(char1, char2) {
+          const L = LC.lcInit();
+          if (!L.rumors || L.rumors.length === 0) return;
+          
+          // Find rumors known by char1 but not char2
+          const rumorsToSpread = L.rumors.filter(r => 
+            r.knownBy.includes(char1) && !r.knownBy.includes(char2)
+          );
+          
+          // Spread one random rumor (20% chance)
+          if (rumorsToSpread.length > 0 && Math.random() < 0.2) {
+            const randomRumor = rumorsToSpread[Math.floor(Math.random() * rumorsToSpread.length)];
+            this.spreadRumor(randomRumor.id, char1, char2);
+          }
+        }
+      },
+      
+      /**
+       * Main analyze function that observes events and potentially spreads rumors.
+       * @param {string} text - Text to analyze
+       */
+      analyze(text) {
+        if (!text) return;
+        
+        // Observe for new gossip-worthy events
+        this.Observer.observe(text);
+        
+        // Auto-propagate rumors when characters interact
+        // Detect character interactions in text
+        const L = LC.lcInit();
+        if (!L.characters) return;
+        
+        const activeChars = Object.keys(L.characters).filter(name => {
+          const char = L.characters[name];
+          return char.lastSeen && (L.turn - char.lastSeen) <= 1;
+        });
+        
+        // If 2+ characters are active, try to propagate rumors
+        if (activeChars.length >= 2) {
+          for (let i = 0; i < activeChars.length - 1; i++) {
+            for (let j = i + 1; j < activeChars.length; j++) {
+              this.Propagator.autoPropagate(activeChars[i], activeChars[j]);
             }
           }
         }

@@ -186,10 +186,19 @@ const modifier = function (text) {
     let seenTurn = L._cmdSysSeen?.turn;
     let seenSeq = L._cmdSysSeen?.seq;
     let sawStamped = false;
-    for (const rawMsg of msgs) {
-      const decoded = decodeCommandSys(rawMsg);
+    for (const msg of msgs) {
+      // Extract text and level from message object (backward compatible with strings)
+      const msgText = (msg && typeof msg === 'object') ? msg.text : msg;
+      const msgLevel = (msg && typeof msg === 'object') ? msg.level : 'character';
+      
+      // Filter based on playerInfoLevel
+      if (L.playerInfoLevel === 'character' && msgLevel === 'director') {
+        continue; // Hide director-level messages in character mode
+      }
+      
+      const decoded = decodeCommandSys(msgText);
       if (!decoded || decoded.turn == null || decoded.seq == null) {
-        filtered.push(decoded ? decoded.text : rawMsg);
+        filtered.push(decoded ? decoded.text : msgText);
         continue;
       }
       sawStamped = true;

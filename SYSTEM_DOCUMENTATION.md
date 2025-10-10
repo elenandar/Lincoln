@@ -1089,6 +1089,473 @@ Russian: "После уроков Макс лег спать."
 
 ---
 
+### 3.5 Information Access Levels
+
+#### Overview
+
+The Information Access Levels system allows players to control what system information they see, enabling deeper immersion by hiding "director-level" meta-information while in "character mode".
+
+This feature is critical for maintaining narrative surprise and authentic role-playing experience.
+
+#### Modes
+
+**1. Character Mode (Default)**
+- Player sees only information their character would know
+- Director-level system messages are hidden
+- Maintains immersion and preserves plot surprises
+- Example: Hidden messages about weather changes, rumor generation, location tracking
+
+**2. Director Mode**
+- Player sees all system messages including meta-information
+- Useful for debugging and understanding game mechanics
+- Shows all engine activity (gossip, environment, etc.)
+
+#### State Structure
+
+```javascript
+state.lincoln.playerInfoLevel = 'character'; // or 'director'
+```
+
+#### Commands
+
+**`/mode`** — Show current mode
+
+**`/mode character`** — Switch to character mode (default)
+- Hides director-level messages
+- Provides immersive experience
+
+**`/mode director`** — Switch to director mode
+- Shows all system messages
+- Useful for debugging
+
+#### Message Levels
+
+System messages can have two levels:
+
+```javascript
+// Character-level message (always visible)
+LC.lcSys("Player-visible message");
+
+// Director-level message (hidden in character mode)
+LC.lcSys({ text: "Meta information", level: 'director' });
+
+// Or with options parameter
+LC.lcSys("Meta information", { level: 'director' });
+```
+
+#### Implementation Details
+
+**Library.txt Changes:**
+- `L.playerInfoLevel` state added in `lcInit()`
+- `LC.lcSys()` modified to accept level parameter
+- Messages stored as `{ text, level }` objects
+
+**Output.txt Changes:**
+- Filtering logic added before displaying messages
+- Director-level messages filtered when `playerInfoLevel === 'character'`
+
+#### Use Cases
+
+**Character Mode:**
+- Normal gameplay for maximum immersion
+- Player discovers information organically
+- Preserves story surprises
+
+**Director Mode:**
+- Debugging game mechanics
+- Understanding why certain events occurred
+- Viewing internal engine state
+
+---
+
+### 3.6 Environment Simulation (EnvironmentEngine)
+
+#### Overview
+
+The EnvironmentEngine tracks and simulates environmental factors including weather, location, and ambiance. It integrates with the MoodEngine to create realistic atmospheric effects on character emotions.
+
+#### State Structure
+
+```javascript
+state.lincoln.environment = {
+  weather: 'clear',    // Current weather condition
+  location: '',        // Current location name
+  ambiance: ''         // Ambient atmosphere description
+};
+```
+
+#### Weather System
+
+**Supported Weather Types:**
+- `clear` — ☀️ Clear, sunny weather
+- `rain` — 🌧️ Rainy weather
+- `snow` — ❄️ Snowy weather
+- `storm` — ⛈️ Stormy weather
+- `fog` — 🌫️ Foggy weather
+- `cloudy` — ☁️ Cloudy weather
+
+**Weather Effects:**
+Weather changes can affect character moods with 20% probability:
+- Rain → Melancholic mood
+- Storm → Anxious mood
+- Clear → Cheerful mood
+- Snow → Excited mood
+
+#### Location Detection
+
+The engine automatically detects location changes from narrative text:
+
+**Recognized Locations:**
+- Classroom (класс, classroom)
+- Cafeteria (столовая, cafeteria)
+- Gym (спортзал, gym)
+- Library (библиотека, library)
+- Hallway (коридор, hallway)
+- Schoolyard (площадка, schoolyard)
+- Park (парк, park)
+- Home (дом, home)
+- Street (улица, street)
+
+**Detection Example:**
+```
+Input: "Макс пошёл в библиотеку"
+Result: L.environment.location = 'library'
+System: 📍 Location: library (director-level)
+```
+
+#### Commands
+
+**`/weather`** — Show current weather
+```
+Output: ☀️ Current weather: clear
+```
+
+**`/weather set <type>`** — Change weather
+```
+Example: /weather set rain
+Output: ✅ Weather changed to: rain
+System: 🌧️ Погода изменилась: Дождь (director-level)
+```
+
+**`/location`** — Show current location
+```
+Output: 📍 Current location: library
+```
+
+**`/location set <name>`** — Set location manually
+```
+Example: /location set cafeteria
+Output: 📍 Location set to: cafeteria
+```
+
+#### Integration with Other Systems
+
+**MoodEngine Integration:**
+- Weather changes can trigger mood effects on active characters
+- 20% chance to apply mood when weather changes
+- Affects one random recently active character
+
+**UnifiedAnalyzer Integration:**
+- Automatically called during text analysis
+- Detects location mentions in narrative
+- Updates environment state
+
+#### Architecture
+
+```
+Output/UnifiedAnalyzer
+    ↓ Calls: LC.EnvironmentEngine.analyze(text)
+Library/EnvironmentEngine
+    ↓ detectLocation() → Update L.environment.location
+    ↓ changeWeather() → Update L.environment.weather
+    ↓ applyWeatherMoodEffects() → Update character moods
+Library/MoodEngine
+    ↓ Mood changes persist for 3 turns
+Context
+    → Environment affects narrative atmosphere
+```
+
+#### Practical Examples
+
+**Example 1: Automatic Location Detection**
+
+Input: `"После уроков Макс пошёл в библиотеку"`
+
+Result:
+```javascript
+L.environment.location = 'library'
+// System message (director): 📍 Location: library
+```
+
+**Example 2: Manual Weather Change**
+
+Command: `/weather set storm`
+
+Result:
+```javascript
+L.environment.weather = 'storm'
+// System message (director): ⛈️ Погода изменилась: Гроза
+// 20% chance: Random active character becomes anxious
+```
+
+**Example 3: Weather Mood Effect**
+
+```javascript
+// Before
+L.environment.weather = 'clear'
+L.characters['Хлоя'] = { lastSeen: 10 }
+
+// After /weather set rain
+L.environment.weather = 'rain'
+L.character_status['Хлоя'] = {
+  mood: 'melancholic',
+  reason: 'дождливая погода',
+  expires: 13  // turn + 3
+}
+```
+
+---
+
+### 3.7 Social Simulation (GossipEngine)
+
+#### Overview
+
+The GossipEngine creates a dynamic social ecosystem by tracking rumors, managing character reputations, and simulating gossip spread through character interactions. It consists of two sub-modules: Observer and Propagator.
+
+#### State Structure
+
+**Rumors:**
+```javascript
+state.lincoln.rumors = [
+  {
+    id: 'rumor_1234567_abc',
+    text: 'Макс поцеловал Хлою',
+    type: 'romance',          // romance, conflict, betrayal, achievement
+    subject: 'Максим',         // Primary subject
+    target: 'Хлоя',            // Secondary subject (optional)
+    spin: 'neutral',           // positive, neutral, negative
+    turn: 10,                  // When rumor originated
+    knownBy: ['Эшли', 'София'], // Characters who know this rumor
+    distortion: 0.5,           // Cumulative distortion (0-10+)
+    verified: false            // Whether rumor is confirmed
+  }
+];
+```
+
+**Reputation:**
+```javascript
+state.lincoln.characters['Максим'].reputation = 75; // 0-100 scale
+```
+
+#### Observer Sub-Module
+
+**Purpose:** Watches for gossip-worthy events and creates rumors.
+
+**Detected Event Types:**
+- **Romance** — Kisses, confessions, romantic interactions
+- **Conflict** — Fights, arguments, confrontations
+- **Betrayal** — Betrayals, deceptions, cheating
+- **Achievement** — Wins, awards, accomplishments
+
+**Interpretation Matrix:**
+The Observer applies relationship-based interpretation:
+- If witness likes subject → Positive spin
+- If witness dislikes subject → Negative spin
+- Neutral relationships → Neutral spin
+
+**Example:**
+```javascript
+Text: "Максим поцеловал Хлою"
+Witnesses: ['Эшли'] (lastSeen within 2 turns)
+Relation: Эшли→Максим = -30 (dislikes)
+Result: Rumor created with negative spin
+```
+
+#### Propagator Sub-Module
+
+**Purpose:** Spreads rumors between characters and distorts them over time.
+
+**Spread Mechanics:**
+- Automatic propagation when characters interact (20% chance)
+- Manual propagation via `/rumor spread` command
+- 30% chance of distortion with each spread
+- Distortion accumulates: +0.5 per spread event
+
+**Reputation Effects:**
+Rumors affect character reputation when spread:
+- **Romance:** +2 (positive) or -1 (negative)
+- **Conflict:** -3
+- **Betrayal:** -5
+- **Achievement:** +5
+- **Distortion penalty:** -floor(distortion)
+
+**Reputation Scale:**
+- 80-100: Excellent
+- 60-79: Good
+- 40-59: Neutral
+- 20-39: Poor
+- 0-19: Bad
+
+#### Commands
+
+**`/rumor`** — List all active rumors
+```
+Output:
+🗣️ ACTIVE RUMORS (2):
+1. [abc123] "Макс поцеловал Хлою..." - Known by 3, Distortion: 0.5
+2. [def456] "София победила в соревновании..." - Known by 5, Distortion: 1.0
+```
+
+**`/rumor add <text> about <char>`** — Create custom rumor
+```
+Example: /rumor add secretly dating about Максим
+Output: 🗣️ Rumor created: "secretly dating" (ID: rumor_...)
+```
+
+**`/rumor spread <id> from <char1> to <char2>`** — Manually spread rumor
+```
+Example: /rumor spread abc123 from Эшли to София
+Output: ✅ Rumor spread from Эшли to София
+System (director): 🗣️ Слух распространился: Эшли → София
+```
+
+**`/reputation`** — Show all character reputations
+```
+Output:
+⭐ CHARACTER REPUTATIONS:
+Максим: 72/100
+Хлоя: 85/100
+Эшли: 45/100
+```
+
+**`/reputation <char>`** — Show specific character's reputation
+```
+Example: /reputation Максим
+Output: ⭐ Максим: 72/100 (Good)
+```
+
+**`/reputation set <char> <value>`** — Set reputation manually
+```
+Example: /reputation set Максим 90
+Output: ✅ Reputation set: Максим = 90
+```
+
+#### Integration with Other Systems
+
+**RelationsEngine Integration:**
+- Interpretation matrix uses relationship values
+- Rumor spread affects relationships indirectly through reputation
+
+**Character Tracking:**
+- Only creates rumors about "important" characters (tracked by EvergreenEngine)
+- Witnesses must be recently active (lastSeen within 2 turns)
+
+**UnifiedAnalyzer Integration:**
+- Automatically called during text analysis
+- Observer watches for gossip-worthy events
+- Propagator auto-spreads when characters interact
+
+#### Architecture
+
+```
+Output/UnifiedAnalyzer
+    ↓ Calls: LC.GossipEngine.analyze(text)
+Library/GossipEngine
+    ↓ Observer.observe() → Detect events, create rumors
+    ↓   → applyInterpretationMatrix() → Adjust spin based on relationships
+    ↓ Propagator.autoPropagate() → Spread rumors between active characters
+    ↓   → spreadRumor() → Add character to knownBy, add distortion
+    ↓   → updateReputation() → Modify subject's reputation
+Library/RelationsEngine
+    ↓ Read relationship values for interpretation
+Library/EvergreenEngine
+    ↓ Validate character importance
+Context
+    → Reputation affects character perception
+```
+
+#### Practical Examples
+
+**Example 1: Rumor Generation with Interpretation**
+
+```
+Input: "Максим поцеловал Хлою в библиотеке."
+Active Characters: Максим (turn 10), Хлоя (turn 10), Эшли (turn 9)
+Relationships: Эшли→Максим = -25 (dislikes)
+
+Result:
+L.rumors.push({
+  id: 'rumor_1234',
+  text: 'Максим поцеловал Хлою',
+  type: 'romance',
+  subject: 'Максим',
+  target: 'Хлоя',
+  spin: 'negative',  // Because Эшли dislikes Максим
+  turn: 10,
+  knownBy: ['Эшли'],
+  distortion: 0,
+  verified: false
+});
+
+System (director): 🗣️ Новый слух: "Максим поцеловал Хлою" (witnessed by 1 people)
+```
+
+**Example 2: Automatic Rumor Propagation**
+
+```
+Turn 11: "Эшли и София говорили в коридоре"
+Active Characters: Эшли, София
+Existing Rumors: Эшли knows rumor_1234
+
+Process:
+1. Detect interaction between Эшли and София
+2. Find rumors Эшли knows but София doesn't
+3. 20% chance → SUCCESS
+4. Spread rumor_1234 from Эшли to София
+5. 30% chance distortion → Add 0.5 to distortion
+6. Update Максим's reputation: -1 (negative romance rumor)
+
+Result:
+rumor_1234.knownBy = ['Эшли', 'София']
+rumor_1234.distortion = 0.5
+L.characters['Максим'].reputation = 74 (was 75)
+
+System (director): 🗣️ Слух распространился: Эшли → София
+```
+
+**Example 3: Reputation Impact**
+
+```
+Initial State:
+Максим.reputation = 75
+
+Rumor Spreads:
+1. Romance (negative): -1 → 74
+2. Conflict rumor about Максим: -3 → 71
+3. Achievement rumor: +5 → 76
+4. Betrayal rumor with distortion 2: -5 - 2 = -7 → 69
+
+Final: Максим.reputation = 69 (Good)
+```
+
+**Example 4: Interpretation Matrix in Action**
+
+```
+Event: "Макс предал Хлою"
+Witnesses: Эшли, София, Джейк
+
+Relationships:
+- Эшли→Макс = -30 (dislikes) → Negative spin reinforced
+- София→Макс = 0 (neutral) → Neutral spin
+- Джейк→Макс = 40 (likes) → Positive spin (soften the rumor)
+
+Base rumor type: betrayal (negative)
+Final spin after matrix: Still negative (majority effect)
+Distortion varies by witness relationship strength
+```
+
+---
+
 ## 4. Testing System
 
 ### 4.1 Test Files
@@ -1101,6 +1568,7 @@ The project includes comprehensive test suites:
 4. **test_secrets.js** - Tests the KnowledgeEngine and secrets system
 5. **test_engines.js** - Tests engine module structure and integration
 6. **test_time.js** - Tests the TimeEngine and calendar system
+7. **test_access_levels.js** - Tests the Information Access Levels system
 
 ### 4.2 Running Tests
 
@@ -1111,6 +1579,10 @@ Execute tests from the repository root:
 node test_current_action.js
 
 # Test goal tracking
+node test_goals.js
+
+# Test access levels
+node test_access_levels.js
 node test_goals.js
 
 # Test secrets system
