@@ -37,7 +37,12 @@ const modifier = function (text) {
 
   const limit = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) || 800;
   
-  // Helper function to safely slice strings without breaking surrogate pairs
+  /**
+   * Safely slices a string without breaking Unicode surrogate pairs.
+   * @param {string} str - The string to slice
+   * @param {number} maxLength - Maximum length
+   * @returns {string} Safely sliced string
+   */
   function safeSlice(str, maxLength) {
     if (str.length <= maxLength) return str;
     // Check if we're cutting in the middle of a surrogate pair

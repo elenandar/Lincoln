@@ -92,6 +92,11 @@ if (typeof LC === "undefined") return { text: String(text || "") };
       if (L.currentAction) L.currentAction.__cmdCyclePending = true;
     } catch (_) {}
   }
+/**
+ * Returns a stop response with a formatted system message.
+ * @param {string} msg - The message to display
+ * @returns {object} Response object with text and stop flag
+ */
 function replyStop(msg){
   try { LC.lcInit?.(__SCRIPT_SLOT__); } catch(_) {}
   const L = LC.lcInit ? LC.lcInit(__SCRIPT_SLOT__) : {};
@@ -112,6 +117,11 @@ function replyStopSilent(){
   // Экспорт для registry (Library)
   LC.replyStop = replyStop;
 
+/**
+ * Builds a formatted help message listing all available commands.
+ * @param {object} [currentL] - The Lincoln state object
+ * @returns {string} Formatted help text
+ */
   function buildHelpMessage(currentL = L) {
     const version = LC?.CONFIG?.VERSION ?? "";
     const lines = [`=== COMMANDS ${version} ===`];
@@ -129,6 +139,11 @@ function replyStopSilent(){
     return lines.join("\n");
   }
 
+/**
+ * Builds a formatted statistics message showing system state and metrics.
+ * @param {object} [currentL] - The Lincoln state object
+ * @returns {string} Formatted statistics text
+ */
   function buildStatsMessage(currentL = L) {
     const activeL = currentL || LC?.lcInit?.(__SCRIPT_SLOT__) || {};
     const tm = activeL.tm || {};
@@ -180,6 +195,11 @@ function replyStopSilent(){
     });
   }
 
+/**
+ * Extracts a command from user text, handling quoted strings.
+ * @param {string} s - The input text
+ * @returns {string|null} The extracted command or null
+ */
   function extractCommand(s){
     let t = (s || "").trim();
     if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) t = t.slice(1, -1).trim();

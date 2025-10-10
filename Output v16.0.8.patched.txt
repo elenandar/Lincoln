@@ -15,6 +15,12 @@ Contract:
 const __SCRIPT_SLOT__ = "Output";
 if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
 
+/**
+ * Checks if the output processing time has exceeded the budget.
+ * @param {number} start - Start timestamp
+ * @param {number} [maxMs=3500] - Maximum allowed milliseconds
+ * @returns {{over: boolean, dt: number}} Object with over flag and elapsed time
+ */
 function omBudget(start, maxMs = 3500) {
   const dt = Date.now() - start;
   return { over: dt > maxMs, dt };
@@ -31,6 +37,11 @@ const modifier = function (text) {
   const CMD_SYS_META_SEP = "\u2062";
   const CMD_CYCLE_FLAG = "__cmdCyclePending";
 
+/**
+ * Decodes command system messages that were stamped in Input.
+ * @param {string} raw - The raw message text
+ * @returns {object|null} Decoded message object or null if not a command SYS message
+ */
   function decodeCommandSys(raw) {
     if (typeof raw !== "string") return null;
     const SYS_PREFIX = "⟦SYS⟧";
