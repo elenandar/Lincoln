@@ -16,7 +16,7 @@ Lincoln is an internal script suite (v16.0.8-compat6d) for maintaining AI-driven
 - Turn accounting and command handling
 - Context overlay composition with priority-based layering
 - Evergreen character relationship tracking
-- Bilingual support (Russian and English)
+- Russian-language narrative support with deep linguistic understanding
 
 ### Core Invariants
 
@@ -173,11 +173,11 @@ The Lincoln system automatically detects and tracks character goals from narrati
 #### Overview
 
 **Key Capabilities:**
-1. **Automatic Detection** - Goals are extracted from text using regex patterns
+1. **Automatic Detection** - Goals are extracted from Russian text using regex patterns
 2. **Persistent Storage** - Goals stored in `state.lincoln.goals`
 3. **Context Integration** - Active goals appear in AI context with high priority
 4. **Age Management** - Goals older than 20 turns are filtered from context
-5. **Bilingual Support** - Works with both Russian and English text
+5. **Deep Goal Understanding** - Recognizes social, academic, and investigation goals
 
 #### State Structure
 
@@ -196,20 +196,31 @@ state.lincoln.goals = {
 
 #### Pattern Recognition
 
-**6 regex patterns** detect goal-setting phrases:
+**11 Russian-only regex patterns** detect goal-setting phrases:
 
-**Russian Patterns:**
+**Basic Goals:**
 - `Цель Максима: узнать правду` - Explicit goal statements
 - `Максим хочет узнать правду` - Want/desire expressions
 - `Максим решил отомстить` - Decision/intent expressions
 - `Максим планирует раскрыть` - Planning expressions
 - `Его цель — узнать правду` - Possessive goal constructions
 
-**English Patterns:**
-- `Goal of Maxim: learn the truth` - Explicit goal statements
-- `Maxim wants to learn` - Want/desire expressions
-- `Maxim plans to reveal` - Planning expressions
-- `Maxim's goal is to` - Possessive goal constructions
+**Social Goals:**
+- `Максим хотел подружиться с Хлоей` - Making friends
+- `Хлоя решила наладить отношения` - Repairing relationships
+- `Максим хотел произвести на нее впечатление` - Impressing someone
+- `Эшли решила отомстить` - Revenge goals
+
+**Academic/Career Goals:**
+- `Максим решил исправить оценки` - Improving grades
+- `Хлоя хотела получить отлично` - Academic achievement
+- `Его целью была победа в конкурсе` - Competition victory
+- `Хлоя хотела выиграть соревнование` - Winning competitions
+
+**Investigation Goals:**
+- `Максим должен выяснить, что случилось` - Discovering truth
+- `Хлоя хотела докопаться до истины` - Getting to the truth
+- `Максим решил разузнать побольше о директоре` - Investigation
 
 #### Context Integration
 
@@ -229,7 +240,7 @@ Goals appear in context overlay as `⟦GOAL⟧` entries with **priority weight 7
 
 #### Practical Examples
 
-**Example 1: Russian Goal Detection**
+**Example 1: Basic Goal Detection**
 
 Input: `"Максим хочет узнать правду о директоре."`
 
@@ -245,15 +256,15 @@ L.goals["Максим_123_abc"] = {
 
 Context: `⟦GOAL⟧ Цель Максим: узнать правду о директоре`
 
-**Example 2: English Goal Detection**
+**Example 2: Social Goal Detection**
 
-Input: `"Chloe wants to win the competition."`
+Input: `"Хлоя решила наладить отношения с Максимом."`
 
 Result:
 ```javascript
 L.goals["Хлоя_456_xyz"] = {
   character: "Хлоя",
-  text: "win the competition",
+  text: "наладить отношения с Максимом",
   status: "active",
   turnCreated: 10
 }
@@ -338,14 +349,14 @@ Goals in context help the AI:
 
 #### Overview
 
-The **MoodEngine** automatically detects and tracks the emotional state of characters in the narrative. It analyzes output text for emotional markers (anger, happiness, fear, fatigue, injury) and creates temporary mood statuses that influence future AI responses.
+The **MoodEngine** automatically detects and tracks the emotional state of characters in the narrative. It analyzes output text for emotional markers and creates temporary mood statuses that influence future AI responses.
 
 **Key capabilities:**
-1. **Automatic Detection** - Recognizes emotional markers in Russian and English
+1. **Automatic Detection** - Recognizes emotional markers in Russian text
 2. **Temporal Tracking** - Moods expire after 5 turns
 3. **Context Integration** - Active moods appear in AI context via `⟦MOOD⟧` tags
 4. **Character-Specific** - Tracks individual mood states per character
-5. **Bilingual Support** - Works with both Russian and English text
+5. **Extended Emotion Set** - Includes complex social emotions like embarrassment, jealousy, guilt
 
 #### State Structure
 
@@ -359,8 +370,8 @@ state.lincoln.character_status = {
     expires: 15  // Turn number when mood expires
   },
   "Хлоя": {
-    mood: "happy",
-    reason: "успех",
+    mood: "embarrassed",
+    reason: "неловкость",
     expires: 18
   }
 }
@@ -368,27 +379,37 @@ state.lincoln.character_status = {
 
 #### Pattern Recognition
 
-The system recognizes **5 core mood types** with multiple markers for each:
+The system recognizes **10 mood types** with multiple Russian markers for each:
 
 **Angry (злость):**
 - Russian: `разозлился`, `был зол`, `в ярости`, `рассердился`
-- English: `became angry`, `got mad`, `in rage`, `furious`
 
 **Happy (радость):**
 - Russian: `был счастлив`, `обрадовался`, `в восторге`
-- English: `was happy`, `felt joyful`, `delighted`, `overjoyed`
 
 **Scared (страх):**
 - Russian: `испугался`, `был напуган`, `в страхе`, `в панике`
-- English: `was scared`, `frightened`, `terrified`, `in fear`
 
 **Tired (усталость):**
 - Russian: `устал`, `изнемог`, `измучен`, `без сил`
-- English: `tired`, `exhausted`, `weary`, `worn out`
 
 **Wounded (ранен):**
 - Russian: `ранен`, `травмирован`, `получил рану`
-- English: `wounded`, `injured`, `hurt`, `sustained an injury`
+
+**Embarrassed (смущение):**
+- Russian: `смутился`, `покраснела`, `стало неловко`, `не в своей тарелке`
+
+**Jealous (ревность):**
+- Russian: `приревновала`, `укол ревности`, `заревновал`, `съедала ревность`
+
+**Offended (обида):**
+- Russian: `обиделся`, `задели слова`, `надулась`, `обиженно ответила`
+
+**Guilty (вина):**
+- Russian: `почувствовал себя виноватым`, `мучила совесть`, `сожалела о содеянном`
+
+**Disappointed (разочарование):**
+- Russian: `разочаровался в нем`, `полное разочарование`, `испытала разочарование`
 
 #### Context Integration
 
@@ -409,7 +430,7 @@ Active moods appear in context overlay as `⟦MOOD⟧` entries with **priority w
 
 #### Practical Examples
 
-**Example 1: Russian Mood Detection**
+**Example 1: Basic Mood Detection**
 
 Input: `"Максим разозлился после ссоры с Хлоей."`
 
@@ -424,15 +445,15 @@ L.character_status["Максим"] = {
 
 Context: `⟦MOOD⟧ Максим зол из-за ссора`
 
-**Example 2: English Mood Detection**
+**Example 2: Social Emotion Detection**
 
-Input: `"Chloe was scared after hearing the strange noise."`
+Input: `"Хлоя покраснела и почувствовала себя не в своей тарелке."`
 
 Result:
 ```javascript
 L.character_status["Хлоя"] = {
-  mood: "scared",
-  reason: "threat",
+  mood: "embarrassed",
+  reason: "неловкость",
   expires: 18
 }
 ```
@@ -810,52 +831,69 @@ The Lincoln system tracks in-game time progression through **semantic understand
 
 #### Chronological Knowledge Base (CKB)
 
-The TimeEngine now uses a **Chronological Knowledge Base** that maps narrative events to temporal changes. Instead of counting turns, time advances when the story contains semantic markers like "лег спать" or "after school".
+The TimeEngine now uses a **Chronological Knowledge Base** that maps narrative events to temporal changes. Instead of counting turns, time advances when the story contains semantic markers like "лег спать" or "после уроков".
 
 **Core Concept:** 
 Time in the game world now reflects what's happening in the narrative. When a character goes to sleep, it becomes morning. When school ends, it becomes afternoon. This creates a natural flow where time progression emerges from the story itself.
 
-**Supported Event Categories:**
+**Supported Event Categories (Russian-only):**
 
 1. **Sleep/Night** → Advances to next morning
    - Russian: "лег спать", "заснул", "отправился в кровать", "до глубокой ночи", "всю ночь"
-   - English: "went to sleep", "fell asleep", "going to bed", "through the night"
    - Action: ADVANCE_TO_NEXT_MORNING (increment currentDay, set time to Утро)
 
 2. **End of School Day** → Sets time to afternoon
    - Russian: "после уроков", "после школы", "занятия закончились", "уроки закончились"
-   - English: "after school", "after classes", "classes ended", "school day ended"
    - Action: SET_TIME_OF_DAY (set to День)
 
 3. **Lunch** → Sets time to afternoon
    - Russian: "пообедал", "во время ланча", "за обедом", "обеденный перерыв"
-   - English: "had lunch", "at lunchtime", "during lunch", "lunch break"
    - Action: SET_TIME_OF_DAY (set to День)
 
 4. **Dinner** → Sets time to evening
    - Russian: "поужинал", "за ужином", "во время ужина", "вечерний прием пищи"
-   - English: "had dinner", "at dinner", "during dinner", "dinner time"
    - Action: SET_TIME_OF_DAY (set to Вечер)
 
 5. **Short Time Jumps** → Advances time by 1-2 periods
    - Russian: "час спустя", "через несколько часов", "к вечеру", "через некоторое время"
-   - English: "a few hours later", "an hour later", "by evening", "some time later"
    - Action: ADVANCE_TIME_OF_DAY (advance 1 step)
 
 6. **Next Day** → Advances to next day
    - Russian: "на следующий день", "следующим утром", "назавтра", "на другой день"
-   - English: "the next day", "next morning", "the following day", "the day after"
    - Action: ADVANCE_DAY (increment day, set to Утро)
 
 7. **Week Jumps** → Advances by 7 days
    - Russian: "прошла неделя", "через неделю", "спустя неделю", "прошло несколько дней"
-   - English: "a week later", "weeks passed", "after a week", "several days later"
    - Action: ADVANCE_DAY (increment by 7 days)
 
-8. **Explicit Time References** → Sets specific time of day
-   - Morning: "утром", "ранним утром", "in the morning", "at dawn"
-   - Evening: "вечером", "поздним вечером", "in the evening", "at dusk"
-   - Night: "ночью", "глубокой ночью", "at night", "midnight"
+8. **Party/Social Events** → Sets time to evening or night
+   - Russian: "вечеринка", "тусовка", "сбор у друзей", "пошли в клуб"
+   - Action: SET_TIME_OF_DAY (set to Вечер)
+
+9. **Training/Practice** → Sets time to day or evening
+   - Russian: "тренировка", "репетиция", "дополнительные занятия", "секция"
+   - Action: SET_TIME_OF_DAY (set to День)
+
+10. **Date/Романтическое свидание** → Sets time to evening
+    - Russian: "свидание", "пошел на свидание", "у них было свидание"
+    - Action: SET_TIME_OF_DAY (set to Вечер)
+
+11. **Midnight** → Sets time to night
+    - Russian: "к полуночи", "в полночь", "далеко за полночь"
+    - Action: SET_TIME_OF_DAY (set to Ночь)
+
+12. **Dawn** → Sets time to morning
+    - Russian: "до рассвета", "на рассвете", "проснулся с первыми лучами солнца"
+    - Action: SET_TIME_OF_DAY (set to Утро)
+
+13. **Few Days Later** → Advances by 2-3 days
+    - Russian: "через пару дней", "несколько дней спустя", "прошло два дня"
+    - Action: ADVANCE_DAY (increment by 2 days)
+
+14. **Explicit Time References** → Sets specific time of day
+    - Morning: "утром", "ранним утром", "на рассвете"
+    - Evening: "вечером", "поздним вечером", "в сумерках"
+    - Night: "ночью", "глубокой ночью", "полночь"
 
 #### State Structure
 
@@ -1351,24 +1389,35 @@ state.lincoln.characters['Максим'].reputation = 75; // 0-100 scale
 
 **Purpose:** Watches for gossip-worthy events and creates rumors.
 
-**Detected Event Types:**
+**Detected Event Types (Russian-only):**
 - **Romance** — Kisses, confessions, romantic interactions
 - **Conflict** — Fights, arguments, confrontations
 - **Betrayal** — Betrayals, deceptions, cheating
 - **Achievement** — Wins, awards, accomplishments
+- **Academic Failure** — Bad grades, failed tests
+- **Teacher Meeting** — Called to principal, private teacher conversations
+- **Truancy** — Skipping class, absence without permission
 
-**Interpretation Matrix:**
-The Observer applies relationship-based interpretation:
+**Enhanced Interpretation Matrix:**
+The Observer applies relationship-based AND mood-based interpretation:
 - If witness likes subject → Positive spin
 - If witness dislikes subject → Negative spin
+- If witness is ANGRY → More aggressive interpretation
+- If witness is JEALOUS → Negative spin against subject (especially for romance/achievement)
 - Neutral relationships → Neutral spin
+
+**Special Event Interpretations:**
+- **Academic Failure:** Friends interpret sympathetically ("учитель его завалил"), others neutrally ("он совсем не учится")
+- **Teacher Meeting:** Negative relationships see punishment ("его отчитывали за поведение"), jealous witnesses see favoritism ("он теперь любимчик")
+- **Truancy:** Friends see illness ("кажется, он заболел"), others see habit ("он постоянно прогуливает")
 
 **Example:**
 ```javascript
-Text: "Максим поцеловал Хлою"
-Witnesses: ['Эшли'] (lastSeen within 2 turns)
-Relation: Эшли→Максим = -30 (dislikes)
-Result: Rumor created with negative spin
+Text: "Максим получил двойку"
+Witnesses: ['Хлоя'] (lastSeen within 2 turns)
+Relation: Хлоя→Максим = 50 (friends)
+Mood: Хлоя is not jealous/angry
+Result: Rumor created with positive spin ("учитель его завалил")
 ```
 
 #### Propagator Sub-Module
@@ -1552,6 +1601,148 @@ Relationships:
 Base rumor type: betrayal (negative)
 Final spin after matrix: Still negative (majority effect)
 Distortion varies by witness relationship strength
+```
+
+---
+
+### 3.8 Intelligent Recap Triggers (Event Detection System)
+
+#### Overview
+
+The recap system uses an **event detection engine** to identify significant narrative moments that warrant offering a recap to the player. Instead of simple turn counting, the system analyzes story content to recognize dramatic turning points.
+
+#### Event Pattern Categories (Russian-only)
+
+The system recognizes **13 categories** of significant events with different importance weights:
+
+**1. Conflict (weight: 1.0)**
+- Patterns: "ударил", "ударила", "ссора", "крик", "драка"
+- Example: "Максим ударил Эшли после ссоры"
+
+**2. Romance (weight: 1.2)**
+- Patterns: "поцеловал", "поцеловала", "признался", "свидание"
+- Example: "Хлоя призналась в любви Максиму"
+
+**3. Authority (weight: 0.8)**
+- Patterns: "директор", "учитель", "выговор", "вызвали к директору"
+- Example: "Максима вызвали к директору"
+
+**4. Achievement (weight: 0.9)**
+- Patterns: "победил", "успех", "трофей", "награда", "выиграл"
+- Example: "Хлоя победила в соревновании"
+
+**5. Reveal (weight: 1.1)**
+- Patterns: "секрет", "разоблачение", "тайна раскрыта", "все узнали"
+- Example: "Тайна о директоре раскрыта"
+
+**6. Location (weight: 0.4)**
+- Patterns: "кабинет", "столовая", "коридор", "спортзал", "библиотека"
+- Example: "В кабинете директора"
+
+**7. Timeskip (weight: 0.5)**
+- Patterns: "прошло \d+", "через \d+", "спустя \d+"
+- Example: "Прошло три дня"
+
+**8. Betrayal (weight: 1.3)**
+- Patterns: "предал", "предала", "измен", "обман"
+- Example: "Эшли предала Хлою"
+
+**9. Loyalty (weight: 0.9)**
+- Patterns: "верность", "преданность", "лояльность", "поддержка"
+- Example: "Максим поддержал Хлою"
+
+**10. Social Upheaval (weight: 1.4)** ⭐ NEW
+- Patterns: "поссорились", "расстались", "признался в любви", "стали врагами", "предала"
+- Example: "Максим и Хлоя расстались"
+
+**11. Secret Reveal (weight: 1.5)** ⭐ NEW
+- Patterns: "он всё узнал", "она всё узнала", "тайна раскрыта", "теперь все знают"
+- Example: "Максим всё узнал о директоре"
+
+**12. Goal Outcome (weight: 1.2)** ⭐ NEW
+- Patterns: "наконец добился своего", "у него получилось", "всё пошло прахом", "потерпела неудачу"
+- Example: "Хлоя наконец добилась своего"
+
+**13. Dramatic Events (weight: 1.6)** ⭐ NEW
+- Patterns: "драка", "авария", "исключили из школы", "побег", "сбежала"
+- Example: "Произошла драка в коридоре"
+
+#### Recap Score Calculation
+
+The system calculates a **recap score** based on:
+
+1. **Turn Cadence** - Time since last recap
+2. **Event Weights** - Sum of detected event weights with time decay
+3. **Character Activity** - Bonus if 3+ characters are "hot" (active in recent turns)
+
+**Formula:**
+```javascript
+score = (turnsSinceRecap / cadence) + 
+        Σ(event.weight × decay) + 
+        (hotCharacters > 0 ? 0.25 : 0)
+
+decay = 0.5^(turnsSinceEvent / 12)  // Half-life of 12 turns
+```
+
+**Threshold:** score >= 1.0 triggers recap offer
+
+#### Practical Examples
+
+**Example 1: High-Impact Event**
+```
+Turn 15: "Максим всё узнал о секрете директора и поссорился с Хлоей"
+
+Events detected:
+- secret_reveal (weight 1.5)
+- social_upheaval (weight 1.4)
+
+Total score: ~2.9 + cadence bonus
+Result: RECAP OFFERED (well above threshold)
+```
+
+**Example 2: Cumulative Small Events**
+```
+Turn 10: "после уроков" (location, weight 0.4)
+Turn 11: "через час спустя" (timeskip, weight 0.5)
+Turn 12: "поцеловал Хлою" (romance, weight 1.2)
+
+Total score with decay: ~1.8
+Result: RECAP OFFERED
+```
+
+**Example 3: Below Threshold**
+```
+Turn 8: "в столовой" (location, weight 0.4)
+
+Total score: 0.4 + cadence (~0.3) = 0.7
+Result: No recap (below 1.0 threshold)
+```
+
+#### Configuration
+
+Located in `CONFIG.RECAP_V2`:
+```javascript
+{
+  SCORE_THRESHOLD: 1.0,      // Minimum score for recap
+  COOLDOWN_TURNS: 3,         // Min turns between recaps
+  DECAY_HALF_LIFE: 12,       // Event importance decay
+  HOT_NPC_BONUS: 0.25,       // Bonus for active characters
+  WEIGHTS: {
+    conflict: 1.0,
+    romance: 1.2,
+    authority: 0.8,
+    achievement: 0.9,
+    reveal: 1.1,
+    location: 0.4,
+    timeskip: 0.5,
+    betrayal: 1.3,
+    loyalty: 0.9,
+    social_upheaval: 1.4,     // NEW
+    secret_reveal: 1.5,        // NEW
+    goal_outcome: 1.2,         // NEW
+    dramatic: 1.6              // NEW
+  }
+}
 ```
 
 ---
