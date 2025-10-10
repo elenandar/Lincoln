@@ -1442,6 +1442,11 @@ L.debugMode = toBool(L.debugMode, false);
         unnamedTeachers: 5
       };
       
+      // society tracking (social norms and hierarchy)
+      L.society = L.society || {
+        norms: {}
+      };
+      
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
       const evergreenCapDefault = Number.isFinite(defaultEvergreenCapNum) ? defaultEvergreenCapNum : 0;
@@ -1865,6 +1870,14 @@ L.debugMode = toBool(L.debugMode, false);
               bravery: 0.5,     // Смелость
               idealism: 0.5,    // Идеализм
               aggression: 0.3   // Агрессивность
+            };
+          }
+          // Initialize social standing if not present
+          if (!rec.social) {
+            rec.social = {
+              status: 'member',    // 'leader', 'member', 'outcast'
+              capital: 100,        // Social capital (points)
+              conformity: 0.5      // Conformity to norms [0, 1]
             };
           }
           rec.lastSeen = t; rec.mentions++;
@@ -4750,6 +4763,264 @@ L.debugMode = toBool(L.debugMode, false);
       }
     },
 
+    // ========== Social Norms Engine ==========
+    /**
+     * The Norms Engine dynamically tracks, creates, and measures the strength of
+     * unwritten rules within the group (e.g., "betrayal is unacceptable").
+     * Norms emerge organically from how the group reacts to various events.
+     */
+    NormsEngine: {
+      /**
+       * Processes an event to update social norms based on group reactions.
+       * This function should be called after personal evolution processing.
+       * @param {object} eventData - Event data including type, actor, target, and witnesses
+       * @param {string} eventData.type - Type of action (e.g., 'betrayal', 'loyalty', 'violence')
+       * @param {string} eventData.actor - Character who performed the action
+       * @param {string} eventData.target - Character who was affected
+       * @param {Array<string>} eventData.witnesses - Characters who witnessed the event
+       * @param {number} eventData.relationChange - The relationship change that occurred
+       */
+      processEvent(eventData) {
+        if (!eventData || !eventData.type || !eventData.actor) return;
+        
+        const L = LC.lcInit();
+        const witnesses = eventData.witnesses || [];
+        
+        // Need at least some witnesses to establish norms
+        if (witnesses.length === 0) return;
+        
+        // Initialize norm if it doesn't exist
+        const normType = eventData.type;
+        if (!L.society.norms[normType]) {
+          L.society.norms[normType] = {
+            strength: 0.5,      // Initial neutral strength [0, 1]
+            lastUpdate: L.turn,
+            violations: 0,
+            reinforcements: 0
+          };
+        }
+        
+        const norm = L.society.norms[normType];
+        
+        // Analyze witness reactions
+        let negativeReactions = 0;
+        let positiveReactions = 0;
+        let totalReactions = 0;
+        
+        for (const witness of witnesses) {
+          if (!L.evergreen?.relations?.[witness]?.[eventData.actor]) continue;
+          
+          const relationBefore = eventData.relationsBefore?.[witness] || 0;
+          const relationAfter = L.evergreen.relations[witness][eventData.actor] || 0;
+          const reactionChange = relationAfter - relationBefore;
+          
+          if (Math.abs(reactionChange) > 5) {
+            totalReactions++;
+            if (reactionChange < -5) negativeReactions++;
+            if (reactionChange > 5) positiveReactions++;
+          }
+        }
+        
+        // Update norm strength based on reactions
+        if (totalReactions > 0) {
+          const negativeRatio = negativeReactions / totalReactions;
+          const positiveRatio = positiveReactions / totalReactions;
+          
+          // If >70% of witnesses reacted negatively, this action violates the norm
+          if (negativeRatio > 0.7) {
+            norm.strength = Math.min(1, norm.strength + 0.05);
+            norm.violations++;
+            norm.lastUpdate = L.turn;
+            
+            // Update actor's social capital (handled by HierarchyEngine)
+            if (LC.HierarchyEngine && typeof LC.HierarchyEngine.updateCapital === 'function') {
+              LC.HierarchyEngine.updateCapital(eventData.actor, {
+                type: 'NORM_VIOLATION',
+                normStrength: norm.strength,
+                witnessCount: totalReactions
+              });
+            }
+          }
+          // If >70% reacted positively, this action is actually approved
+          else if (positiveRatio > 0.7) {
+            norm.strength = Math.max(0, norm.strength - 0.05);
+            norm.reinforcements++;
+            norm.lastUpdate = L.turn;
+          }
+        }
+        
+        // Decay old norms slowly over time
+        const turnsSinceUpdate = L.turn - norm.lastUpdate;
+        if (turnsSinceUpdate > 50) {
+          norm.strength = Math.max(0, norm.strength - 0.01);
+        }
+      },
+      
+      /**
+       * Gets the strength of a specific norm.
+       * @param {string} normType - The type of norm to query
+       * @returns {number} The strength of the norm [0, 1], or 0.5 if not established
+       */
+      getNormStrength(normType) {
+        const L = LC.lcInit();
+        return L.society.norms[normType]?.strength || 0.5;
+      }
+    },
+
+    // ========== Social Hierarchy Engine ==========
+    /**
+     * The Hierarchy Engine calculates social status for each NPC
+     * (Opinion Leader, Regular Member, Outcast) based on their actions
+     * and conformity to social norms.
+     */
+    HierarchyEngine: {
+      /**
+       * Updates a character's social capital based on their actions.
+       * @param {string} characterName - The character whose capital to update
+       * @param {object} eventData - Event data describing what happened
+       * @param {string} eventData.type - Type of event (e.g., 'NORM_VIOLATION', 'NORM_CONFORMITY')
+       * @param {number} eventData.normStrength - Strength of the relevant norm
+       * @param {number} eventData.witnessCount - Number of witnesses to the event
+       */
+      updateCapital(characterName, eventData) {
+        if (!characterName || !eventData) return;
+        
+        const L = LC.lcInit();
+        const character = L.characters[characterName];
+        if (!character) return;
+        
+        // Ensure social structure exists
+        if (!character.social) {
+          character.social = {
+            status: 'member',
+            capital: 100,
+            conformity: 0.5
+          };
+        }
+        
+        switch (eventData.type) {
+          case 'NORM_VIOLATION':
+            // Violating a strong norm costs more capital
+            const normStrength = eventData.normStrength || 0.5;
+            const witnessCount = eventData.witnessCount || 1;
+            const capitalLoss = Math.floor(10 * normStrength * Math.min(witnessCount / 3, 2));
+            character.social.capital = Math.max(0, character.social.capital - capitalLoss);
+            character.social.conformity = Math.max(0, character.social.conformity - 0.1);
+            break;
+            
+          case 'NORM_CONFORMITY':
+            // Following strong norms builds capital
+            const conformityGain = Math.floor(5 * (eventData.normStrength || 0.5));
+            character.social.capital = Math.min(200, character.social.capital + conformityGain);
+            character.social.conformity = Math.min(1, character.social.conformity + 0.05);
+            break;
+            
+          case 'POSITIVE_ACTION':
+            // Helping others, showing leadership
+            character.social.capital = Math.min(200, character.social.capital + 8);
+            break;
+            
+          case 'NEGATIVE_ACTION':
+            // Harmful behavior
+            character.social.capital = Math.max(0, character.social.capital - 5);
+            break;
+        }
+        
+        L.stateVersion++;
+      },
+      
+      /**
+       * Recalculates social status for all characters based on their capital.
+       * This should be called periodically (e.g., every 20 turns).
+       */
+      recalculateStatus() {
+        const L = LC.lcInit();
+        
+        // Gather all active characters with their social capital
+        const characters = [];
+        for (const name in L.characters) {
+          const char = L.characters[name];
+          if (char.status !== 'ACTIVE') continue;
+          
+          if (!char.social) {
+            char.social = {
+              status: 'member',
+              capital: 100,
+              conformity: 0.5
+            };
+          }
+          
+          characters.push({
+            name: name,
+            capital: char.social.capital,
+            char: char
+          });
+        }
+        
+        // Sort by capital
+        characters.sort((a, b) => b.capital - a.capital);
+        
+        // Assign statuses
+        const LEADER_THRESHOLD = 140;
+        const OUTCAST_THRESHOLD = 40;
+        
+        let statusChanged = false;
+        
+        for (let i = 0; i < characters.length; i++) {
+          const item = characters[i];
+          const oldStatus = item.char.social.status;
+          let newStatus = 'member';
+          
+          // Only the top character with high capital becomes a leader
+          if (i === 0 && item.capital >= LEADER_THRESHOLD) {
+            newStatus = 'leader';
+          }
+          // Low capital makes you an outcast
+          else if (item.capital < OUTCAST_THRESHOLD) {
+            newStatus = 'outcast';
+          }
+          
+          if (oldStatus !== newStatus) {
+            item.char.social.status = newStatus;
+            statusChanged = true;
+            
+            // Log status changes
+            if (newStatus === 'leader') {
+              LC.lcSys?.({
+                text: `${item.name} стал(а) лидером мнений в группе.`,
+                level: 'director'
+              });
+            } else if (newStatus === 'outcast') {
+              LC.lcSys?.({
+                text: `${item.name} стал(а) изгоем из-за низкого социального статуса.`,
+                level: 'director'
+              });
+            } else if (oldStatus === 'outcast') {
+              LC.lcSys?.({
+                text: `${item.name} вернул(а) свой статус в группе.`,
+                level: 'director'
+              });
+            }
+          }
+        }
+        
+        if (statusChanged) {
+          L.stateVersion++;
+        }
+      },
+      
+      /**
+       * Gets the social status of a character.
+       * @param {string} characterName - The character to query
+       * @returns {string} The character's status ('leader', 'member', or 'outcast')
+       */
+      getStatus(characterName) {
+        const L = LC.lcInit();
+        const char = L.characters[characterName];
+        return char?.social?.status || 'member';
+      }
+    },
+
     evergreenManualSet(L, category, key, value){
       const state = L || this.lcInit();
       if (!state || !state.evergreen || !category) return;
@@ -5367,6 +5638,20 @@ LC.composeContextOverlay = function(options) {
             priority.push(`⟦TRAITS: ${charName}⟧ ${traits.join(', ')}`);
           }
         }
+        
+        // Add social status for HOT characters
+        if (character && character.social && character.social.status !== 'member') {
+          const status = character.social.status;
+          let statusText = '';
+          if (status === 'leader') {
+            statusText = 'Лидер мнений';
+          } else if (status === 'outcast') {
+            statusText = 'Изгой';
+          }
+          if (statusText) {
+            priority.push(`⟦STATUS: ${charName}⟧ ${statusText}`);
+          }
+        }
       }
     }
 
@@ -5389,6 +5674,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦GOAL⟧") === 0)   return 750;
       if (line.indexOf("⟦SECRET⟧") === 0) return 740;
       if (line.indexOf("⟦TRAITS:") === 0) return 730;
+      if (line.indexOf("⟦STATUS:") === 0) return 728;
       if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
       if (line.indexOf("⟦OPENING⟧") === 0)return 700;
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
