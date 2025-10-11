@@ -23,31 +23,31 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 
 | Turn | State Size (bytes) | Change | Rumor Count |
 |------|-------------------|--------|-------------|
-| 50 | 9,504 | 0 | 15 |
-| 100 | 11,979 | +2475 | 28 |
-| 150 | 15,411 | +3432 | 41 |
-| 200 | 17,837 | +2426 | 54 |
-| 250 | 21,355 | +3518 | 70 |
-| 300 | 23,833 | +2478 | 77 |
-| 350 | 25,275 | +1442 | 84 |
-| 400 | 28,146 | +2871 | 98 |
-| 450 | 30,950 | +2804 | 109 |
-| 500 | 34,380 | +3430 | 122 |
-| 550 | 37,246 | +2866 | 136 |
-| 600 | 39,763 | +2517 | 146 |
-| 650 | 42,485 | +2722 | 157 |
-| 700 | 44,846 | +2361 | 170 |
-| 750 | 49,130 | +4284 | 185 |
-| 800 | 52,049 | +2919 | 199 |
-| 850 | 55,937 | +3888 | 216 |
-| 900 | 59,416 | +3479 | 229 |
-| 950 | 62,213 | +2797 | 240 |
-| 1000 | 65,430 | +3217 | 255 |
+| 50 | 8,405 | 0 | 13 |
+| 100 | 11,824 | +3419 | 28 |
+| 150 | 15,387 | +3563 | 44 |
+| 200 | 19,215 | +3828 | 61 |
+| 250 | 21,323 | +2108 | 70 |
+| 300 | 26,321 | +4998 | 87 |
+| 350 | 29,647 | +3326 | 103 |
+| 400 | 32,430 | +2783 | 117 |
+| 450 | 36,522 | +4092 | 132 |
+| 500 | 40,484 | +3962 | 152 |
+| 550 | 44,306 | +3822 | 169 |
+| 600 | 47,597 | +3291 | 182 |
+| 650 | 50,416 | +2819 | 193 |
+| 700 | 53,350 | +2934 | 204 |
+| 750 | 55,698 | +2348 | 217 |
+| 800 | 59,453 | +3755 | 231 |
+| 850 | 61,291 | +1838 | 242 |
+| 900 | 64,240 | +2949 | 253 |
+| 950 | 67,733 | +3493 | 269 |
+| 1000 | 71,686 | +3953 | 283 |
 
 **Growth Analysis:**
-- Initial state size: 9,504 bytes
-- Final state size: 65,430 bytes
-- Growth ratio: 6.88x
+- Initial state size: 8,405 bytes
+- Final state size: 71,686 bytes
+- Growth ratio: 8.53x
 - **Status:** ⚠️ EXCESSIVE GROWTH
 
 ### 1.2 Character Status Dynamics
@@ -80,9 +80,9 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 ### 1.3 Memory Management
 
 **Rumor Lifecycle:**
-- Maximum rumors: 255
-- Minimum rumors: 15
-- Average rumors: 131.6
+- Maximum rumors: 283
+- Minimum rumors: 13
+- Average rumors: 152.5
 
 **Verdict:** ⚠️ Potential memory leak
 
@@ -212,6 +212,6 @@ While the system demonstrates core functionality, addressing these issues would 
 
 ---
 
-**Test Completion Date:** 2025-10-11T11:08:40.450Z  
+**Test Completion Date:** 2025-10-11T11:10:53.691Z  
 **Total Simulation Time:** 1000 turns  
 **Test Status:** COMPLETE
