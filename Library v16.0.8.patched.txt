@@ -5124,6 +5124,90 @@ L.debugMode = toBool(L.debugMode, false);
       },
       
       /**
+       * Generates a rare "Social Catalyst" action that can dramatically shift social hierarchy.
+       * These are powerful off-screen actions that occur with low probability (~3%).
+       * @param {string} characterName - The character performing the catalyst action
+       * @returns {object|null} - Action object or null if no suitable target found
+       */
+      _generateSocialCatalyst(characterName) {
+        const L = LC.lcInit();
+        
+        // Get list of all active characters except the actor
+        const otherCharacters = [];
+        for (const name in L.characters) {
+          const char = L.characters[name];
+          if (char && char.status === 'ACTIVE' && name !== characterName) {
+            // Initialize social capital if not present
+            if (!char.social) {
+              char.social = { status: 'member', capital: 100, conformity: 0.5 };
+            }
+            otherCharacters.push({ name: name, capital: char.social.capital });
+          }
+        }
+        
+        if (otherCharacters.length === 0) return null;
+        
+        // Randomly choose one of three catalyst types
+        const catalystType = Math.floor(Math.random() * 3);
+        
+        switch (catalystType) {
+          case 0: // Public Support - boost low-capital character
+            // Find character with lowest social capital
+            otherCharacters.sort((a, b) => a.capital - b.capital);
+            const lowCapitalTarget = otherCharacters[0];
+            
+            return {
+              type: 'PUBLIC_SUPPORT',
+              target: lowCapitalTarget.name
+            };
+            
+          case 1: // Public Condemnation - criticize high-capital character
+            // Find character with highest social capital
+            otherCharacters.sort((a, b) => b.capital - a.capital);
+            const highCapitalTarget = otherCharacters[0];
+            
+            return {
+              type: 'PUBLIC_CONDEMNATION',
+              target: highCapitalTarget.name
+            };
+            
+          case 2: // Coalition Creation - ally with similar-goal character
+            // Try to find another character with active goals
+            if (L.goals && typeof L.goals === 'object') {
+              const actorGoals = [];
+              for (const goalKey in L.goals) {
+                const goal = L.goals[goalKey];
+                if (goal && goal.character === characterName && goal.status === 'active') {
+                  actorGoals.push(goal);
+                }
+              }
+              
+              // Find another character with an active goal
+              for (const otherChar of otherCharacters) {
+                for (const goalKey in L.goals) {
+                  const goal = L.goals[goalKey];
+                  if (goal && goal.character === otherChar.name && goal.status === 'active') {
+                    return {
+                      type: 'COALITION_CREATION',
+                      target: otherChar.name
+                    };
+                  }
+                }
+              }
+            }
+            
+            // If no goals found, fall back to random character
+            const randomTarget = otherCharacters[Math.floor(Math.random() * otherCharacters.length)];
+            return {
+              type: 'COALITION_CREATION',
+              target: randomTarget.name
+            };
+        }
+        
+        return null;
+      },
+      
+      /**
        * Simulates a single character's decision-making and actions during off-screen time.
        * Uses a "Motivation Pyramid" to prioritize character actions:
        * 1. Active goals (highest priority)
@@ -5136,6 +5220,16 @@ L.debugMode = toBool(L.debugMode, false);
       simulateCharacter(character) {
         const L = LC.lcInit();
         const charName = character.name;
+        
+        // Social Catalyst: Low probability (~10%) of a powerful "off-screen" action that dramatically shifts social landscape
+        // This mechanism prevents hierarchy stagnation by occasionally creating significant social events
+        if (Math.random() < 0.10) {
+          const catalystAction = this._generateSocialCatalyst(charName);
+          if (catalystAction) {
+            this.generateFact(charName, catalystAction);
+            return; // Social catalyst replaces normal action for this turn
+          }
+        }
         
         // Motivation Pyramid: Analyze what drives this character's actions
         let action = null;
@@ -5476,6 +5570,116 @@ L.debugMode = toBool(L.debugMode, false);
               if (char) {
                 if (!char.flags) char.flags = {};
                 char.flags['event_preparation_' + (action.event.id || action.event.title)] = true;
+              }
+            }
+            break;
+            
+          case 'PUBLIC_SUPPORT':
+            // Social Catalyst: Character publicly supports someone with low social capital
+            // Both characters gain significant capital
+            if (action.target) {
+              const actorChar = L.characters[characterName];
+              const targetChar = L.characters[action.target];
+              
+              if (actorChar && targetChar) {
+                // Ensure social structures exist
+                if (!actorChar.social) {
+                  actorChar.social = { status: 'member', capital: 100, conformity: 0.5 };
+                }
+                if (!targetChar.social) {
+                  targetChar.social = { status: 'member', capital: 100, conformity: 0.5 };
+                }
+                
+                // Both gain significant capital (+25 each)
+                actorChar.social.capital = Math.min(200, actorChar.social.capital + 25);
+                targetChar.social.capital = Math.min(200, targetChar.social.capital + 25);
+                
+                // Create a flag to remember this support
+                if (!actorChar.flags) actorChar.flags = {};
+                if (!targetChar.flags) targetChar.flags = {};
+                actorChar.flags['publicly_supported_' + action.target] = true;
+                targetChar.flags['publicly_supported_by_' + characterName] = true;
+                
+                // Improve relationship
+                if (LC.RelationsEngine) {
+                  LC.RelationsEngine.updateRelation(characterName, action.target, 15);
+                }
+                
+                L.stateVersion++;
+              }
+            }
+            break;
+            
+          case 'PUBLIC_CONDEMNATION':
+            // Social Catalyst: Character publicly condemns someone with high social capital
+            // Target loses significant capital (-40), actor gains some (+15)
+            if (action.target) {
+              const actorChar = L.characters[characterName];
+              const targetChar = L.characters[action.target];
+              
+              if (actorChar && targetChar) {
+                // Ensure social structures exist
+                if (!actorChar.social) {
+                  actorChar.social = { status: 'member', capital: 100, conformity: 0.5 };
+                }
+                if (!targetChar.social) {
+                  targetChar.social = { status: 'member', capital: 100, conformity: 0.5 };
+                }
+                
+                // Target loses significant capital (-40)
+                targetChar.social.capital = Math.max(0, targetChar.social.capital - 40);
+                
+                // Actor gains some capital (+15) for calling out norm violation
+                actorChar.social.capital = Math.min(200, actorChar.social.capital + 15);
+                
+                // Create a flag to remember this condemnation
+                if (!actorChar.flags) actorChar.flags = {};
+                if (!targetChar.flags) targetChar.flags = {};
+                actorChar.flags['publicly_condemned_' + action.target] = true;
+                targetChar.flags['publicly_condemned_by_' + characterName] = true;
+                
+                // Worsen relationship
+                if (LC.RelationsEngine) {
+                  LC.RelationsEngine.updateRelation(characterName, action.target, -20);
+                }
+                
+                L.stateVersion++;
+              }
+            }
+            break;
+            
+          case 'COALITION_CREATION':
+            // Social Catalyst: Character creates alliance/coalition with another character
+            // Sets alliance flag for future bonuses
+            if (action.target) {
+              const actorChar = L.characters[characterName];
+              const targetChar = L.characters[action.target];
+              
+              if (actorChar && targetChar) {
+                // Create flags for the alliance
+                if (!actorChar.flags) actorChar.flags = {};
+                if (!targetChar.flags) targetChar.flags = {};
+                
+                actorChar.flags['alliance_with_' + action.target] = true;
+                targetChar.flags['alliance_with_' + characterName] = true;
+                
+                // Both characters gain moderate capital from coalition (+10 each)
+                if (!actorChar.social) {
+                  actorChar.social = { status: 'member', capital: 100, conformity: 0.5 };
+                }
+                if (!targetChar.social) {
+                  targetChar.social = { status: 'member', capital: 100, conformity: 0.5 };
+                }
+                
+                actorChar.social.capital = Math.min(200, actorChar.social.capital + 10);
+                targetChar.social.capital = Math.min(200, targetChar.social.capital + 10);
+                
+                // Improve relationship
+                if (LC.RelationsEngine) {
+                  LC.RelationsEngine.updateRelation(characterName, action.target, 10);
+                }
+                
+                L.stateVersion++;
               }
             }
             break;
@@ -6213,6 +6417,9 @@ L.debugMode = toBool(L.debugMode, false);
       recalculateStatus() {
         const L = LC.lcInit();
         
+        // Ensure evergreen.status exists
+        if (!L.evergreen.status) L.evergreen.status = {};
+        
         // Gather all active characters with their social capital
         const characters = [];
         for (const name in L.characters) {
@@ -6289,6 +6496,17 @@ L.debugMode = toBool(L.debugMode, false);
                 level: 'director'
               });
             }
+          }
+          
+          // Update L.evergreen.status for compatibility with tests
+          // Use uppercase for consistency with test expectations
+          if (newStatus === 'leader') {
+            L.evergreen.status[item.name] = 'LEADER';
+          } else if (newStatus === 'outcast') {
+            L.evergreen.status[item.name] = 'OUTCAST';
+          } else {
+            // Remove from evergreen.status if member (to keep it clean)
+            delete L.evergreen.status[item.name];
           }
         }
         
