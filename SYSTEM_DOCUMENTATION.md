@@ -2092,6 +2092,10 @@ Test file: `test_character_lifecycle.js`
 
 ### 4.10 Living World Engine (NPC Autonomy)
 
+#### Философия Дизайна
+
+Living World Engine решает проблему "застывшего мира": **персонажи должны жить своей жизнью, а не замирать в ожидании игрока**. В реальности люди продолжают действовать, когда вы не смотрите: укрепляют дружбу, вынашивают планы, ссорятся. Этот движок создаёт иллюзию непрерывной жизни, моделируя автономные действия NPC "за кадром". Он отвечает на вопрос: **что делали все остальные, пока я спал/отсутствовал?**
+
 #### Overview
 
 The **Living World Engine** enables NPCs to take autonomous, proactive actions during "off-screen" periods (e.g., overnight, between days). This system transforms the game world from purely reactive to dynamic and living, where characters pursue their own goals, nurture or damage relationships, and prepare for events even when the player is not present.
@@ -2146,6 +2150,30 @@ if (timeJump.type === 'ADVANCE_TO_NEXT_MORNING' || timeJump.type === 'ADVANCE_DA
 **Decision Function:** `LC.LivingWorld.simulateCharacter(character)`
 
 Uses a **Motivation Pyramid** to prioritize actions:
+
+**Decision Flow Diagram:**
+
+```mermaid
+graph TD
+    A[Character wakes up] --> B{Has active goal?}
+    B -->|Yes| C[PURSUE_GOAL]
+    B -->|No| D{Has strong relationship?}
+    D -->|Yes, positive| E[SOCIAL_POSITIVE]
+    D -->|Yes, negative| F[SOCIAL_NEGATIVE]
+    D -->|No| G{Upcoming event?}
+    G -->|Yes| H[PREPARE_EVENT]
+    G -->|No| I[IDLE]
+    
+    C --> J[Apply mood modifier]
+    E --> J
+    F --> J
+    H --> J
+    I --> J
+    
+    J --> K[Generate Fact]
+    K --> L[Update State]
+    L --> M[Increment stateVersion]
+```
 
 **Priority 1: Active Goals**
 - Checks `L.goals` for active goals belonging to this character
@@ -2389,6 +2417,10 @@ Test file: `test_living_world.js`
 
 ### 4.11 Social Engine (Norms & Hierarchy)
 
+#### Философия Дизайна
+
+Social Engine решает проблему изолированных персонажей: **люди существуют в социальном контексте, где действия имеют репутационные последствия**. Предательство не только ранит жертву, но и меняет восприятие предателя всем обществом. Этот движок моделирует неписаные правила (нормы), социальную иерархию и капитал. Он превращает группу персонажей в живое общество с лидерами, изгоями и ценностями. Он отвечает на вопрос: **как группа судит мои действия и как это влияет на моё место в обществе?**
+
 #### Overview
 
 The Social Engine implements dynamic social dynamics where characters exist in a living social environment with emergent norms and status hierarchies. Characters are no longer isolated individuals - they experience social pressure, gain or lose social capital, and can become opinion leaders or outcasts.
@@ -2437,6 +2469,28 @@ character.social = {
 - `eventData.target` - Character affected
 - `eventData.witnesses` - Array of witness character names
 - `eventData.relationsBefore` - Witness relationships before the event
+
+**Norm Evolution Diagram:**
+
+```mermaid
+graph LR
+    A[Event occurs] --> B[Measure witness reactions]
+    B --> C{>70% negative?}
+    C -->|Yes| D[Strengthen norm +0.05]
+    C -->|No| E{>70% positive?}
+    E -->|Yes| F[Weaken norm -0.05]
+    E -->|No| G[No change]
+    
+    D --> H[Update actor's capital]
+    F --> H
+    G --> H
+    
+    H --> I{Capital < 40?}
+    I -->|Yes| J[Status: OUTCAST]
+    I -->|No| K{Capital ≥ 140?}
+    K -->|Yes| L[Status: LEADER]
+    K -->|No| M[Status: MEMBER]
+```
 
 **Logic**:
 ```javascript
@@ -2720,6 +2774,10 @@ grep -c "currentAction" "Context v16.0.8.patched.txt"
 ---
 
 ## 6. Character Evolution Engine (The Crucible)
+
+### Философия Дизайна
+
+Crucible Engine решает проблему статичных персонажей: **опыт должен изменять людей, а не только их настроение**. В реальной жизни предательство, триумф, травма оставляют постоянные отметины на личности. Этот движок моделирует эволюцию характера через формативные события, превращая реакции в судьбу. Он отвечает на вопрос: **каким человеком меня сделали эти события?** Расширение Self-Concept добавляет второй слой: **каким человеком я себя теперь считаю?**
 
 ### 6.1 Philosophy: From Behavior to Destiny
 
@@ -3199,6 +3257,10 @@ The self-concept system recognizes that psychological realism requires modeling 
 
 ## 6.5 Qualia Engine (The Phenomenal Core)
 
+### Философия Дизайна
+
+Этот движок был создан для решения фундаментальной проблемы: **симуляция мыслей без симуляции ощущений неполна**. Персонаж — это не просто набор решений и планов; это живое существо с телом, которое испытывает напряжение, усталость, удовольствие и дискомфорт. Qualia Engine создаёт базовый, до-когнитивный слой "внутренней погоды", который окрашивает все последующие ментальные процессы. Он отвечает на вопрос: **как персонаж себя физически чувствует прямо сейчас?**
+
 ### Overview
 
 The Qualia Engine represents the **lowest-level layer of consciousness simulation** in Lincoln. While other engines simulate thoughts, decisions, and personality, the Qualia Engine simulates the raw, pre-cognitive, bodily sensations that form the foundation of all experience.
@@ -3440,9 +3502,13 @@ Comprehensive test suite in `tests/test_qualia_engine.js`:
 
 ## 6.6 Subjective Reality Engine (The Interpretation Layer)
 
+### Философия Дизайна
+
+Subjective Reality Engine решает ключевую проблему: **два персонажа, переживающие одно и то же событие, могут воспринимать его диаметрально противоположно**. Человек в хорошем настроении воспримет шутку как комплимент; тот же человек в напряжённом состоянии — как сарказм. Этот движок преобразует ощущения в смыслы, создавая асимметричные реальности для каждого персонажа. Он отвечает на вопрос: **что это событие значит для меня, исходя из моего внутреннего состояния?**
+
 ### Philosophy: From Sensation to Meaning
 
-The Qualia Engine (5.5) tracks *what a character feels*. The Subjective Reality Engine answers: *how does that feeling color what they believe?*
+The Qualia Engine (6.5) tracks *what a character feels*. The Subjective Reality Engine answers: *how does that feeling color what they believe?*
 
 **Core Insight:** The same event should be interpreted differently by different characters based on their current phenomenal state.
 
@@ -3518,6 +3584,26 @@ L.characters['Хлоя'].perceptions['Эшли'] = {
 | Betrayal | personality.trust > 0.7 | "devastating" | modifier × 1.3 |
 | Betrayal | personality.trust < 0.3 | "expected" | modifier × 0.9 |
 | Loyalty | personality.trust < 0.3 | "surprising" | modifier × 1.4 |
+
+**Data Flow Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Event as Сырое Событие
+    participant Qualia as Qualia Engine
+    participant Info as Information Engine
+    participant Relations as Relations Engine
+    participant Crucible as Crucible Engine
+    
+    Event->>Qualia: Резонанс (изменение ощущений)
+    Qualia->>Qualia: Обновление qualia_state
+    Event->>Info: Передача (Событие + Qualia-Состояние)
+    Info->>Info: Интерпретация (sincere/sarcasm/threatening)
+    Info->>Relations: Передача (Субъективный модификатор)
+    Relations->>Relations: Обновление perceptions
+    Relations->>Crucible: Формативное событие?
+    Crucible->>Crucible: Эволюция personality/self_concept
+```
 
 ---
 
