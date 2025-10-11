@@ -5177,7 +5177,8 @@ L.debugMode = toBool(L.debugMode, false);
               // Update social capital for negative interaction
               if (LC.HierarchyEngine && typeof LC.HierarchyEngine.updateCapital === 'function') {
                 LC.HierarchyEngine.updateCapital(characterName, {
-                  type: 'NEGATIVE_ACTION'
+                  type: 'NEGATIVE_ACTION',
+                  target: action.target
                 });
               }
               
@@ -5256,7 +5257,8 @@ L.debugMode = toBool(L.debugMode, false);
               // Update social capital for positive interaction
               if (LC.HierarchyEngine && typeof LC.HierarchyEngine.updateCapital === 'function') {
                 LC.HierarchyEngine.updateCapital(characterName, {
-                  type: 'POSITIVE_ACTION'
+                  type: 'POSITIVE_ACTION',
+                  target: action.target
                 });
               }
               
@@ -5574,6 +5576,7 @@ L.debugMode = toBool(L.debugMode, false);
       
       /**
        * Extracts relevant details from an event for archiving.
+       * Now captures subjective interpretations when available, not just objective facts.
        */
       _extractEventDetails(eventData) {
         const details = {
@@ -5584,7 +5587,26 @@ L.debugMode = toBool(L.debugMode, false);
           case 'RELATION_CHANGE':
             details.otherCharacter = eventData.otherCharacter;
             details.change = eventData.change;
-            details.theme = eventData.change > 0 ? 'loyalty_rescue' : 'betrayal';
+            
+            // Capture interpretation if available (from InformationEngine)
+            if (eventData.interpretation) {
+              details.interpretation = eventData.interpretation;
+              // The "official history" is the dominant interpretation
+              // If interpreted as sarcasm, betrayal theme is stronger
+              if (eventData.interpretation === 'sarcasm' || eventData.interpretation === 'suspicion') {
+                details.theme = 'betrayal';
+              } else {
+                details.theme = eventData.change > 0 ? 'loyalty_rescue' : 'betrayal';
+              }
+            } else {
+              // Fallback to objective theme
+              details.theme = eventData.change > 0 ? 'loyalty_rescue' : 'betrayal';
+            }
+            
+            // Store subjective modifier if different from raw change
+            if (eventData.subjectiveModifier && eventData.subjectiveModifier !== eventData.change) {
+              details.perceivedMagnitude = eventData.subjectiveModifier;
+            }
             break;
             
           case 'GOAL_COMPLETE':
@@ -5869,15 +5891,22 @@ L.debugMode = toBool(L.debugMode, false);
      * The Hierarchy Engine calculates social status for each NPC
      * (Opinion Leader, Regular Member, Outcast) based on their actions
      * and conformity to social norms.
+     * 
+     * Updated for Epic 4: Social capital now depends on SUBJECTIVE INTERPRETATIONS
+     * of actions, not objective events. How witnesses PERCEIVE you matters more
+     * than what you actually did.
      */
     HierarchyEngine: {
       /**
        * Updates a character's social capital based on their actions.
+       * Now considers subjective perceptions of witnesses.
        * @param {string} characterName - The character whose capital to update
        * @param {object} eventData - Event data describing what happened
        * @param {string} eventData.type - Type of event (e.g., 'NORM_VIOLATION', 'NORM_CONFORMITY')
        * @param {number} eventData.normStrength - Strength of the relevant norm
        * @param {number} eventData.witnessCount - Number of witnesses to the event
+       * @param {string} eventData.interpretation - How the action was interpreted by witnesses
+       * @param {object} eventData.target - Target character for social actions
        */
       updateCapital(characterName, eventData) {
         if (!characterName || !eventData) return;
@@ -5914,16 +5943,89 @@ L.debugMode = toBool(L.debugMode, false);
             
           case 'POSITIVE_ACTION':
             // Helping others, showing leadership
-            character.social.capital = Math.min(200, character.social.capital + 8);
+            // NEW: Modified by witness perceptions
+            let baseGain = 8;
+            
+            // If we have witness perception data, adjust capital gain based on how they see the actor
+            if (eventData.target) {
+              const avgRespect = this._getAverageWitnessRespect(characterName, eventData.target);
+              // Characters with high respect gain more capital from positive actions
+              // Range: 50-150% of base gain
+              const multiplier = 0.5 + (avgRespect / 100);
+              baseGain = Math.floor(baseGain * multiplier);
+            }
+            
+            character.social.capital = Math.min(200, character.social.capital + baseGain);
             break;
             
           case 'NEGATIVE_ACTION':
             // Harmful behavior
-            character.social.capital = Math.max(0, character.social.capital - 5);
+            // NEW: Modified by witness perceptions
+            let baseLoss = 5;
+            
+            // If witnesses have low trust/respect for actor, negative actions hurt more
+            if (eventData.target) {
+              const avgTrust = this._getAverageWitnessTrust(characterName);
+              // Characters with low trust lose more capital from negative actions
+              // Range: 50-150% of base loss
+              const multiplier = 1.5 - (avgTrust / 100);
+              baseLoss = Math.floor(baseLoss * multiplier);
+            }
+            
+            character.social.capital = Math.max(0, character.social.capital - baseLoss);
             break;
         }
         
         L.stateVersion++;
+      },
+      
+      /**
+       * Gets average respect that active characters have for the given character.
+       * Used to determine social capital gains from positive actions.
+       */
+      _getAverageWitnessRespect(characterName, excludeTarget) {
+        const L = LC.lcInit();
+        let totalRespect = 0;
+        let count = 0;
+        
+        for (const witName in L.characters) {
+          const wit = L.characters[witName];
+          if (!wit || wit.status !== 'ACTIVE') continue;
+          if (witName === characterName) continue; // Don't count self
+          if (witName === excludeTarget) continue; // Don't count the target of the action
+          
+          if (wit.perceptions && wit.perceptions[characterName]) {
+            const perception = wit.perceptions[characterName];
+            totalRespect += (perception.respect || 50);
+            count++;
+          }
+        }
+        
+        return count > 0 ? totalRespect / count : 50; // Default to neutral if no data
+      },
+      
+      /**
+       * Gets average trust that active characters have for the given character.
+       * Used to determine social capital loss from negative actions.
+       */
+      _getAverageWitnessTrust(characterName) {
+        const L = LC.lcInit();
+        let totalTrust = 0;
+        let count = 0;
+        
+        for (const witName in L.characters) {
+          const wit = L.characters[witName];
+          if (!wit || wit.status !== 'ACTIVE') continue;
+          if (witName === characterName) continue; // Don't count self
+          
+          if (wit.perceptions && wit.perceptions[characterName]) {
+            const perception = wit.perceptions[characterName];
+            totalTrust += (perception.trust || 50);
+            count++;
+          }
+        }
+        
+        return count > 0 ? totalTrust / count : 50; // Default to neutral if no data
       },
       
       /**
@@ -6923,6 +7025,95 @@ LC.composeContextOverlay = function(options) {
             priority.push(`⟦STATUS: ${charName}⟧ ${statusText}`);
           }
         }
+        
+        // Add qualia state for HOT characters (extreme states only)
+        if (character && character.qualia_state) {
+          const qs = character.qualia_state;
+          const qualiaDesc = [];
+          
+          // Check for extreme somatic tension
+          if (qs.somatic_tension >= 0.8) {
+            qualiaDesc.push('крайне напряжен');
+          } else if (qs.somatic_tension <= 0.2) {
+            qualiaDesc.push('полностью расслаблен');
+          }
+          
+          // Check for extreme valence
+          if (qs.valence >= 0.8) {
+            qualiaDesc.push('приятное состояние');
+          } else if (qs.valence <= 0.2) {
+            qualiaDesc.push('негативное состояние');
+          }
+          
+          // Check for extreme focus
+          if (qs.focus_aperture <= 0.3) {
+            qualiaDesc.push('туннельное зрение');
+          }
+          
+          // Check for extreme energy
+          if (qs.energy_level >= 0.9) {
+            qualiaDesc.push('очень бодр');
+          } else if (qs.energy_level <= 0.2) {
+            qualiaDesc.push('истощен');
+          }
+          
+          if (qualiaDesc.length > 0) {
+            priority.push(`⟦QUALIA: ${charName}⟧ ${qualiaDesc.join(', ')}`);
+          }
+        }
+        
+        // Add asymmetric perceptions for HOT characters
+        if (character && character.perceptions && hot.length > 1) {
+          const perceptions = character.perceptions;
+          const significantPerceptions = [];
+          
+          // Find other HOT characters that this character has strong opinions about
+          for (let j = 0; j < hot.length; j++) {
+            const otherChar = hot[j];
+            if (otherChar === charName) continue; // Skip self
+            
+            const perception = perceptions[otherChar];
+            if (!perception || typeof perception !== 'object') continue;
+            
+            // Check for extreme perception values
+            const affection = perception.affection || 50;
+            const trust = perception.trust || 50;
+            const respect = perception.respect || 50;
+            const rivalry = perception.rivalry || 50;
+            
+            const perceptionDesc = [];
+            
+            if (affection >= 80) {
+              perceptionDesc.push('очень любит');
+            } else if (affection <= 20) {
+              perceptionDesc.push('не любит');
+            }
+            
+            if (trust >= 80) {
+              perceptionDesc.push('полностью доверяет');
+            } else if (trust <= 20) {
+              perceptionDesc.push('не доверяет');
+            }
+            
+            if (respect >= 80) {
+              perceptionDesc.push('очень уважает');
+            } else if (respect <= 20) {
+              perceptionDesc.push('не уважает');
+            }
+            
+            if (rivalry >= 80) {
+              perceptionDesc.push('сильно соперничает');
+            }
+            
+            if (perceptionDesc.length > 0) {
+              significantPerceptions.push(`${otherChar}: ${perceptionDesc.join(', ')}`);
+            }
+          }
+          
+          if (significantPerceptions.length > 0) {
+            priority.push(`⟦PERCEPTION: ${charName}⟧ ${significantPerceptions.join('; ')}`);
+          }
+        }
       }
     }
 
@@ -6947,6 +7138,8 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦CONFLICT:") === 0) return 735;
       if (line.indexOf("⟦TRAITS:") === 0) return 730;
       if (line.indexOf("⟦STATUS:") === 0) return 728;
+      if (line.indexOf("⟦QUALIA:") === 0) return 727;
+      if (line.indexOf("⟦PERCEPTION:") === 0) return 726;
       if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
       if (line.indexOf("⟦OPENING⟧") === 0)return 700;
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
@@ -6960,7 +7153,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, CONFLICT:0, TRAITS:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, CONFLICT:0, TRAITS:0, STATUS:0, QUALIA:0, PERCEPTION:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
@@ -6973,13 +7166,13 @@ LC.composeContextOverlay = function(options) {
         if (remaining >= 40) {
           const slice = line.slice(0, remaining);
           text += nl + slice;
-          const tag = (line.match(/^⟦([A-Z]+)⟧/)||[])[1] || "GUIDE";
+          const tag = (line.match(/^⟦([A-Z]+)(?::|⟧)/)||[])[1] || "GUIDE";
           parts[tag] = (parts[tag]||0) + nl.length + slice.length;
         }
         break;
       }
       text += nl + line;
-      const tag = (line.match(/^⟦([A-Z]+)⟧/)||[])[1] || "GUIDE";
+      const tag = (line.match(/^⟦([A-Z]+)(?::|⟧)/)||[])[1] || "GUIDE";
       parts[tag] = (parts[tag]||0) + line.length + nl.length;
     }
     
