@@ -1919,6 +1919,10 @@ L.debugMode = toBool(L.debugMode, false);
               energy_level: 0.8      // Уровень энергии/бодрости [0-1]
             };
           }
+          // Initialize perceptions (subjective view of other characters)
+          if (!rec.perceptions) {
+            rec.perceptions = {};  // Individual, asymmetric perceptions of others
+          }
           rec.lastSeen = t; rec.mentions++;
           L.characters[key] = rec;
         }
@@ -3272,22 +3276,29 @@ L.debugMode = toBool(L.debugMode, false);
 
       /**
        * Gets the relationship value between two characters.
-       * Supports both legacy numeric values and new multi-vector format.
-       * @param {string} char1 - First character name
-       * @param {string} char2 - Second character name
+       * Prioritizes new perceptions system, falls back to legacy evergreen.relations.
+       * @param {string} char1 - First character name (perceiver)
+       * @param {string} char2 - Second character name (perceived)
        * @returns {number|object} Relationship value (number for legacy, object for multi-vector)
        */
       getRelation(char1, char2) {
         const L = LC.lcInit();
+        
+        // Try new perceptions system first
+        if (L.characters?.[char1]?.perceptions?.[char2]) {
+          return L.characters[char1].perceptions[char2];
+        }
+        
+        // Fall back to legacy evergreen.relations
         if (!L.evergreen?.relations?.[char1]?.[char2]) return null;
         return L.evergreen.relations[char1][char2];
       },
 
       /**
        * Gets a specific vector value from a relationship.
-       * For legacy numeric relations, maps to affection.
-       * @param {string} char1 - First character name
-       * @param {string} char2 - Second character name
+       * Prioritizes perceptions, falls back to legacy numeric relations.
+       * @param {string} char1 - First character name (perceiver)
+       * @param {string} char2 - Second character name (perceived)
        * @param {string} vector - Vector name (affection, trust, respect, rivalry)
        * @returns {number} Vector value (0-100 scale)
        */
@@ -3310,96 +3321,157 @@ L.debugMode = toBool(L.debugMode, false);
 
       /**
        * Updates relationship between two characters.
-       * Supports both legacy numeric and new multi-vector updates.
-       * @param {string} char1 - First character name
-       * @param {string} char2 - Second character name
+       * Now supports asymmetric perceptions via InformationEngine interpretation.
+       * Falls back to legacy symmetric mode if usePerceptions=false.
+       * @param {string} char1 - First character name (perceiver)
+       * @param {string} char2 - Second character name (perceived)
        * @param {number|object} change - Numeric change for legacy mode, or object with vector changes
+       * @param {object} options - {usePerceptions: boolean, interpretedEvent: object}
        */
-      updateRelation(char1, char2, change) {
+      updateRelation(char1, char2, change, options) {
         const L = LC.lcInit();
-        if (!L.evergreen) L.evergreen = {};
-        if (!L.evergreen.relations) L.evergreen.relations = {};
+        options = options || {};
         
-        // Ensure character relation objects exist
-        if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
-          L.evergreen.relations[char1] = {};
-        }
-        if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
-          L.evergreen.relations[char2] = {};
-        }
-
-        // Get current values
-        const current1to2 = L.evergreen.relations[char1][char2];
-        const current2to1 = L.evergreen.relations[char2][char1];
-
-        if (typeof change === 'number') {
-          // Legacy numeric mode - maintain backward compatibility
-          const val1 = typeof current1to2 === 'number' ? current1to2 : 50;
-          const val2 = typeof current2to1 === 'number' ? current2to1 : 50;
-          L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, val1 + change));
-          L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, val2 + change));
-          return;
-        }
-
-        if (typeof change === 'object' && change !== null) {
-          // Multi-vector mode
-          // Initialize as multi-vector if not already
-          if (typeof current1to2 !== 'object' || current1to2 === null) {
-            const oldVal = typeof current1to2 === 'number' ? current1to2 : 0;
-            L.evergreen.relations[char1][char2] = {
-              affection: Math.max(0, Math.min(100, oldVal + 50)),
-              trust: Math.max(0, Math.min(100, oldVal * 0.8 + 50)),
-              respect: Math.max(0, Math.min(100, oldVal * 0.7 + 50)),
-              rivalry: Math.max(0, Math.min(100, -oldVal * 0.6 + 50))
-            };
-          } else {
-            // Already object, ensure all vectors exist
-            if (typeof L.evergreen.relations[char1][char2].affection !== 'number') {
-              L.evergreen.relations[char1][char2].affection = 50;
-            }
-            if (typeof L.evergreen.relations[char1][char2].trust !== 'number') {
-              L.evergreen.relations[char1][char2].trust = 50;
-            }
-            if (typeof L.evergreen.relations[char1][char2].respect !== 'number') {
-              L.evergreen.relations[char1][char2].respect = 50;
-            }
-            if (typeof L.evergreen.relations[char1][char2].rivalry !== 'number') {
-              L.evergreen.relations[char1][char2].rivalry = 50;
-            }
+        // Use perceptions system if characters exist and usePerceptions is not explicitly false
+        const usePerceptions = options.usePerceptions !== false && L.characters?.[char1] && L.characters?.[char2];
+        
+        if (usePerceptions) {
+          // Modern asymmetric perceptions mode
+          const char1Obj = L.characters[char1];
+          const char2Obj = L.characters[char2];
+          
+          // Ensure perceptions objects exist
+          if (!char1Obj.perceptions) char1Obj.perceptions = {};
+          if (!char2Obj.perceptions) char2Obj.perceptions = {};
+          
+          // Initialize perceptions if not exist
+          if (!char1Obj.perceptions[char2]) {
+            char1Obj.perceptions[char2] = { affection: 50, trust: 50, respect: 50, rivalry: 50 };
+          }
+          if (!char2Obj.perceptions[char1]) {
+            char2Obj.perceptions[char1] = { affection: 50, trust: 50, respect: 50, rivalry: 50 };
           }
           
-          if (typeof current2to1 !== 'object' || current2to1 === null) {
-            const oldVal = typeof current2to1 === 'number' ? current2to1 : 0;
-            L.evergreen.relations[char2][char1] = {
-              affection: Math.max(0, Math.min(100, oldVal + 50)),
-              trust: Math.max(0, Math.min(100, oldVal * 0.8 + 50)),
-              respect: Math.max(0, Math.min(100, oldVal * 0.7 + 50)),
-              rivalry: Math.max(0, Math.min(100, -oldVal * 0.6 + 50))
-            };
-          } else {
-            // Already object, ensure all vectors exist
-            if (typeof L.evergreen.relations[char2][char1].affection !== 'number') {
-              L.evergreen.relations[char2][char1].affection = 50;
-            }
-            if (typeof L.evergreen.relations[char2][char1].trust !== 'number') {
-              L.evergreen.relations[char2][char1].trust = 50;
-            }
-            if (typeof L.evergreen.relations[char2][char1].respect !== 'number') {
-              L.evergreen.relations[char2][char1].respect = 50;
-            }
-            if (typeof L.evergreen.relations[char2][char1].rivalry !== 'number') {
-              L.evergreen.relations[char2][char1].rivalry = 50;
+          // If we have an interpreted event, use InformationEngine to apply it
+          if (options.interpretedEvent) {
+            const event1 = { ...options.interpretedEvent, target: char2 };
+            const event2 = { ...options.interpretedEvent, target: char1 };
+            
+            // Each character interprets the event through their own lens
+            const interp1 = LC.InformationEngine.interpret(char1Obj, event1);
+            const interp2 = LC.InformationEngine.interpret(char2Obj, event2);
+            
+            // Apply interpretations asymmetrically
+            LC.InformationEngine.updatePerception(char1, char2, interp1);
+            LC.InformationEngine.updatePerception(char2, char1, interp2);
+          }
+          // Otherwise use direct change (backward compatible)
+          else if (typeof change === 'number') {
+            // Simple numeric change - apply to affection
+            char1Obj.perceptions[char2].affection = Math.max(0, Math.min(100, 
+              char1Obj.perceptions[char2].affection + change));
+            char2Obj.perceptions[char1].affection = Math.max(0, Math.min(100,
+              char2Obj.perceptions[char1].affection + change));
+          }
+          else if (typeof change === 'object' && change !== null) {
+            // Multi-vector change
+            const vectors = ['affection', 'trust', 'respect', 'rivalry'];
+            for (const vector of vectors) {
+              if (typeof change[vector] === 'number') {
+                char1Obj.perceptions[char2][vector] = Math.max(0, Math.min(100,
+                  char1Obj.perceptions[char2][vector] + change[vector]));
+                char2Obj.perceptions[char1][vector] = Math.max(0, Math.min(100,
+                  char2Obj.perceptions[char1][vector] + change[vector]));
+              }
             }
           }
+        }
+        else {
+          // Legacy symmetric mode (for backward compatibility)
+          if (!L.evergreen) L.evergreen = {};
+          if (!L.evergreen.relations) L.evergreen.relations = {};
+          
+          // Ensure character relation objects exist
+          if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
+            L.evergreen.relations[char1] = {};
+          }
+          if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
+            L.evergreen.relations[char2] = {};
+          }
 
-          // Apply vector changes
-          const vectors = ['affection', 'trust', 'respect', 'rivalry'];
-          for (const vector of vectors) {
-            if (typeof change[vector] === 'number') {
-              L.evergreen.relations[char1][char2][vector] = Math.max(0, Math.min(100, 
-                L.evergreen.relations[char1][char2][vector] + change[vector]));
-              L.evergreen.relations[char2][char1][vector] = Math.max(0, Math.min(100,
-                L.evergreen.relations[char2][char1][vector] + change[vector]));
+          // Get current values
+          const current1to2 = L.evergreen.relations[char1][char2];
+          const current2to1 = L.evergreen.relations[char2][char1];
+
+          if (typeof change === 'number') {
+            // Legacy numeric mode - maintain backward compatibility
+            const val1 = typeof current1to2 === 'number' ? current1to2 : 50;
+            const val2 = typeof current2to1 === 'number' ? current2to1 : 50;
+            L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, val1 + change));
+            L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, val2 + change));
+            return;
+          }
+
+          if (typeof change === 'object' && change !== null) {
+            // Multi-vector mode
+            // Initialize as multi-vector if not already
+            if (typeof current1to2 !== 'object' || current1to2 === null) {
+              const oldVal = typeof current1to2 === 'number' ? current1to2 : 0;
+              L.evergreen.relations[char1][char2] = {
+                affection: Math.max(0, Math.min(100, oldVal + 50)),
+                trust: Math.max(0, Math.min(100, oldVal * 0.8 + 50)),
+                respect: Math.max(0, Math.min(100, oldVal * 0.7 + 50)),
+                rivalry: Math.max(0, Math.min(100, -oldVal * 0.6 + 50))
+              };
+            } else {
+              // Already object, ensure all vectors exist
+              if (typeof L.evergreen.relations[char1][char2].affection !== 'number') {
+                L.evergreen.relations[char1][char2].affection = 50;
+              }
+              if (typeof L.evergreen.relations[char1][char2].trust !== 'number') {
+                L.evergreen.relations[char1][char2].trust = 50;
+              }
+              if (typeof L.evergreen.relations[char1][char2].respect !== 'number') {
+                L.evergreen.relations[char1][char2].respect = 50;
+              }
+              if (typeof L.evergreen.relations[char1][char2].rivalry !== 'number') {
+                L.evergreen.relations[char1][char2].rivalry = 50;
+              }
+            }
+            
+            if (typeof current2to1 !== 'object' || current2to1 === null) {
+              const oldVal = typeof current2to1 === 'number' ? current2to1 : 0;
+              L.evergreen.relations[char2][char1] = {
+                affection: Math.max(0, Math.min(100, oldVal + 50)),
+                trust: Math.max(0, Math.min(100, oldVal * 0.8 + 50)),
+                respect: Math.max(0, Math.min(100, oldVal * 0.7 + 50)),
+                rivalry: Math.max(0, Math.min(100, -oldVal * 0.6 + 50))
+              };
+            } else {
+              // Already object, ensure all vectors exist
+              if (typeof L.evergreen.relations[char2][char1].affection !== 'number') {
+                L.evergreen.relations[char2][char1].affection = 50;
+              }
+              if (typeof L.evergreen.relations[char2][char1].trust !== 'number') {
+                L.evergreen.relations[char2][char1].trust = 50;
+              }
+              if (typeof L.evergreen.relations[char2][char1].respect !== 'number') {
+                L.evergreen.relations[char2][char1].respect = 50;
+              }
+              if (typeof L.evergreen.relations[char2][char1].rivalry !== 'number') {
+                L.evergreen.relations[char2][char1].rivalry = 50;
+              }
+            }
+
+            // Apply vector changes
+            const vectors = ['affection', 'trust', 'respect', 'rivalry'];
+            for (const vector of vectors) {
+              if (typeof change[vector] === 'number') {
+                L.evergreen.relations[char1][char2][vector] = Math.max(0, Math.min(100, 
+                  L.evergreen.relations[char1][char2][vector] + change[vector]));
+                L.evergreen.relations[char2][char1][vector] = Math.max(0, Math.min(100,
+                  L.evergreen.relations[char2][char1][vector] + change[vector]));
+              }
             }
           }
         }
@@ -3535,6 +3607,164 @@ L.debugMode = toBool(L.debugMode, false);
                 }
               }
               break;
+            }
+          }
+        }
+      }
+    },
+
+    // ========== Information Engine (Subjective Reality) ==========
+    InformationEngine: {
+      /**
+       * Interprets an event through a character's subjective lens.
+       * The same event can be interpreted differently based on the character's
+       * current phenomenal state (qualia_state).
+       * @param {object} character - The character object from L.characters
+       * @param {object} event - Event object {type, action, actor, target, intensity, rawModifier}
+       * @returns {object} Interpreted event with subjective modifiers
+       */
+      interpret(character, event) {
+        if (!character || !event) return event;
+        
+        // Ensure qualia state exists
+        if (!character.qualia_state) {
+          character.qualia_state = {
+            somatic_tension: 0.3,
+            valence: 0.5,
+            focus_aperture: 0.7,
+            energy_level: 0.8
+          };
+        }
+        
+        const qs = character.qualia_state;
+        const interpretation = {
+          ...event,
+          subjectiveModifier: event.rawModifier || 0,
+          interpretation: 'neutral'
+        };
+        
+        // Interpret based on event type and qualia state
+        if (event.type === 'social') {
+          if (event.action === 'compliment' || event.action === 'praise') {
+            // High valence (pleasant) → interpret as sincere
+            if (qs.valence > 0.7) {
+              interpretation.interpretation = 'sincere';
+              interpretation.subjectiveModifier = (event.rawModifier || 5) * 1.3;
+            }
+            // High tension → interpret as sarcasm/suspicion
+            else if (qs.somatic_tension > 0.8) {
+              interpretation.interpretation = 'sarcasm';
+              interpretation.subjectiveModifier = (event.rawModifier || 5) * 0.3;
+              // Actually decrease trust instead
+              interpretation.trustModifier = -5;
+            }
+            // Neutral state
+            else {
+              interpretation.interpretation = 'polite';
+              interpretation.subjectiveModifier = event.rawModifier || 5;
+            }
+          }
+          else if (event.action === 'insult' || event.action === 'criticism') {
+            // High tension → interpret as threat
+            if (qs.somatic_tension > 0.7) {
+              interpretation.interpretation = 'threatening';
+              interpretation.subjectiveModifier = (event.rawModifier || -10) * 1.5;
+            }
+            // High valence → dismiss as joke
+            else if (qs.valence > 0.7) {
+              interpretation.interpretation = 'banter';
+              interpretation.subjectiveModifier = (event.rawModifier || -10) * 0.4;
+            }
+            else {
+              interpretation.interpretation = 'offensive';
+              interpretation.subjectiveModifier = event.rawModifier || -10;
+            }
+          }
+          else if (event.action === 'threat' || event.action === 'aggression') {
+            // Always serious but magnitude depends on bravery/energy
+            if (qs.energy_level < 0.3) {
+              // Low energy → feel more threatened
+              interpretation.interpretation = 'overwhelming';
+              interpretation.subjectiveModifier = (event.rawModifier || -15) * 1.4;
+            }
+            else {
+              interpretation.interpretation = 'hostile';
+              interpretation.subjectiveModifier = event.rawModifier || -15;
+            }
+          }
+        }
+        else if (event.type === 'relation_event') {
+          // For betrayal, loyalty, romance, conflict events
+          if (event.eventType === 'betrayal') {
+            // High trust personality makes betrayal hurt more
+            const trustTrait = character.personality?.trust || 0.5;
+            if (trustTrait > 0.7) {
+              interpretation.interpretation = 'devastating';
+              interpretation.subjectiveModifier = (event.rawModifier || -25) * 1.3;
+            } else {
+              interpretation.interpretation = 'expected';
+              interpretation.subjectiveModifier = (event.rawModifier || -25) * 0.9;
+            }
+          }
+          else if (event.eventType === 'loyalty') {
+            // Cynical characters (low trust) appreciate loyalty more
+            const trustTrait = character.personality?.trust || 0.5;
+            if (trustTrait < 0.3) {
+              interpretation.interpretation = 'surprising';
+              interpretation.subjectiveModifier = (event.rawModifier || 10) * 1.4;
+            } else {
+              interpretation.interpretation = 'appreciated';
+              interpretation.subjectiveModifier = event.rawModifier || 10;
+            }
+          }
+        }
+        
+        return interpretation;
+      },
+      
+      /**
+       * Updates a character's perception of another based on interpreted event.
+       * This creates asymmetric, subjective perceptions.
+       * @param {string} perceiver - The character doing the perceiving
+       * @param {string} perceived - The character being perceived
+       * @param {object} interpretation - Result from interpret()
+       */
+      updatePerception(perceiver, perceived, interpretation) {
+        const L = LC.lcInit();
+        if (!L.characters[perceiver]) return;
+        if (!L.characters[perceived]) return;
+        
+        const char = L.characters[perceiver];
+        if (!char.perceptions) char.perceptions = {};
+        
+        // Initialize perception if not exists
+        if (!char.perceptions[perceived]) {
+          char.perceptions[perceived] = {
+            affection: 50,
+            trust: 50,
+            respect: 50,
+            rivalry: 50
+          };
+        }
+        
+        const perc = char.perceptions[perceived];
+        
+        // Apply subjective modifier to affection (main relationship value)
+        if (typeof interpretation.subjectiveModifier === 'number') {
+          perc.affection = Math.max(0, Math.min(100, perc.affection + interpretation.subjectiveModifier));
+        }
+        
+        // Apply trust modifier if specified
+        if (typeof interpretation.trustModifier === 'number') {
+          perc.trust = Math.max(0, Math.min(100, perc.trust + interpretation.trustModifier));
+        }
+        
+        // Apply vector changes if provided
+        if (interpretation.vectorChange) {
+          const vectors = ['affection', 'trust', 'respect', 'rivalry'];
+          for (const vector of vectors) {
+            if (typeof interpretation.vectorChange[vector] === 'number') {
+              perc[vector] = Math.max(0, Math.min(100, perc[vector] + interpretation.vectorChange[vector]));
             }
           }
         }
