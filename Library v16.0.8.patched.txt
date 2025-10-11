@@ -1549,6 +1549,17 @@ L.debugMode = toBool(L.debugMode, false);
       // Ensure myths array exists even if society object already existed
       L.society.myths = L.society.myths || [];
       
+      // lore tracking (school legends/folklore)
+      L.lore = L.lore || {
+        entries: [],    // Array of lore_entry objects
+        stats: {},      // Statistics by event type for novelty detection
+        coolDown: 0     // Turn number until which new lore creation is blocked
+      };
+      // Ensure lore structure integrity
+      L.lore.entries = Array.isArray(L.lore.entries) ? L.lore.entries : [];
+      L.lore.stats = (L.lore.stats && typeof L.lore.stats === 'object') ? L.lore.stats : {};
+      L.lore.coolDown = toNum(L.lore.coolDown, 0);
+      
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
       const evergreenCapDefault = Number.isFinite(defaultEvergreenCapNum) ? defaultEvergreenCapNum : 0;
@@ -3229,6 +3240,13 @@ L.debugMode = toBool(L.debugMode, false);
           }
         } catch (e) {
           LC.lcWarn?.("UnifiedAnalyzer HierarchyEngine error: " + (e && e.message));
+        }
+        
+        // LoreEngine: Observe and crystallize legendary events (after all other engines)
+        try {
+          LC.LoreEngine?.observe?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer LoreEngine error: " + (e && e.message));
         }
       }
     },
@@ -6833,6 +6851,352 @@ L.debugMode = toBool(L.debugMode, false);
         return count > 0 ? totalStrength / count : 0;
       }
     },
+
+    // ================= END: MemoryEngine ===================================
+
+    // =======================================================================
+    // == LoreEngine: Автоматическая кристаллизация "школьных легенд"
+    // =======================================================================
+    /**
+     * The Lore Engine observes the flow of events and automatically crystallizes
+     * the most significant ones into "school legends" using a sophisticated
+     * 4-stage filtering system.
+     * 
+     * Unlike MemoryEngine (which handles myths), LoreEngine creates immediate
+     * cultural artifacts from highly impactful events.
+     */
+    LoreEngine: {
+      // Constants
+      COOL_DOWN_PERIOD: 200,    // Cooldown after creating a legend
+      BASE_THRESHOLD: 75,       // Base threshold for lore potential
+      
+      /**
+       * Calculates the "Lore Potential" of an event (Filter 1).
+       * Returns a numerical score based on multiple factors.
+       * 
+       * @param {object} event - The event object with type, participants, witnesses, etc.
+       * @returns {number} Lore potential score (0-100+)
+       */
+      calculateLorePotential(event) {
+        const L = LC.lcInit();
+        
+        if (!event || typeof event !== 'object') return 0;
+        
+        let score = 0;
+        
+        // 1. NOVELTY: Biggest bonus - event type hasn't happened before
+        if (event.type && L.lore && L.lore.stats) {
+          const typeKey = `type_${event.type}`;
+          if (!L.lore.stats[typeKey]) {
+            score += 50; // Huge bonus for novel event types
+          } else {
+            // Small penalty for frequent event types
+            const frequency = L.lore.stats[typeKey] || 0;
+            score -= Math.min(20, frequency * 5);
+          }
+        }
+        
+        // 2. IMPACT STRENGTH: Social capital or relationship changes
+        if (event.impact && typeof event.impact === 'number') {
+          const impactMagnitude = Math.abs(event.impact);
+          score += Math.min(30, impactMagnitude / 3); // Up to +30 for huge impacts
+        }
+        
+        // 3. NORM VIOLATION: Strength of violated norms
+        if (event.normViolation && typeof event.normViolation === 'number') {
+          score += Math.min(25, event.normViolation); // Up to +25 for severe violations
+        }
+        
+        // 4. PUBLICITY: Number of witnesses
+        if (event.witnesses && typeof event.witnesses === 'number') {
+          const witnessBonus = Math.min(15, event.witnesses * 3); // Up to +15 for many witnesses
+          score += witnessBonus;
+        }
+        
+        // 5. PARTICIPANT STATUS: Events involving leaders or outcasts are more significant
+        if (event.participants && Array.isArray(event.participants)) {
+          for (const participant of event.participants) {
+            if (typeof participant === 'string') {
+              const char = L.characters[participant];
+              if (char && char.social && char.social.status) {
+                if (char.social.status === 'leader') {
+                  score += 15; // Leaders make events more legendary
+                } else if (char.social.status === 'outcast') {
+                  score += 10; // Outcast events are also notable
+                }
+              }
+            }
+          }
+        }
+        
+        return Math.max(0, score);
+      },
+      
+      /**
+       * Gets the current threshold for lore creation (Filter 3).
+       * Threshold increases with the number of existing legends.
+       * 
+       * @returns {number} Current threshold value
+       */
+      getCurrentThreshold() {
+        const L = LC.lcInit();
+        
+        if (!L.lore || !Array.isArray(L.lore.entries)) {
+          return this.BASE_THRESHOLD;
+        }
+        
+        // Dynamic threshold: increases by 5 for each existing legend
+        return this.BASE_THRESHOLD + (L.lore.entries.length * 5);
+      },
+      
+      /**
+       * Checks if a similar legend already exists (Filter 4).
+       * 
+       * @param {object} event - The event to check
+       * @returns {boolean} True if duplicate exists, false otherwise
+       */
+      _isDuplicate(event) {
+        const L = LC.lcInit();
+        
+        if (!event || !event.type) return false;
+        if (!L.lore || !Array.isArray(L.lore.entries)) return false;
+        
+        // Check for legends with same type and similar characteristics
+        for (const legend of L.lore.entries) {
+          if (legend.type === event.type) {
+            // Check if participants overlap significantly
+            if (event.participants && legend.participants) {
+              const eventParts = Array.isArray(event.participants) ? event.participants : [];
+              const legendParts = Array.isArray(legend.participants) ? legend.participants : [];
+              
+              let matches = 0;
+              for (const part of eventParts) {
+                if (legendParts.indexOf(part) !== -1) {
+                  matches++;
+                }
+              }
+              
+              // If more than 50% of participants overlap, consider it duplicate
+              if (matches > 0 && matches >= eventParts.length * 0.5) {
+                return true;
+              }
+            }
+          }
+        }
+        
+        return false;
+      },
+      
+      /**
+       * Creates and adds a new lore entry (internal function).
+       * 
+       * @param {object} event - The event to crystallize into lore
+       */
+      _crystallize(event) {
+        const L = LC.lcInit();
+        
+        if (!event) return;
+        
+        // Ensure lore structure exists
+        if (!L.lore) {
+          L.lore = { entries: [], stats: {}, coolDown: 0 };
+        }
+        if (!Array.isArray(L.lore.entries)) {
+          L.lore.entries = [];
+        }
+        if (!L.lore.stats || typeof L.lore.stats !== 'object') {
+          L.lore.stats = {};
+        }
+        
+        // Create the lore entry
+        const lore_entry = {
+          type: event.type || 'unknown',
+          participants: event.participants || [],
+          witnesses: event.witnesses || 0,
+          impact: event.impact || 0,
+          description: event.description || '',
+          turn: L.turn,
+          potential: this.calculateLorePotential(event)
+        };
+        
+        // Add to entries
+        L.lore.entries.push(lore_entry);
+        
+        // Update statistics
+        const typeKey = `type_${lore_entry.type}`;
+        L.lore.stats[typeKey] = (L.lore.stats[typeKey] || 0) + 1;
+        
+        // Set cooldown
+        L.lore.coolDown = L.turn + this.COOL_DOWN_PERIOD;
+        
+        // Increment state version
+        if (typeof L.stateVersion === 'number') {
+          L.stateVersion++;
+        }
+        
+        // Log creation (director level)
+        LC.lcSys?.({
+          text: `📜 Новая легенда: "${lore_entry.type}" (потенциал: ${lore_entry.potential})`,
+          level: 'director'
+        });
+      },
+      
+      /**
+       * Main observation function - processes events through all 4 filters.
+       * Called by UnifiedAnalyzer after all other engines have processed the event.
+       * Extracts event information from the current state and text analysis.
+       * 
+       * @param {string} text - The text that was analyzed
+       */
+      observe(text) {
+        const L = LC.lcInit();
+        
+        // Validate input
+        if (!text || typeof text !== 'string') return;
+        
+        // Ensure lore structure exists
+        if (!L.lore) {
+          L.lore = { entries: [], stats: {}, coolDown: 0 };
+        }
+        
+        // FILTER 2: Cooldown Period
+        if (L.turn < L.lore.coolDown) {
+          return; // Still in cooldown, ignore all events
+        }
+        
+        // Extract event information from recent state changes
+        const event = this._extractEventFromState(text);
+        
+        if (!event) {
+          return; // No significant event detected
+        }
+        
+        // FILTER 1: Calculate Lore Potential
+        const potential = this.calculateLorePotential(event);
+        
+        // FILTER 3: Dynamic Threshold
+        const threshold = this.getCurrentThreshold();
+        if (potential < threshold) {
+          return; // Event doesn't meet threshold
+        }
+        
+        // FILTER 4: Duplication Check
+        if (this._isDuplicate(event)) {
+          return; // Similar legend already exists
+        }
+        
+        // All filters passed - crystallize the event into lore
+        this._crystallize(event);
+      },
+      
+      /**
+       * Extracts event information from state changes and text.
+       * Analyzes recent changes in relationships, social capital, and detects event patterns.
+       * 
+       * @param {string} text - The text to analyze
+       * @returns {object|null} Event object or null if no significant event
+       */
+      _extractEventFromState(text) {
+        const L = LC.lcInit();
+        
+        if (!text) return null;
+        
+        const textLower = text.toLowerCase();
+        let eventType = null;
+        let impact = 0;
+        let normViolation = 0;
+        let participants = [];
+        let witnesses = 0;
+        
+        // Detect event type from text patterns
+        const eventPatterns = {
+          betrayal: /предал|предала|предали|измен|обман/iu,
+          public_humiliation: /унизил|унизила|посмеялся|позор|стыд|все\s+смеялись|все\s+видели/iu,
+          loyalty_rescue: /защит|спас|помог|выручил|поддержал/iu,
+          romance: /поцеловал|поцеловала|призналс[яа]|свидание/iu,
+          conflict: /ударил|ударила|драк(?:а|е|у)|ссор/iu,
+          achievement: /побед|успех|выиграл/iu,
+          secret_reveal: /секрет|тайна\s+раскрыта|все\s+узнал(?:и)?/iu
+        };
+        
+        for (const [type, pattern] of Object.entries(eventPatterns)) {
+          if (pattern.test(text)) {
+            eventType = type;
+            break;
+          }
+        }
+        
+        if (!eventType) return null; // No significant event pattern detected
+        
+        // Detect participants from recently mentioned characters
+        const charNames = Object.keys(L.characters || {});
+        for (const charName of charNames) {
+          const char = L.characters[charName];
+          if (char && char.lastSeen === L.turn) {
+            participants.push(charName);
+          }
+        }
+        
+        if (participants.length === 0) return null; // No participants identified
+        
+        // Estimate impact from recent relationship changes
+        if (L.evergreen && L.evergreen.history && Array.isArray(L.evergreen.history)) {
+          const recentChanges = L.evergreen.history.filter(h => h.turn === L.turn);
+          for (const change of recentChanges) {
+            if (change.category === 'relations') {
+              // Try to extract numeric change from relation text
+              const match = String(change.new || '').match(/[-+]?\d+/);
+              if (match) {
+                impact += Math.abs(Number(match[0]));
+              }
+            }
+          }
+        }
+        
+        // Calculate impact from participant social capital changes
+        for (const participant of participants) {
+          const char = L.characters[participant];
+          if (char && char.social && typeof char.social.capital === 'number') {
+            // Use social capital as proxy for impact (higher capital = more impact)
+            impact += char.social.capital / 20; // Scale down
+          }
+        }
+        
+        // Estimate norm violation based on event type
+        const normViolationScores = {
+          betrayal: 25,
+          public_humiliation: 20,
+          conflict: 15,
+          secret_reveal: 18,
+          loyalty_rescue: 5,
+          romance: 10,
+          achievement: 5
+        };
+        normViolation = normViolationScores[eventType] || 0;
+        
+        // Estimate witnesses based on text patterns
+        if (/все|всех|класс|толп|много|народ/iu.test(text)) {
+          witnesses = 10; // Many witnesses
+        } else if (/кто-то|несколько|некоторые/iu.test(text)) {
+          witnesses = 3; // Some witnesses
+        } else if (/наедине|один|одна|никто/iu.test(text)) {
+          witnesses = 0; // Private event
+        } else {
+          witnesses = 5; // Default moderate publicity
+        }
+        
+        return {
+          type: eventType,
+          impact: impact,
+          normViolation: normViolation,
+          participants: participants,
+          witnesses: witnesses,
+          description: text.substring(0, 200) // First 200 chars as description
+        };
+      }
+    },
+
+    // ================= END: LoreEngine ===================================
 
     evergreenManualSet(L, category, key, value){
       const state = L || this.lcInit();
