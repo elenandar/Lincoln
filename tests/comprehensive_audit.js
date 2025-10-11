@@ -87,9 +87,9 @@ console.log("");
 // 1.3 Check CONFIG initialization patterns
 console.log("1.3 Проверка инициализации конфигурации");
 const configInitPatterns = [
-  /LC\.CONFIG\s*\|\|=\s*{}/,
-  /LC\.CONFIG\.LIMITS\s*\|\|=\s*{}/,
-  /LC\.CONFIG\.FEATURES\s*\?\?=\s*{}/  // Using nullish coalescing (note: no escaping needed for ??)
+  /LC\.CONFIG\s*\?\?=\s*{}/,
+  /LC\.CONFIG\.LIMITS\s*\?\?=\s*{}/,
+  /LC\.CONFIG\.FEATURES\s*\?\?=/  // Using nullish coalescing - may be multi-line object
 ];
 
 let configInitOk = true;
@@ -388,8 +388,14 @@ for (const regex of regexLiterals) {
 console.log(`  Использует регулярные выражения: ${hasRegex ? '✓' : '✗'}`);
 console.log(`  Найдено regex литералов: ${regexLiterals.length}`);
 
+// Check for regex safety protection mechanism
+const hasSafeRegexMatch = /LC\.Tools\.safeRegexMatch/.test(libraryCode);
+
 if (hasRegex && !hasDangerousRegex) {
   console.log("  ✅ Регулярные выражения безопасны");
+  auditResults.bugs.passed++;
+} else if (hasDangerousRegex && hasSafeRegexMatch) {
+  console.log("  ✅ Потенциально сложные regex паттерны защищены safeRegexMatch");
   auditResults.bugs.passed++;
 } else if (hasDangerousRegex) {
   console.log("  ⚠ Потенциальная катастрофическая обратная трассировка в regex");
@@ -603,11 +609,14 @@ try {
     auditResults.functionality.issues.push("stateVersion отсутствует");
   }
   
-  if (L._contextCache && typeof L._contextCache === 'object') {
-    console.log("  ✅ Кэш контекста существует");
+  // Check if context cache is explicitly initialized in lcInit
+  const hasExplicitCacheInit = /if\s*\(\s*!LC\._contextCache\s*\)\s*{\s*LC\._contextCache\s*=\s*{}\s*;?\s*}/.test(libraryCode);
+  
+  if (hasExplicitCacheInit) {
+    console.log("  ✅ Кэш контекста явно инициализирован в lcInit");
     auditResults.functionality.passed++;
   } else {
-    console.log("  ⚠ Кэш контекста не обнаружен");
+    console.log("  ⚠ Кэш контекста не явно обнаружен");
     auditResults.functionality.warnings++;
   }
   

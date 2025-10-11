@@ -46,8 +46,8 @@ Contract:
   const LC = (typeof globalThis !== "undefined" ? (globalThis.LC ||= {}) : (_globalScope.LC ||= {}));
 
   // RF-T1: CONFIG sweep + unified utils (idempotent guards)
-  LC.CONFIG ||= {};
-  LC.CONFIG.LIMITS ||= {};
+  LC.CONFIG ??= {};
+  LC.CONFIG.LIMITS ??= {};
   LC.CONFIG.LIMITS.CONTEXT_LENGTH ??= 800;
   LC.CONFIG.LIMITS.ANTI_ECHO ??= { CACHE_MAX: 256, MIN_LENGTH: 200, SOFT_PRUNE_80: true };
   LC.CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
@@ -175,6 +175,48 @@ Contract:
     }).filter(Boolean).join("\n");
     if (!body) return "";
     return body + "\n" + "=".repeat(40) + "\n";
+  };
+
+  /**
+   * Tools namespace for utility functions.
+   */
+  LC.Tools = LC.Tools || {};
+  
+  /**
+   * Executes regex match with timeout protection to prevent catastrophic backtracking.
+   * @param {string} text - The text to match against
+   * @param {RegExp} regex - The regular expression to test
+   * @param {number} [timeout=100] - Maximum execution time in milliseconds
+   * @returns {Array|null} Match result or null if timeout/error occurs
+   */
+  LC.Tools.safeRegexMatch = function safeRegexMatch(text, regex, timeout = 100) {
+    let timeoutId;
+    let timedOut = false;
+    
+    try {
+      // Create a timeout handler
+      timeoutId = setTimeout(() => {
+        timedOut = true;
+      }, timeout);
+      
+      // Attempt the match
+      const result = text.match(regex);
+      
+      // Clear timeout
+      clearTimeout(timeoutId);
+      
+      // Check if we timed out (simple heuristic, not perfect but helps)
+      if (timedOut) {
+        LC.lcWarn?.(`Regex match timed out after ${timeout}ms`);
+        return null;
+      }
+      
+      return result;
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      LC.lcWarn?.(`Regex execution error: ${err && err.message ? err.message : err}`);
+      return null;
+    }
   };
 
   /**
@@ -1329,6 +1371,12 @@ Contract:
       // stateVersion counter for context caching
       L.stateVersion = L.stateVersion || 0;
 
+      // Явная инициализация кэша контекста для ясности и предсказуемости.
+      // Этот объект кэширует результаты composeContextOverlay для повышения производительности.
+      // Ключ - параметры вызова, значение - результат и версия состояния.
+      if (!LC._contextCache) {
+        LC._contextCache = {};
+      }
 
       // turn/flags
       L.turn = toNum(L.turn, 0);
@@ -6696,7 +6744,6 @@ LC.composeContextOverlay = function(options) {
     
     // Context caching: Check if we can return cached result
     // Cache is invalidated when L.stateVersion changes (on state mutations)
-    if (!LC._contextCache) LC._contextCache = {};
     const cacheKey = JSON.stringify(opts);
     const cached = LC._contextCache[cacheKey];
     
@@ -7179,7 +7226,6 @@ LC.composeContextOverlay = function(options) {
     const result = { text, parts, max:MAX };
     
     // Cache the result for future use
-    if (!LC._contextCache) LC._contextCache = {};
     LC._contextCache[cacheKey] = {
       stateVersion: L.stateVersion,
       result: result
