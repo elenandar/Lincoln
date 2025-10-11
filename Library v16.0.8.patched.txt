@@ -3332,8 +3332,15 @@ L.debugMode = toBool(L.debugMode, false);
         const L = LC.lcInit();
         options = options || {};
         
-        // Use perceptions system if characters exist and usePerceptions is not explicitly false
-        const usePerceptions = options.usePerceptions !== false && L.characters?.[char1] && L.characters?.[char2];
+        // Use perceptions system if:
+        // 1. Characters exist in L.characters
+        // 2. usePerceptions is not explicitly false
+        // 3. Characters have perceptions or qualia_state (indicating they're "full" characters)
+        const char1Obj = L.characters?.[char1];
+        const char2Obj = L.characters?.[char2];
+        const hasFullChars = char1Obj && char2Obj && 
+          (char1Obj.perceptions || char1Obj.qualia_state || char2Obj.perceptions || char2Obj.qualia_state);
+        const usePerceptions = options.usePerceptions !== false && hasFullChars;
         
         if (usePerceptions) {
           // Modern asymmetric perceptions mode
@@ -3575,9 +3582,25 @@ L.debugMode = toBool(L.debugMode, false);
                       vectorChange = { affection: 8, trust: 12, respect: 5, rivalry: -5 };
                     }
                     
-                    // Use helper to update (supports both legacy and multi-vector)
-                    // For now, use legacy numeric mode for compatibility
-                    this.updateRelation(char1, char2, modifier);
+                    // Use InformationEngine for subjective interpretation if characters exist
+                    if (L.characters?.[char1] && L.characters?.[char2] && LC.InformationEngine) {
+                      // Create event objects for interpretation
+                      const event = {
+                        type: 'relation_event',
+                        eventType: type,
+                        action: type,
+                        rawModifier: modifier,
+                        vectorChange: vectorChange,
+                        actor: char1,
+                        target: char2
+                      };
+                      
+                      // Use interpreted update
+                      this.updateRelation(char1, char2, modifier, { interpretedEvent: event });
+                    } else {
+                      // Fallback to direct update for legacy/non-character entities
+                      this.updateRelation(char1, char2, modifier);
+                    }
                     
                     // Notify Crucible about significant relationship changes
                     if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
@@ -5082,8 +5105,18 @@ L.debugMode = toBool(L.debugMode, false);
                 modifier = -10; // More intense when angry
               }
               
-              // Use RelationsEngine helper for update
-              LC.RelationsEngine.updateRelation(characterName, action.target, modifier);
+              // Use InformationEngine for subjective interpretation if available
+              const event = {
+                type: 'social',
+                action: 'insult',
+                rawModifier: modifier,
+                actor: characterName,
+                target: action.target
+              };
+              
+              LC.RelationsEngine.updateRelation(characterName, action.target, modifier, { 
+                interpretedEvent: event 
+              });
               
               // Notify Crucible about relationship changes
               if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
@@ -5151,8 +5184,18 @@ L.debugMode = toBool(L.debugMode, false);
                 modifier = 8; // More intense when happy
               }
               
-              // Use RelationsEngine helper for update
-              LC.RelationsEngine.updateRelation(characterName, action.target, modifier);
+              // Use InformationEngine for subjective interpretation if available
+              const event = {
+                type: 'social',
+                action: 'compliment',
+                rawModifier: modifier,
+                actor: characterName,
+                target: action.target
+              };
+              
+              LC.RelationsEngine.updateRelation(characterName, action.target, modifier, { 
+                interpretedEvent: event 
+              });
               
               // Notify Crucible about relationship changes
               if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
