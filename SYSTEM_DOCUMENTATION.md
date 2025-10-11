@@ -137,9 +137,7 @@ Lincoln is an internal script suite (v16.0.8-compat6d) for maintaining AI-driven
 
 ---
 
-## 3. Architecture and State Management
-
-### 2.1 Transition from Flags to currentAction
+### 3.1 Transition from Flags to currentAction
 
 The Lincoln system underwent a major refactoring to replace scattered flag-based state management with a unified `currentAction` state object.
 
