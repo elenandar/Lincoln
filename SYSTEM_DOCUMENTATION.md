@@ -4,7 +4,114 @@ This document consolidates all key information about the Lincoln v16.0.8-compat6
 
 ---
 
-## 1. System Overview
+## 1. Архитектура Сознания: Краткий Обзор
+
+### Философия: От Симуляции Мира к Симуляции Сознания
+
+Lincoln начался как система для симуляции событий в мире. Но с добавлением Qualia Engine, Subjective Reality Engine, Self-Concept, и их интеграцией в социальные и мемориальные системы, он превратился во что-то большее: **симулятор сознания**.
+
+**Ключевой инсайт:** Реальность формируется не событиями, а тем, как эти события воспринимаются и интерпретируются.
+
+### Четырёхуровневая Модель: Каскад Формирования Реальности
+
+Архитектура Lincoln моделирует сознание как каскад из четырёх уровней, каждый из которых трансформирует данные с предыдущего уровня:
+
+```mermaid
+graph TD
+    subgraph "Уровень 1: Феноменология"
+        A[Событие] --> B(Qualia Engine);
+        B --> C{Ощущение};
+    end
+    subgraph "Уровень 2: Психология"
+        C --> D(Information Engine);
+        D --> E{Интерпретация};
+    end
+    subgraph "Уровень 3: Личность"
+        E --> F(Crucible Engine);
+        F --> G{Я-Концепция/Характер};
+    end
+    subgraph "Уровень 4: Социология"
+        G --> H(Social & Memory Engines);
+        H --> I{Действие в обществе};
+    end
+    I -.Обратная связь.-> A;
+```
+
+**Уровень 1 - Феноменология (Qualia Engine):**  
+Сырые телесные ощущения: напряжение, валентность, фокус внимания, энергия. Базовый слой "внутренней погоды", который окрашивает все последующие ментальные процессы.
+
+**Уровень 2 - Психология (Information Engine):**  
+Интерпретация ощущений в смыслы. Один и тот же факт воспринимается по-разному в зависимости от феноменального состояния. Создаёт асимметричные восприятия между персонажами.
+
+**Уровень 3 - Личность (Crucible Engine):**  
+Формирование и эволюция характера через опыт. Расхождение между объективными чертами и тем, каким персонаж себя видит (self-concept). Внутренние конфликты.
+
+**Уровень 4 - Социология (Social & Memory Engines):**  
+Социальный капитал формируется через субъективные восприятия свидетелей. Коллективная память превращает интерпретации в мифы. "Официальная история" — это доминирующая интерпретация, не истина.
+
+**Философский вывод:** Lincoln больше не симулирует мир. Он симулирует **множество миров** — по одному для каждого сознания. Повествование создаётся не из событий, а из **конфликта между этими реальностями**.
+
+---
+
+## 2. Содержание
+
+- [1. Архитектура Сознания: Краткий Обзор](#1-архитектура-сознания-краткий-обзор)
+  - [Философия: От Симуляции Мира к Симуляции Сознания](#философия-от-симуляции-мира-к-симуляции-сознания)
+  - [Четырёхуровневая Модель: Каскад Формирования Реальности](#четырёхуровневая-модель-каскад-формирования-реальности)
+- [2. Содержание](#2-содержание)
+- [3. Architecture and State Management](#3-architecture-and-state-management)
+  - [3.1 Transition from Flags to currentAction](#31-transition-from-flags-to-currentaction)
+  - [3.2 Code Pattern Comparison](#32-code-pattern-comparison)
+  - [3.3 Refactoring Coverage](#33-refactoring-coverage)
+- [4. Implemented Functionality](#4-implemented-functionality)
+  - [4.1 Automatic Goal Tracking System](#41-automatic-goal-tracking-system)
+  - [4.2 Character Mood and Status System (MoodEngine)](#42-character-mood-and-status-system-moodengine)
+  - [4.3 Secrets and Knowledge System (KnowledgeEngine)](#43-secrets-and-knowledge-system-knowledgeengine)
+  - [4.4 In-Game Time and Calendar System (TimeEngine)](#44-in-game-time-and-calendar-system-timeengine)
+  - [4.5 Information Access Levels](#45-information-access-levels)
+  - [4.6 Environment Simulation (EnvironmentEngine)](#46-environment-simulation-environmentengine)
+  - [4.7 Social Simulation (GossipEngine)](#47-social-simulation-gossipengine)
+  - [4.8 Intelligent Recap Triggers (Event Detection System)](#48-intelligent-recap-triggers-event-detection-system)
+  - [4.9 Social Architecture (Population, Character Lifecycle & Introduction)](#49-social-architecture-population-character-lifecycle--introduction)
+  - [4.10 Living World Engine (NPC Autonomy)](#410-living-world-engine-npc-autonomy)
+  - [4.11 Social Engine (Norms & Hierarchy)](#411-social-engine-norms--hierarchy)
+- [5. Testing System](#5-testing-system)
+  - [5.1 Test Files](#51-test-files)
+  - [5.2 Running Tests](#52-running-tests)
+  - [5.3 Test Coverage](#53-test-coverage)
+  - [5.4 Verification Commands](#54-verification-commands)
+- [6. Character Evolution Engine (The Crucible)](#6-character-evolution-engine-the-crucible)
+  - [6.1 Philosophy: From Behavior to Destiny](#61-philosophy-from-behavior-to-destiny)
+  - [6.2 Personality Core](#62-personality-core)
+  - [6.3 Formative Events (The Catalyst)](#63-formative-events-the-catalyst)
+  - [6.4 Self-Concept (Я-Концепция) - CrucibleEngine 2.0](#64-self-concept-я-концепция---crucibleengine-20)
+  - [6.5 Qualia Engine (The Phenomenal Core)](#65-qualia-engine-the-phenomenal-core)
+  - [6.6 Subjective Reality Engine (The Interpretation Layer)](#66-subjective-reality-engine-the-interpretation-layer)
+- [7. Audit and Verification](#7-audit-and-verification)
+  - [7.1 Code Audit Summary](#71-code-audit-summary)
+  - [7.2 Compatibility Assessment](#72-compatibility-assessment)
+  - [7.3 Logic Consistency](#73-logic-consistency)
+  - [7.4 Bugs Fixed](#74-bugs-fixed)
+  - [7.5 Functional Verification](#75-functional-verification)
+  - [7.6 System Status](#76-system-status)
+  - [7.7 Quality Metrics](#77-quality-metrics)
+  - [7.8 Recommendations](#78-recommendations)
+- [8. Оптимизация и Производительность](#8-оптимизация-и-производительность)
+  - [8.1 Единый Конвейер Анализа (Unified Analysis Pipeline)](#81-единый-конвейер-анализа-unified-analysis-pipeline)
+  - [8.2 Кэширование Контекста (Context Caching)](#82-кэширование-контекста-context-caching)
+  - [8.3 Итоги оптимизации](#83-итоги-оптимизации)
+- [9. Code Quality and Professional Polish](#9-code-quality-and-professional-polish)
+  - [9.1 JSDoc Documentation](#91-jsdoc-documentation)
+  - [9.2 Defensive Programming](#92-defensive-programming)
+  - [9.3 Inline Comments for Complex Logic](#93-inline-comments-for-complex-logic)
+  - [9.4 Quality Metrics Summary](#94-quality-metrics-summary)
+- [10. Change History](#10-change-history)
+- [Appendix: File Modifications](#appendix-file-modifications)
+- [Appendix B: Quick Reference - Performance Optimizations](#appendix-b-quick-reference---performance-optimizations)
+
+---
+
+## 3. Architecture and State Management
 
 ### About Lincoln
 
@@ -30,9 +137,7 @@ Lincoln is an internal script suite (v16.0.8-compat6d) for maintaining AI-driven
 
 ---
 
-## 2. Architecture and State Management
-
-### 2.1 Transition from Flags to currentAction
+### 3.1 Transition from Flags to currentAction
 
 The Lincoln system underwent a major refactoring to replace scattered flag-based state management with a unified `currentAction` state object.
 
@@ -97,7 +202,7 @@ Slash Command
     └─ /help ─────> L.currentAction = { type: 'command', name: '/help' }
 ```
 
-### 2.2 Code Pattern Comparison
+### 3.2 Code Pattern Comparison
 
 #### Pattern 1: Checking State
 
@@ -146,7 +251,7 @@ if (L.currentAction) {
 }
 ```
 
-### 2.3 Refactoring Coverage
+### 3.3 Refactoring Coverage
 
 The refactoring touched all four main modules:
 
@@ -164,9 +269,9 @@ The refactoring touched all four main modules:
 
 ---
 
-## 3. Implemented Functionality
+## 4. Implemented Functionality
 
-### 3.1 Automatic Goal Tracking System
+### 4.1 Automatic Goal Tracking System
 
 The Lincoln system automatically detects and tracks character goals from narrative text, helping the AI maintain long-term character motivation consistency.
 
@@ -345,7 +450,7 @@ Goals in context help the AI:
 
 ---
 
-### 3.2 Character Mood and Status System (MoodEngine)
+### 4.2 Character Mood and Status System (MoodEngine)
 
 #### Overview
 
@@ -531,7 +636,7 @@ Moods in context help the AI:
 
 ---
 
-### 3.3 Secrets and Knowledge System (KnowledgeEngine)
+### 4.3 Secrets and Knowledge System (KnowledgeEngine)
 
 #### Overview
 
@@ -814,7 +919,7 @@ When Максим not in focus → Secret hidden
 
 ---
 
-### 3.4 In-Game Time and Calendar System (TimeEngine)
+### 4.4 In-Game Time and Calendar System (TimeEngine)
 
 The Lincoln system tracks in-game time progression through **semantic understanding** of narrative events, enabling natural time-aware storytelling with meaningful temporal progression based on what happens in the story.
 
@@ -1127,7 +1232,7 @@ Russian: "После уроков Макс лег спать."
 
 ---
 
-### 3.5 Information Access Levels
+### 4.5 Information Access Levels
 
 #### Overview
 
@@ -1206,7 +1311,7 @@ LC.lcSys("Meta information", { level: 'director' });
 
 ---
 
-### 3.6 Environment Simulation (EnvironmentEngine)
+### 4.6 Environment Simulation (EnvironmentEngine)
 
 #### Overview
 
@@ -1354,7 +1459,7 @@ L.character_status['Хлоя'] = {
 
 ---
 
-### 3.7 Social Simulation (GossipEngine)
+### 4.7 Social Simulation (GossipEngine)
 
 #### Overview
 
@@ -1675,7 +1780,7 @@ Distortion varies by witness relationship strength
 
 ---
 
-### 3.8 Intelligent Recap Triggers (Event Detection System)
+### 4.8 Intelligent Recap Triggers (Event Detection System)
 
 #### Overview
 
@@ -1815,7 +1920,7 @@ Located in `CONFIG.RECAP_V2`:
 }
 ```
 
-### 3.9 Social Architecture (Population, Character Lifecycle & Introduction)
+### 4.9 Social Architecture (Population, Character Lifecycle & Introduction)
 
 #### Overview
 
@@ -1983,7 +2088,11 @@ Test file: `test_character_lifecycle.js`
 
 ---
 
-### 3.10 Living World Engine (NPC Autonomy)
+### 4.10 Living World Engine (NPC Autonomy)
+
+#### Философия Дизайна
+
+Living World Engine решает проблему "застывшего мира": **персонажи должны жить своей жизнью, а не замирать в ожидании игрока**. В реальности люди продолжают действовать, когда вы не смотрите: укрепляют дружбу, вынашивают планы, ссорятся. Этот движок создаёт иллюзию непрерывной жизни, моделируя автономные действия NPC "за кадром". Он отвечает на вопрос: **что делали все остальные, пока я спал/отсутствовал?**
 
 #### Overview
 
@@ -2039,6 +2148,30 @@ if (timeJump.type === 'ADVANCE_TO_NEXT_MORNING' || timeJump.type === 'ADVANCE_DA
 **Decision Function:** `LC.LivingWorld.simulateCharacter(character)`
 
 Uses a **Motivation Pyramid** to prioritize actions:
+
+**Decision Flow Diagram:**
+
+```mermaid
+graph TD
+    A[Character wakes up] --> B{Has active goal?}
+    B -->|Yes| C[PURSUE_GOAL]
+    B -->|No| D{Has strong relationship?}
+    D -->|Yes, positive| E[SOCIAL_POSITIVE]
+    D -->|Yes, negative| F[SOCIAL_NEGATIVE]
+    D -->|No| G{Upcoming event?}
+    G -->|Yes| H[PREPARE_EVENT]
+    G -->|No| I[IDLE]
+    
+    C --> J[Apply mood modifier]
+    E --> J
+    F --> J
+    H --> J
+    I --> J
+    
+    J --> K[Generate Fact]
+    K --> L[Update State]
+    L --> M[Increment stateVersion]
+```
 
 **Priority 1: Active Goals**
 - Checks `L.goals` for active goals belonging to this character
@@ -2280,7 +2413,11 @@ Test file: `test_living_world.js`
 
 ---
 
-### 3.11 Social Engine (Norms & Hierarchy)
+### 4.11 Social Engine (Norms & Hierarchy)
+
+#### Философия Дизайна
+
+Social Engine решает проблему изолированных персонажей: **люди существуют в социальном контексте, где действия имеют репутационные последствия**. Предательство не только ранит жертву, но и меняет восприятие предателя всем обществом. Этот движок моделирует неписаные правила (нормы), социальную иерархию и капитал. Он превращает группу персонажей в живое общество с лидерами, изгоями и ценностями. Он отвечает на вопрос: **как группа судит мои действия и как это влияет на моё место в обществе?**
 
 #### Overview
 
@@ -2330,6 +2467,28 @@ character.social = {
 - `eventData.target` - Character affected
 - `eventData.witnesses` - Array of witness character names
 - `eventData.relationsBefore` - Witness relationships before the event
+
+**Norm Evolution Diagram:**
+
+```mermaid
+graph LR
+    A[Event occurs] --> B[Measure witness reactions]
+    B --> C{>70% negative?}
+    C -->|Yes| D[Strengthen norm +0.05]
+    C -->|No| E{>70% positive?}
+    E -->|Yes| F[Weaken norm -0.05]
+    E -->|No| G[No change]
+    
+    D --> H[Update actor's capital]
+    F --> H
+    G --> H
+    
+    H --> I{Capital < 40?}
+    I -->|Yes| J[Status: OUTCAST]
+    I -->|No| K{Capital ≥ 140?}
+    K -->|Yes| L[Status: LEADER]
+    K -->|No| M[Status: MEMBER]
+```
 
 **Logic**:
 ```javascript
@@ -2474,9 +2633,9 @@ const strength = LC.NormsEngine.getNormStrength('betrayal');
 
 ---
 
-## 4. Testing System
+## 5. Testing System
 
-### 4.1 Test Files
+### 5.1 Test Files
 
 The project includes comprehensive test suites:
 
@@ -2489,7 +2648,7 @@ The project includes comprehensive test suites:
 7. **test_access_levels.js** - Tests the Information Access Levels system
 8. **test_living_world.js** - Tests the Living World Engine and NPC autonomy
 
-### 4.2 Running Tests
+### 5.2 Running Tests
 
 Execute tests from the repository root:
 
@@ -2513,7 +2672,7 @@ node test_time.js
 node test_living_world.js
 ```
 
-### 4.3 Test Coverage
+### 5.3 Test Coverage
 
 #### currentAction Tests (10/10 passing)
 
@@ -2595,7 +2754,7 @@ Test 10: Case-Insensitive Character Matching        ✓
 Implementation Status: COMPLETE ✓
 ```
 
-### 4.4 Verification Commands
+### 5.4 Verification Commands
 
 Check for old code (should return 0):
 ```bash
@@ -2612,7 +2771,11 @@ grep -c "currentAction" "Context v16.0.8.patched.txt"
 
 ---
 
-## 5. Character Evolution Engine (The Crucible)
+## 6. Character Evolution Engine (The Crucible)
+
+### Философия Дизайна
+
+Crucible Engine решает проблему статичных персонажей: **опыт должен изменять людей, а не только их настроение**. В реальной жизни предательство, триумф, травма оставляют постоянные отметины на личности. Этот движок моделирует эволюцию характера через формативные события, превращая реакции в судьбу. Он отвечает на вопрос: **каким человеком меня сделали эти события?** Расширение Self-Concept добавляет второй слой: **каким человеком я себя теперь считаю?**
 
 ### 6.1 Philosophy: From Behavior to Destiny
 
@@ -2846,7 +3009,7 @@ Comprehensive test suite in `tests/test_crucible.js` validates:
 
 ---
 
-## 5.4 Self-Concept (Я-Концепция) - CrucibleEngine 2.0
+## 6.4 Self-Concept (Я-Концепция) - CrucibleEngine 2.0
 
 ### Overview
 
@@ -3090,7 +3253,11 @@ The self-concept system recognizes that psychological realism requires modeling 
 
 ---
 
-## 5.5 Qualia Engine (The Phenomenal Core)
+## 6.5 Qualia Engine (The Phenomenal Core)
+
+### Философия Дизайна
+
+Этот движок был создан для решения фундаментальной проблемы: **симуляция мыслей без симуляции ощущений неполна**. Персонаж — это не просто набор решений и планов; это живое существо с телом, которое испытывает напряжение, усталость, удовольствие и дискомфорт. Qualia Engine создаёт базовый, до-когнитивный слой "внутренней погоды", который окрашивает все последующие ментальные процессы. Он отвечает на вопрос: **как персонаж себя физически чувствует прямо сейчас?**
 
 ### Overview
 
@@ -3331,11 +3498,15 @@ Comprehensive test suite in `tests/test_qualia_engine.js`:
 
 ---
 
-## 5.6 Subjective Reality Engine (The Interpretation Layer)
+## 6.6 Subjective Reality Engine (The Interpretation Layer)
+
+### Философия Дизайна
+
+Subjective Reality Engine решает ключевую проблему: **два персонажа, переживающие одно и то же событие, могут воспринимать его диаметрально противоположно**. Человек в хорошем настроении воспримет шутку как комплимент; тот же человек в напряжённом состоянии — как сарказм. Этот движок преобразует ощущения в смыслы, создавая асимметричные реальности для каждого персонажа. Он отвечает на вопрос: **что это событие значит для меня, исходя из моего внутреннего состояния?**
 
 ### Philosophy: From Sensation to Meaning
 
-The Qualia Engine (5.5) tracks *what a character feels*. The Subjective Reality Engine answers: *how does that feeling color what they believe?*
+The Qualia Engine (6.5) tracks *what a character feels*. The Subjective Reality Engine answers: *how does that feeling color what they believe?*
 
 **Core Insight:** The same event should be interpreted differently by different characters based on their current phenomenal state.
 
@@ -3411,6 +3582,26 @@ L.characters['Хлоя'].perceptions['Эшли'] = {
 | Betrayal | personality.trust > 0.7 | "devastating" | modifier × 1.3 |
 | Betrayal | personality.trust < 0.3 | "expected" | modifier × 0.9 |
 | Loyalty | personality.trust < 0.3 | "surprising" | modifier × 1.4 |
+
+**Data Flow Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Event as Сырое Событие
+    participant Qualia as Qualia Engine
+    participant Info as Information Engine
+    participant Relations as Relations Engine
+    participant Crucible as Crucible Engine
+    
+    Event->>Qualia: Резонанс (изменение ощущений)
+    Qualia->>Qualia: Обновление qualia_state
+    Event->>Info: Передача (Событие + Qualia-Состояние)
+    Info->>Info: Интерпретация (sincere/sarcasm/threatening)
+    Info->>Relations: Передача (Субъективный модификатор)
+    Relations->>Relations: Обновление perceptions
+    Relations->>Crucible: Формативное событие?
+    Crucible->>Crucible: Эволюция personality/self_concept
+```
 
 ---
 
@@ -3597,9 +3788,9 @@ Comprehensive test suite in `tests/test_subjective_reality.js` and `tests/test_i
 
 ---
 
-## 6. Audit and Verification
+## 7. Audit and Verification
 
-### 6.1 Code Audit Summary
+### 7.1 Code Audit Summary
 
 A comprehensive audit was performed on all four modules (Library, Input, Output, Context) with emphasis on:
 - Cross-module contracts
@@ -3608,31 +3799,31 @@ A comprehensive audit was performed on all four modules (Library, Input, Output,
 - Recap/epoch orchestration
 - Turn bookkeeping
 
-### 6.2 Compatibility Assessment
+### 7.2 Compatibility Assessment
 
 ✅ **All runtime modifiers** self-identify as `16.0.8-compat6d` and maintain consistent schema  
 ✅ **Library bootstrap** merges host-provided configuration with built-in defaults  
 ✅ **Shared helpers** use optional chaining and Map wrappers for graceful degradation
 
-### 6.3 Logic Consistency
+### 7.3 Logic Consistency
 
 ✅ **Command cycle flags** propagate correctly with `preserveCycle` hint  
 ✅ **Recap/Epoch orchestration** remains coherent across Input, Output, and Library  
 ✅ **Turn bookkeeping** prevents inadvertent turn bumps on command or retry paths
 
-### 6.4 Bugs Fixed
+### 7.4 Bugs Fixed
 
 **Command cycle preservation:** `clearCommandFlags` now respects `preserveCycle` option, keeping multi-step flows on the command path
 
 **Silent `/continue` confirmation:** `replyStopSilent` now supports `keepQueue`, ensuring draft acceptance feedback is shown to users
 
-### 6.5 Functional Verification
+### 7.5 Functional Verification
 
 ✅ **Command surface** - All slash commands validate arguments and respond correctly  
 ✅ **Draft acceptance UX** - `/continue` provides clear feedback when drafts are saved  
 ✅ **Context composition** - Respects configuration caps and degrades gracefully
 
-### 6.6 System Status
+### 7.6 System Status
 
 **Overall Status: ✅ COMPLETE AND VERIFIED**
 
@@ -3645,7 +3836,7 @@ A comprehensive audit was performed on all four modules (Library, Input, Output,
 | **Old Code Remaining** | 0 instances |
 | **Breaking Changes** | 0 |
 
-### 6.7 Quality Metrics
+### 7.7 Quality Metrics
 
 **Ticket #2 (currentAction refactoring):**
 - ✅ All `lcGetFlag` calls replaced
@@ -3667,7 +3858,7 @@ A comprehensive audit was performed on all four modules (Library, Input, Output,
 - ✅ Tests passing (8/8)
 - ✅ No regressions
 
-### 6.8 Recommendations
+### 7.8 Recommendations
 
 1. ✅ **System is production-ready** - All features tested and verified
 2. ✅ **Documentation is complete** - All implementation details documented
@@ -3675,9 +3866,9 @@ A comprehensive audit was performed on all four modules (Library, Input, Output,
 
 ---
 
-## 7. Оптимизация и Производительность
+## 8. Оптимизация и Производительность
 
-### 6.1 Единый Конвейер Анализа (Unified Analysis Pipeline)
+### 8.1 Единый Конвейер Анализа (Unified Analysis Pipeline)
 
 #### Проблема
 
@@ -3753,7 +3944,7 @@ LC.UnifiedAnalyzer.analyze(out, lastActionType);
 
 ---
 
-### 6.2 Кэширование Контекста (Context Caching)
+### 8.2 Кэширование Контекста (Context Caching)
 
 #### Проблема
 
@@ -3885,7 +4076,7 @@ Turn N: User input -> движки находят цель/настроение
 
 ---
 
-### 6.3 Итоги оптимизации
+### 8.3 Итоги оптимизации
 
 **Реализованные механизмы:**
 
@@ -3983,9 +4174,9 @@ Turn N: User input -> движки находят цель/настроение
 
 ---
 
-## 8. Code Quality and Professional Polish
+## 9. Code Quality and Professional Polish
 
-### 7.1 JSDoc Documentation
+### 9.1 JSDoc Documentation
 
 All key public API functions now have comprehensive JSDoc comments documenting:
 - Function purpose and behavior
@@ -4038,7 +4229,7 @@ LC.TimeEngine.processSemanticAction(action) { /* ... */ }
 - ✅ Output v16.0.8.patched.txt: 2+ functions documented
 - ✅ Context v16.0.8.patched.txt: 1+ functions documented
 
-### 7.2 Defensive Programming
+### 9.2 Defensive Programming
 
 Enhanced input validation and type checking throughout the codebase:
 
@@ -4078,7 +4269,7 @@ if (!L.secrets || !Array.isArray(L.secrets)) L.secrets = [];
 if (!L.time.scheduledEvents || !Array.isArray(L.time.scheduledEvents)) L.time.scheduledEvents = [];
 ```
 
-### 7.3 Inline Comments for Complex Logic
+### 9.3 Inline Comments for Complex Logic
 
 Added explanatory comments to non-obvious code sections:
 
@@ -4106,7 +4297,7 @@ const window = currentOutput.slice(winS, cut + search);
 const ends = window.match(/[.!?…]\s|—\s/g);  // Find sentence endings
 ```
 
-### 7.4 Quality Metrics Summary
+### 9.4 Quality Metrics Summary
 
 **Code Documentation:**
 - JSDoc comments: 30+ functions (expanded in post-audit refactoring)
@@ -4126,7 +4317,7 @@ const ends = window.match(/[.!?…]\s|—\s/g);  // Find sentence endings
 
 ---
 
-## 9. Change History
+## 10. Change History
 
 ### 2025-10-10: Technical Debt Refactoring (Post-Audit)
 
@@ -4297,361 +4488,6 @@ node demo_performance.js
 All working. All tested. All production-ready. ✅
 
 ---
-
-## 10. Архитектура Сознания: Каскад Формирования Реальности
-
-### Философия: От Симуляции Мира к Симуляции Сознания
-
-Lincoln начался как система для симуляции событий в мире. Но с добавлением Qualia Engine, Subjective Reality Engine, Self-Concept, и их интеграцией в социальные и мемориальные системы, он превратился во что-то большее: **симулятор сознания**.
-
-Ключевой инсайт: **Реальность формируется не событиями, а тем, как эти события воспринимаются и интерпретируются.**
-
-### Четырёхуровневая Модель Сознания
-
-Архитектура Lincoln моделирует сознание как каскад из четырёх уровней, каждый из которых трансформирует данные с предыдущего уровня:
-
-```
-СОБЫТИЯ (Objective Reality)
-    ↓
-ОЩУЩЕНИЯ (Qualia - Phenomenal Layer)
-    ↓
-ИНТЕРПРЕТАЦИИ (Subjective Reality - Meaning Layer)
-    ↓
-САМОИДЕНТИЧНОСТЬ (Self-Concept - Identity Layer)
-    ↓
-КОЛЛЕКТИВНАЯ ПАМЯТЬ (Memory - Cultural Layer)
-```
-
----
-
-### Уровень 1: Qualia Engine (Феноменальное Ядро)
-
-**Что это:** Сырые, до-когнитивные телесные ощущения.
-
-**Четыре измерения:**
-- **somatic_tension** (0-1): мышечное/нервное напряжение
-- **valence** (0-1): базовый аффект (приятно/неприятно)
-- **focus_aperture** (0-1): широта внимания (туннельное зрение/рассеянность)
-- **energy_level** (0-1): физическая энергия/бодрость
-
-**Пример:**
-```javascript
-// Событие: "Максим получил угрозу"
-LC.QualiaEngine.resonate(char, {
-  type: 'social',
-  action: 'threat',
-  intensity: 0.8
-});
-
-// Результат (автоматически):
-// valence: 0.5 → 0.25 (неприятно)
-// somatic_tension: 0.3 → 0.6 (напряжён)
-// focus_aperture: 0.7 → 0.5 (туннельное зрение)
-```
-
-**Интеграция:**
-- Автоматически инициализируется при создании персонажа
-- Обновляется LivingWorld Engine при социальных действиях
-- Влияет на следующий уровень (интерпретации)
-
-**Тег в контексте:** `⟦QUALIA: Максим⟧ крайне напряжен, негативное состояние, туннельное зрение`
-
----
-
-### Уровень 2: Subjective Reality Engine (Слой Интерпретаций)
-
-**Что это:** Преобразование ощущений в смыслы. Один и тот же факт интерпретируется по-разному в зависимости от феноменального состояния.
-
-**Ключевая функция:** `InformationEngine.interpret(character, event)`
-
-**Пример:**
-```javascript
-// Событие: "Эшли хвалит Хлою"
-
-// Эшли (valence = 0.8 - счастлива):
-// → Интерпретация: "искренний комплимент"
-// → affection += 6.5
-
-// Хлоя (somatic_tension = 0.9 - напряжена):
-// → Интерпретация: "сарказм/манипуляция"
-// → trust -= 5
-```
-
-**Асимметричные Восприятия:**
-```javascript
-// Каждый персонаж видит других через свою линзу
-L.characters['Эшли'].perceptions['Хлоя'] = {
-  affection: 70, trust: 60, respect: 50, rivalry: 20
-}
-
-L.characters['Хлоя'].perceptions['Эшли'] = {
-  affection: 30, trust: 20, respect: 80, rivalry: 50
-}
-// → Разные реальности для каждого персонажа!
-```
-
-**Интеграция:**
-- RelationsEngine использует InformationEngine для субъективных модификаторов
-- LivingWorld передаёт события через InformationEngine
-- Восприятия влияют на социальный капитал (следующий уровень)
-
-**Тег в контексте:** `⟦PERCEPTION: Максим⟧ Хлоя: очень любит, полностью доверяет; Борис: не любит, не доверяет, сильно соперничает`
-
----
-
-### Уровень 3: Self-Concept Engine (Слой Идентичности)
-
-**Что это:** Расхождение между объективными чертами и тем, каким персонаж себя видит.
-
-**Четыре черты:**
-- **trust** (objective) vs **perceived_trust** (subjective)
-- **bravery** (objective) vs **perceived_bravery** (subjective)
-- **idealism** (objective) vs **perceived_idealism** (subjective)
-- **aggression** (objective) vs **perceived_aggression** (subjective)
-
-**Пример:**
-```javascript
-// Максим объективно храбр (bravery = 0.8)
-// Но видит себя трусом (perceived_bravery = 0.3)
-
-// После публичного унижения:
-LC.Crucible.analyzeEvent({
-  type: 'PUBLIC_HUMILIATION',
-  character: 'Максим'
-});
-
-// Результат:
-// perceived_bravery: 0.3 → 0.1 (ещё хуже думает о себе)
-// perceived_trust: 0.5 → 0.3 (меньше доверяет)
-// bravery: 0.8 (объективно не изменилось!)
-```
-
-**Интеграция:**
-- CrucibleEngine приоритизирует изменения в self_concept над personality
-- Context overlay показывает self_concept в тегах TRAITS
-- CONFLICT теги показывают внутренние конфликты
-
-**Теги в контексте:**
-```
-⟦TRAITS: Максим⟧ осторожен и боится рисковать (shows perceived_bravery)
-⟦CONFLICT: Максим⟧ Внутренний конфликт: недооценивает свою храбрость
-```
-
----
-
-### Уровень 4: Memory Engine (Культурный Слой)
-
-**Что это:** Превращение событий в мифы. Коллективная память хранит не факты, а **доминирующие интерпретации**.
-
-**Процесс мифологизации:**
-```
-Событие (turn 5) → Event Record → (50 turns) → Миф
-
-{
-  type: 'event_record',
-  character: 'Максим',
-  details: {
-    change: +60,
-    interpretation: 'sincere',  // ← Субъективная интерпретация!
-    theme: 'loyalty_rescue'
-  }
-}
-↓ (через 50 ходов)
-{
-  type: 'myth',
-  hero: 'Максим',
-  moral: 'защищать друзей — правильно',
-  strength: 0.9,
-  theme: 'loyalty_rescue'
-}
-```
-
-**Влияние мифов:**
-1. **На новых персонажей:** Trust +18% при создании, если доминирует миф о верности
-2. **На социальные нормы:** Усиливают силу норм до +20%
-3. **На повествование:** Zeitgeist в context overlay
-
-**Интеграция:**
-- Запускается каждые 100 ходов
-- Хранит только топ-20 самых сильных мифов
-- Формирует "официальную версию истории"
-
-**Тег в контексте:** `⟦ZEITGEIST⟧ В этой школе героев уважают, а предателей презирают.`
-
----
-
-### Социальная Архитектура: От Объективности к Субъективности
-
-**Старая парадигма (до Epic 4):**
-- Социальный капитал = функция объективных действий
-- Память = запись объективных событий
-- Все видят одну и ту же реальность
-
-**Новая парадигма (Epic 4):**
-- **Социальный капитал** = функция того, как **свидетели воспринимают** актора
-  - Положительное действие даёт больше капитала, если у актора высокий уровень уважения (respect)
-  - Отрицательное действие отнимает больше капитала, если у актора низкий уровень доверия (trust)
-  
-```javascript
-// HierarchyEngine теперь использует perceptions
-const avgRespect = this._getAverageWitnessRespect(characterName);
-const capitalGain = baseGain * (0.5 + avgRespect/100);
-// Уважаемые получают больше от добрых дел
-```
-
-- **Память** = доминирующие интерпретации, не факты
-  - Если событие интерпретировалось как "сарказм", именно это идёт в архив
-  - Мифы формируются из того, что **казалось правдой**, а не из истины
-
-```javascript
-// MemoryEngine сохраняет interpretation
-details.interpretation = eventData.interpretation; // 'sarcasm', 'sincere', etc.
-```
-
----
-
-### Полный Каскад: Пример в Действии
-
-**Сценарий:** Максим делает комплимент Хлое на глазах у Бориса.
-
-#### Шаг 1: Qualia State (исходное состояние)
-```
-Максим: valence=0.7 (хорошее настроение)
-Хлоя:   somatic_tension=0.9 (очень напряжена)
-Борис:  valence=0.5, trust=50 (нейтрален)
-```
-
-#### Шаг 2: Event Occurs
-```javascript
-// LivingWorld генерирует действие
-action = { type: 'SOCIAL_POSITIVE', target: 'Хлоя' }
-```
-
-#### Шаг 3: Qualia Update
-```javascript
-// Хлоя получает телесное ощущение от комплимента
-LC.QualiaEngine.resonate(Хлоя, {
-  type: 'social',
-  action: 'compliment',
-  intensity: 0.5
-});
-// valence: 0.5 → 0.55
-// tension: 0.9 → 0.87 (немного расслабилась)
-```
-
-#### Шаг 4: Interpretation (Хлоя)
-```javascript
-// InformationEngine интерпретирует событие
-const interpreted = LC.InformationEngine.interpret(Хлоя, {
-  type: 'social',
-  action: 'compliment',
-  rawModifier: 5
-});
-// tension=0.87 → интерпретация: 'sarcasm'
-// subjectiveModifier: 1.5 (вместо 5)
-// trust penalty: -5
-```
-
-#### Шаг 5: Perception Update
-```javascript
-// Asymmetric perceptions
-Максим.perceptions['Хлоя'].affection += 5  // Максим думает, всё хорошо
-Хлоя.perceptions['Максим'].trust -= 5      // Хлоя не доверяет
-```
-
-#### Шаг 6: Social Capital (Witness Effect)
-```javascript
-// Борис - свидетель. Его perception of Максим влияет на капитал
-avgRespect = Борис.perceptions['Максим'].respect; // 50
-capitalGain = 8 * (0.5 + 50/100) = 8  // Нейтральный респект
-LC.HierarchyEngine.updateCapital('Максим', { 
-  type: 'POSITIVE_ACTION',
-  target: 'Хлоя'
-});
-```
-
-#### Шаг 7: Memory (через 50 ходов)
-```javascript
-// Event Record архивируется с интерпретацией
-{
-  type: 'event_record',
-  character: 'Максим',
-  details: {
-    interpretation: 'sarcasm',  // ← Хлоя решила, что это сарказм
-    theme: 'betrayal'  // ← Интерпретация влияет на тему!
-  }
-}
-// Через 50 ходов превратится в миф о том, что "доверие легко потерять"
-```
-
-#### Результат:
-- **Максим** думает, что всё отлично (reality₁)
-- **Хлоя** считает, что её обманули (reality₂)
-- **Борис** видел нечто нейтральное (reality₃)
-- **"История"** запомнит это как пример недоверия (collective reality)
-
-**Четыре разные реальности из одного события!**
-
----
-
-### Теги Context Overlay: Полная Спецификация
-
-Новая система добавляет три тега для отладки и повествования:
-
-#### 1. ⟦QUALIA: Character⟧ (Priority: 727)
-Показывает только **экстремальные** феноменальные состояния:
-- `somatic_tension ≥ 0.8` → "крайне напряжен"
-- `somatic_tension ≤ 0.2` → "полностью расслаблен"
-- `valence ≥ 0.8` → "приятное состояние"
-- `valence ≤ 0.2` → "негативное состояние"
-- `focus_aperture ≤ 0.3` → "туннельное зрение"
-- `energy_level ≥ 0.9` → "очень бодр"
-- `energy_level ≤ 0.2` → "истощен"
-
-**Пример:** `⟦QUALIA: Максим⟧ крайне напряжен, негативное состояние, туннельное зрение`
-
-#### 2. ⟦PERCEPTION: Character⟧ (Priority: 726)
-Показывает асимметричные восприятия между HOT персонажами:
-- Только для персонажей с `turnsAgo ≤ 3`
-- Показывает экстремальные значения (≥80 или ≤20):
-  - `affection ≥ 80` → "очень любит"
-  - `affection ≤ 20` → "не любит"
-  - `trust ≥ 80` → "полностью доверяет"
-  - `trust ≤ 20` → "не доверяет"
-  - `respect ≥ 80` → "очень уважает"
-  - `respect ≤ 20` → "не уважает"
-  - `rivalry ≥ 80` → "сильно соперничает"
-
-**Пример:** `⟦PERCEPTION: Максим⟧ Хлоя: очень любит, полностью доверяет; Борис: не любит, не доверяет, сильно соперничает`
-
-#### 3. ⟦CONFLICT: Character⟧ (Priority: 735) - Уже существовал
-Показывает расхождения между объективными чертами и self-concept:
-- `|objective - perceived| > 0.2` → конфликт обнаружен
-
-**Пример:** `⟦CONFLICT: Максим⟧ Внутренний конфликт: недооценивает свою храбрость`
-
-**Приоритеты (от высшего к низшему):**
-```
-INTENT (1000) → TASK (900) → CANON (800) → SUGGESTION (760) → GOAL (750) →
-SECRET (740) → CONFLICT (735) → TRAITS (730) → STATUS (728) → QUALIA (727) →
-PERCEPTION (726) → MOOD (725) → ...
-```
-
----
-
-### Философский Вывод
-
-Lincoln больше не симулирует мир. Он симулирует **множество миров** - по одному для каждого сознания:
-
-- **Объективная реальность** (events) существует, но **никто её не видит**
-- **Феноменальная реальность** (qualia) - это то, что **ощущается**
-- **Субъективная реальность** (interpretations) - это то, что **воспринимается**
-- **Идентичность** (self-concept) - это то, **кем ты себя считаешь**
-- **Культурная реальность** (myths) - это то, что **общество помнит**
-
-**Ключевое прозрение:** Повествование создаётся не из событий, а из **конфликта между этими реальностями**.
-
-Когда Максим считает себя героем, но Хлоя видит его предателем, и общество помнит его как трагическую фигуру - вот где начинается настоящая драма.
 
 ---
 
