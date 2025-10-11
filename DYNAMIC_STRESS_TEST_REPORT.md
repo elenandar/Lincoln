@@ -23,31 +23,31 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 
 | Turn | State Size (bytes) | Change | Rumor Count |
 |------|-------------------|--------|-------------|
-| 50 | 8,789 | 0 | 13 |
-| 100 | 11,357 | +2568 | 26 |
-| 150 | 15,168 | +3811 | 42 |
-| 200 | 18,254 | +3086 | 54 |
-| 250 | 18,997 | +743 | 59 |
-| 300 | 22,024 | +3027 | 71 |
-| 350 | 25,128 | +3104 | 83 |
-| 400 | 28,042 | +2914 | 94 |
-| 450 | 30,425 | +2383 | 107 |
-| 500 | 33,868 | +3443 | 123 |
-| 550 | 36,234 | +2366 | 133 |
-| 600 | 40,628 | +4394 | 148 |
-| 650 | 43,897 | +3269 | 163 |
-| 700 | 47,851 | +3954 | 180 |
-| 750 | 48,952 | +1101 | 183 |
-| 800 | 51,100 | +2148 | 192 |
-| 850 | 52,721 | +1621 | 203 |
-| 900 | 56,979 | +4258 | 221 |
-| 950 | 61,047 | +4068 | 235 |
-| 1000 | 63,729 | +2682 | 246 |
+| 50 | 8,405 | 0 | 13 |
+| 100 | 11,824 | +3419 | 28 |
+| 150 | 15,387 | +3563 | 44 |
+| 200 | 19,215 | +3828 | 61 |
+| 250 | 21,323 | +2108 | 70 |
+| 300 | 26,321 | +4998 | 87 |
+| 350 | 29,647 | +3326 | 103 |
+| 400 | 32,430 | +2783 | 117 |
+| 450 | 36,522 | +4092 | 132 |
+| 500 | 40,484 | +3962 | 152 |
+| 550 | 44,306 | +3822 | 169 |
+| 600 | 47,597 | +3291 | 182 |
+| 650 | 50,416 | +2819 | 193 |
+| 700 | 53,350 | +2934 | 204 |
+| 750 | 55,698 | +2348 | 217 |
+| 800 | 59,453 | +3755 | 231 |
+| 850 | 61,291 | +1838 | 242 |
+| 900 | 64,240 | +2949 | 253 |
+| 950 | 67,733 | +3493 | 269 |
+| 1000 | 71,686 | +3953 | 283 |
 
 **Growth Analysis:**
-- Initial state size: 8,789 bytes
-- Final state size: 63,729 bytes
-- Growth ratio: 7.25x
+- Initial state size: 8,405 bytes
+- Final state size: 71,686 bytes
+- Growth ratio: 8.53x
 - **Status:** ⚠️ EXCESSIVE GROWTH
 
 ### 1.2 Character Status Dynamics
@@ -80,9 +80,9 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 ### 1.3 Memory Management
 
 **Rumor Lifecycle:**
-- Maximum rumors: 246
+- Maximum rumors: 283
 - Minimum rumors: 13
-- Average rumors: 128.8
+- Average rumors: 152.5
 
 **Verdict:** ⚠️ Potential memory leak
 
@@ -135,11 +135,11 @@ No explicit norm tracking data available in this simulation.
 **Stimulus:** 20 consecutive negative events  
 
 **Results:**
-- Average tension: 0.300
-- Maximum tension: 0.300
-- Final tension: 0.300
-- Average valence: 0.500
-- Final valence: 0.500
+- Average tension: 0.914
+- Maximum tension: 1.000
+- Final tension: 1.000
+- Average valence: 0.044
+- Final valence: 0.000
 
 **Stability:** ✅ STABLE  
 System demonstrated self-regulation; tension did not spiral out of control.
@@ -150,9 +150,9 @@ System demonstrated self-regulation; tension did not spiral out of control.
 **Stimulus:** 20 consecutive positive events  
 
 **Results:**
-- Average valence: 0.500
-- Maximum valence: 0.500
-- Final valence: 0.500
+- Average valence: 0.898
+- Maximum valence: 1.000
+- Final valence: 1.000
 
 **Stability:** ✅ STABLE  
 System maintained emotional equilibrium; valence did not become unrealistically high.
@@ -212,6 +212,6 @@ While the system demonstrates core functionality, addressing these issues would 
 
 ---
 
-**Test Completion Date:** 2025-10-11T10:47:26.218Z  
+**Test Completion Date:** 2025-10-11T11:10:53.691Z  
 **Total Simulation Time:** 1000 turns  
 **Test Status:** COMPLETE

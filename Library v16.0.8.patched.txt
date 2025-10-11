@@ -2170,7 +2170,7 @@ L.debugMode = toBool(L.debugMode, false);
         };
 
         const okR1 = tryPush(P.relations, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+и\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)", "giu", { _relPattern: "pairRu" });
-        const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu", { _relPattern: "verbRu" });
+        const okR2 = tryPush(P.relations, "([\\p{L}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?|оскорбил(?:а)?|унизил(?:а)?|угрожал(?:а)?|раскритиковал(?:а)?|поддержал(?:а)?|похвалил(?:а)?|защитил(?:а)?)\\s+([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})", "giu", { _relPattern: "verbRu" });
 
         const okS1 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+теперь\\s+(.+?)(?:[.,!]|$)", "giu");
         const okS2 = tryPush(P.status, "([\\p{L}'-]+(?:\\s+[\\p{L}'-]+){0,2})\\s+стал(?:а)?\\s+(.+?)(?:[.,!]|$)", "giu");
@@ -2200,7 +2200,7 @@ L.debugMode = toBool(L.debugMode, false);
           const fbR1 = new RegExp(`([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+и\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})\\s+теперь\\s+(вместе|пара|расстались|друзья|враги)`, "gi");
           fbR1._relPattern = "pairRu";
           P.relations.push(fbR1);
-          const fbR2 = new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi");
+          const fbR2 = new RegExp(`([${LTR}'-]+)\\s+(любит|ненавидит|ревнует|поцеловал(?:а)?|обнял(?:а)?|ударил(?:а)?|предал(?:а)?|простил(?:а)?|бросил(?:а)?|оскорбил(?:а)?|унизил(?:а)?|угрожал(?:а)?|раскритиковал(?:а)?|поддержал(?:а)?|похвалил(?:а)?|защитил(?:а)?)\\s+([${LTR}'-]+(?:\\s+[${LTR}'-]+){0,2})`, "gi");
           fbR2._relPattern = "verbRu";
           P.relations.push(fbR2);
 
@@ -2645,6 +2645,12 @@ L.debugMode = toBool(L.debugMode, false);
                 modifier = -15;
               } else if (/расстал|broke up|enemies|враги/.test(actionLower)) {
                 modifier = -20;
+              } else if (/оскорбил|оскорбила|insult|унизил|унизила|humiliat/.test(actionLower)) {
+                modifier = -15; // insult/humiliation
+              } else if (/угрожал|угрожала|threat|threaten/.test(actionLower)) {
+                modifier = -20; // threat
+              } else if (/раскритиковал|раскритиковала|critic|критик/.test(actionLower)) {
+                modifier = -10; // criticism
               }
               // Positive actions
               else if (/поцеловал|поцеловала|kiss|together|вместе|пара|dating/.test(actionLower)) {
@@ -2655,6 +2661,12 @@ L.debugMode = toBool(L.debugMode, false);
                 modifier = 12;
               } else if (/друзья|друг|friend/.test(actionLower)) {
                 modifier = 8;
+              } else if (/поддержал|поддержала|support|помог|помогла|help/.test(actionLower)) {
+                modifier = 10; // support/help
+              } else if (/похвалил|похвалила|praise|compliment/.test(actionLower)) {
+                modifier = 8; // praise
+              } else if (/защитил|защитила|defend|protect/.test(actionLower)) {
+                modifier = 12; // defense/protection
               }
 
               // Initialize nested structure if needed
@@ -2673,6 +2685,58 @@ L.debugMode = toBool(L.debugMode, false);
 
               L.evergreen.relations[subject][counterpart] = Math.max(-100, Math.min(100, currentVal1 + modifier));
               L.evergreen.relations[counterpart][subject] = Math.max(-100, Math.min(100, currentVal2 + modifier));
+              
+              // QualiaEngine Integration: Let characters "feel" the social event before thinking
+              if (LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
+                const subjectChar = L.characters?.[subject];
+                const counterpartChar = L.characters?.[counterpart];
+                
+                // Map action to event type for QualiaEngine
+                let eventAction = modifier > 0 ? 'compliment' : 'insult';
+                if (/предал|предала|измена|betrayed|betray|backstab/.test(actionLower)) {
+                  eventAction = 'threat'; // betrayal is threatening
+                } else if (/ударил|ударила|ссор|крик|fight|hit|punch/.test(actionLower)) {
+                  eventAction = 'aggression';
+                } else if (/ненавид|hate/.test(actionLower)) {
+                  eventAction = 'criticism';
+                } else if (/оскорбил|оскорбила|insult|унизил|унизила|humiliat/.test(actionLower)) {
+                  eventAction = 'insult';
+                } else if (/угрожал|угрожала|threat|threaten/.test(actionLower)) {
+                  eventAction = 'threat';
+                } else if (/раскритиковал|раскритиковала|critic|критик/.test(actionLower)) {
+                  eventAction = 'criticism';
+                } else if (/поцеловал|поцеловала|kiss|любит|love|обнял|обняла|hug/.test(actionLower)) {
+                  eventAction = 'praise'; // romance is highly positive
+                } else if (/верность|преданность|loyal|support|stood by|поддержал|поддержала/.test(actionLower)) {
+                  eventAction = 'praise';
+                } else if (/похвалил|похвалила|praise|compliment/.test(actionLower)) {
+                  eventAction = 'compliment';
+                } else if (/защитил|защитила|defend|protect/.test(actionLower)) {
+                  eventAction = 'praise';
+                }
+                
+                // Subject experiences the action they performed
+                if (subjectChar) {
+                  LC.QualiaEngine.resonate(subjectChar, {
+                    type: 'social',
+                    actor: subject,
+                    action: eventAction,
+                    target: counterpart,
+                    intensity: Math.min(1, Math.abs(modifier) / 20)
+                  });
+                }
+                
+                // Counterpart receives the action
+                if (counterpartChar) {
+                  LC.QualiaEngine.resonate(counterpartChar, {
+                    type: 'social',
+                    actor: subject,
+                    action: eventAction,
+                    target: counterpart,
+                    intensity: Math.min(1, Math.abs(modifier) / 15) // Receiver feels it more
+                  });
+                }
+              }
             }
           } catch (err) {
             LC.lcWarn(`Regex engine issue: ${err && err.message ? err.message : err}`);
@@ -4039,10 +4103,76 @@ L.debugMode = toBool(L.debugMode, false);
                   expires: expires
                 };
                 
+                // QualiaEngine Integration: Let characters "feel" the mood event
+                if (LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
+                  const char = L.characters?.[character];
+                  if (char) {
+                    // Map mood to qualia event
+                    const moodToEventMap = {
+                      'angry': { type: 'social', action: 'criticism', intensity: 0.7 },
+                      'happy': { type: 'social', action: 'praise', intensity: 0.6 },
+                      'scared': { type: 'environmental', action: 'loud_noise', intensity: 0.8 },
+                      'tired': { type: 'physical', action: 'exhaustion', intensity: 0.5 },
+                      'wounded': { type: 'physical', action: 'pain', intensity: 0.9 },
+                      'embarrassed': { type: 'social', action: 'criticism', intensity: 0.4 },
+                      'jealous': { type: 'social', action: 'criticism', intensity: 0.5 },
+                      'offended': { type: 'social', action: 'insult', intensity: 0.6 },
+                      'guilty': { type: 'social', action: 'criticism', intensity: 0.5 },
+                      'disappointed': { type: 'social', action: 'criticism', intensity: 0.4 }
+                    };
+                    
+                    const eventData = moodToEventMap[mood];
+                    if (eventData) {
+                      LC.QualiaEngine.resonate(char, {
+                        type: eventData.type,
+                        action: eventData.action,
+                        actor: character,
+                        target: character,
+                        intensity: eventData.intensity
+                      });
+                    }
+                  }
+                }
+                
                 // Increment stateVersion to invalidate context cache
                 L.stateVersion++;
                 
                 break; // Found a mood for this sentence
+              }
+            }
+          }
+          
+          // Additional patterns for generic positive/negative events that affect qualia
+          // These don't set mood but trigger qualia responses
+          const qualiaPatterns = [
+            // Positive events
+            { regex: /получил(?:а)?\s+(?:замечательн(?:ый|ой)|прекрасн(?:ый|ой)|отличн(?:ый|ой))?\s*(?:комплимент|похвалу|одобрение)/i, action: 'compliment', intensity: 0.6 },
+            { regex: /(?:был|была)\s+(?:публично\s+)?(?:похвален|похвалена|отмечен|отмечена)/i, action: 'praise', intensity: 0.7 },
+            { regex: /добил(?:ся|ась)\s+(?:значительного|большого|важного)?\s*успех(?:а|ов)/i, action: 'praise', intensity: 0.8 },
+            { regex: /получил(?:а)?\s+(?:неожиданн(?:ый|ой)|замечательн(?:ый|ой))?\s*(?:подарок|сюрприз)/i, action: 'praise', intensity: 0.5 },
+            
+            // Negative events
+            { regex: /(?:был|была)\s+(?:публично\s+)?(?:унижен|унижена|опозорен|опозорена)/i, action: 'insult', intensity: 0.8 },
+            { regex: /получил(?:а)?\s+(?:угрозу|предупреждение)/i, action: 'threat', intensity: 0.7 },
+            { regex: /обнаружил(?:а)?\s+предательство/i, action: 'threat', intensity: 0.9 }
+          ];
+          
+          for (let q = 0; q < qualiaPatterns.length; q++) {
+            const pattern = qualiaPatterns[q];
+            if (pattern.regex.test(sentenceLow)) {
+              const character = findCharacterInText(sentence);
+              
+              if (character && LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
+                const char = L.characters?.[character];
+                if (char) {
+                  LC.QualiaEngine.resonate(char, {
+                    type: 'social',
+                    action: pattern.action,
+                    actor: character,
+                    target: character,
+                    intensity: pattern.intensity
+                  });
+                }
               }
             }
           }
