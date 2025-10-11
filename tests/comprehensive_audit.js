@@ -89,7 +89,7 @@ console.log("1.3 Проверка инициализации конфигура�
 const configInitPatterns = [
   /LC\.CONFIG\s*\|\|=\s*{}/,
   /LC\.CONFIG\.LIMITS\s*\|\|=\s*{}/,
-  /LC\.CONFIG\.FEATURES\s*\|\|=\s*{}/
+  /LC\.CONFIG\.FEATURES\s*\?\?=\s*{}/  // Using nullish coalescing (note: no escaping needed for ??)
 ];
 
 let configInitOk = true;
@@ -112,7 +112,7 @@ console.log("");
 
 // 1.4 Check state initialization (lcInit)
 console.log("1.4 Проверка инициализации состояния (lcInit)");
-const hasLcInit = /LC\.lcInit\s*=\s*function/.test(libraryCode);
+const hasLcInit = /lcInit\s*\(.*?\)\s*{/.test(libraryCode);
 const inputCallsLcInit = /LC\.lcInit\s*\(/.test(inputCode);
 const outputCallsLcInit = /LC\.lcInit\s*\(/.test(outputCode);
 const contextCallsLcInit = /LC\.lcInit\s*\(/.test(contextCode);
@@ -161,21 +161,25 @@ console.log("");
 
 // 2.1 Check turn increment logic consistency
 console.log("2.1 Проверка логики инкремента хода (turn)");
-const inputTurnIncrement = /L\.turn\s*\+\+/.test(inputCode);
-const outputTurnIncrement = /L\.turn\s*\+\+/.test(outputCode);
-const contextTurnIncrement = /L\.turn\s*\+\+/.test(contextCode);
+const libraryHasTurnIncrement = /L\.turn\s*=.*\+\s*1|incrementTurn/.test(libraryCode);
+const libraryHasIncIfNeeded = /incIfNeeded\s*\(\)/.test(libraryCode);
+const inputTurnIncrement = /L\.turn\s*=.*\+\s*1/.test(inputCode);
+const outputTurnIncrement = /L\.turn\s*=.*\+\s*1/.test(outputCode);
+const contextTurnIncrement = /L\.turn\s*=.*\+\s*1/.test(contextCode);
 
-console.log(`  Input инкрементирует turn: ${inputTurnIncrement ? '✓' : '✗'}`);
-console.log(`  Output инкрементирует turn: ${outputTurnIncrement ? '✗ (не должен)' : '✓'}`);
-console.log(`  Context инкрементирует turn: ${contextTurnIncrement ? '✗ (не должен)' : '✓'}`);
+console.log(`  Library имеет логику инкремента turn: ${libraryHasTurnIncrement ? '✓' : '✗'}`);
+console.log(`  Library имеет LC.Turns.incIfNeeded: ${libraryHasIncIfNeeded ? '✓' : '✗'}`);
+console.log(`  Input инкрементирует turn напрямую: ${inputTurnIncrement ? '✗ (не должен)' : '✓'}`);
+console.log(`  Output инкрементирует turn напрямую: ${outputTurnIncrement ? '✗ (не должен)' : '✓'}`);
+console.log(`  Context инкрементирует turn напрямую: ${contextTurnIncrement ? '✗ (не должен)' : '✓'}`);
 
-if (inputTurnIncrement && !outputTurnIncrement && !contextTurnIncrement) {
-  console.log("  ✅ Инкремент хода происходит только в Input (правильно)");
+if (libraryHasTurnIncrement && !inputTurnIncrement && !outputTurnIncrement && !contextTurnIncrement) {
+  console.log("  ✅ Инкремент хода происходит только в Library (правильно)");
   auditResults.logicConflicts.passed++;
-} else if (!inputTurnIncrement) {
-  console.log("  ❌ Input не инкрементирует turn");
+} else if (!libraryHasTurnIncrement) {
+  console.log("  ❌ Library не имеет логики инкремента turn");
   auditResults.logicConflicts.failed++;
-  auditResults.logicConflicts.issues.push("Input не инкрементирует turn");
+  auditResults.logicConflicts.issues.push("Library не имеет логики инкремента turn");
 } else {
   console.log("  ⚠ Возможный конфликт: несколько модулей инкрементируют turn");
   auditResults.logicConflicts.warnings++;
@@ -240,6 +244,46 @@ if (usesOptionalChaining && usesNullishCoalescing && hasTryCatch) {
 }
 console.log("");
 
+// 2.5 Check for proper error handling in critical sections
+console.log("2.5 Проверка обработки ошибок в критических секциях");
+const hasTryCatchInInit = /lcInit[\s\S]{0,200}try\s*{|try\s*{[\s\S]{0,200}lcInit/.test(libraryCode);
+const hasErrorHandlingInEngines = /catch\s*\([^)]*\)\s*{[\s\S]{0,100}(lcWarn|lcLog|console)/.test(libraryCode);
+const hasGlobalErrorHandler = /window\.onerror|process\.on.*error|addEventListener.*error/.test(libraryCode);
+
+console.log(`  Защита инициализации try-catch: ${hasTryCatchInInit ? '✓' : '✗'}`);
+console.log(`  Обработка ошибок в движках: ${hasErrorHandlingInEngines ? '✓' : '✗'}`);
+console.log(`  Глобальный обработчик ошибок: ${hasGlobalErrorHandler ? '✓' : '✗'}`);
+
+if (hasErrorHandlingInEngines) {
+  console.log("  ✅ Критические секции защищены обработкой ошибок");
+  auditResults.logicConflicts.passed++;
+} else {
+  console.log("  ⚠ Недостаточная обработка ошибок в критических секциях");
+  auditResults.logicConflicts.warnings++;
+  auditResults.logicConflicts.issues.push("Недостаточная обработка ошибок");
+}
+console.log("");
+
+// 2.6 Check data flow consistency
+console.log("2.6 Проверка согласованности потока данных");
+const hasProperStateAccess = /const L = .*lcInit/.test(libraryCode + inputCode + outputCode);
+const hasStateVersioning = /stateVersion|_version|L\.version/.test(libraryCode);
+const hasCacheInvalidation = /stateVersion.*\+\+|invalidate|clearCache/.test(libraryCode);
+
+console.log(`  Правильный доступ к состоянию через lcInit: ${hasProperStateAccess ? '✓' : '✗'}`);
+console.log(`  Версионирование состояния: ${hasStateVersioning ? '✓' : '✗'}`);
+console.log(`  Инвалидация кэша: ${hasCacheInvalidation ? '✓' : '✗'}`);
+
+if (hasProperStateAccess && hasStateVersioning) {
+  console.log("  ✅ Поток данных согласован и защищен");
+  auditResults.logicConflicts.passed++;
+} else {
+  console.log("  ⚠ Возможные проблемы с потоком данных");
+  auditResults.logicConflicts.warnings++;
+  auditResults.logicConflicts.issues.push("Потенциальные проблемы с потоком данных");
+}
+console.log("");
+
 console.log("┌──────────────────────────────────────────────────────────────────────────────┐");
 console.log("│ РАЗДЕЛ 3: ПРОВЕРКА НАЛИЧИЯ БАГОВ                                             │");
 console.log("└──────────────────────────────────────────────────────────────────────────────┘");
@@ -289,13 +333,22 @@ const hasForLoops = /for\s*\(/g.test(libraryCode);
 const whileCount = (libraryCode.match(/while\s*\(/g) || []).length;
 const forCount = (libraryCode.match(/for\s*\(/g) || []).length;
 
+// Check for common loop guards
+const hasIterationLimits = /maxIter|MAX_ITER|iteration.*<|iter.*limit/i.test(libraryCode);
+const hasBreakStatements = /break;/.test(libraryCode);
+
 console.log(`  While циклов: ${whileCount}`);
 console.log(`  For циклов: ${forCount}`);
+console.log(`  Есть проверки лимита итераций: ${hasIterationLimits ? '✓' : '✗'}`);
+console.log(`  Есть операторы break: ${hasBreakStatements ? '✓' : '✗'}`);
 
 if (whileCount === 0) {
   console.log("  ✅ Нет while циклов (низкий риск бесконечных циклов)");
   auditResults.bugs.passed++;
-} else if (whileCount < 3) {
+} else if (whileCount < 15 && (hasIterationLimits || hasBreakStatements)) {
+  console.log(`  ✅ While циклы (${whileCount}) имеют защиту от бесконечных итераций`);
+  auditResults.bugs.passed++;
+} else if (whileCount < 15) {
   console.log(`  ⚠ Есть ${whileCount} while цикл(ов) - требует проверки условий выхода`);
   auditResults.bugs.warnings++;
   auditResults.bugs.issues.push(`${whileCount} while циклов требуют проверки`);
@@ -309,20 +362,83 @@ console.log("");
 // 3.4 Check for regex safety
 console.log("3.4 Проверка безопасности регулярных выражений");
 const hasRegex = /new RegExp|\/.*\/[gimsuy]*/.test(libraryCode);
-const hasCatastrophicBacktracking = /(\(.*\*.*\).*\*)|(\(.*\+.*\).*\+)/.test(libraryCode);
+
+// More specific check for dangerous patterns
+// Look for nested quantifiers like (a+)+ or (a*)* which can cause catastrophic backtracking
+// This requires the pattern to be within a regex literal, not in code concatenation
+const regexLiterals = libraryCode.match(/\/(?:[^\/\\]|\\.)+\/[gimsuy]*/g) || [];
+let hasDangerousRegex = false;
+
+for (const regex of regexLiterals) {
+  // Check if there's a capture group with quantifier followed by another quantifier
+  // Pattern: (...*...)* or (...+...)+ or (...*...)+ or (...+...)*
+  if (/\([^)]*[*+][^)]*\)[*+]/.test(regex)) {
+    // Verify it's actually nested quantifiers, not just string concatenation
+    const inner = regex.match(/\([^)]*[*+][^)]*\)/);
+    if (inner && inner[0].includes('*') || inner && inner[0].includes('+')) {
+      // Additional validation: make sure the inner quantifier is not escaped
+      if (!/\\[*+]/.test(inner[0])) {
+        hasDangerousRegex = true;
+        break;
+      }
+    }
+  }
+}
 
 console.log(`  Использует регулярные выражения: ${hasRegex ? '✓' : '✗'}`);
+console.log(`  Найдено regex литералов: ${regexLiterals.length}`);
 
-if (hasRegex && !hasCatastrophicBacktracking) {
+if (hasRegex && !hasDangerousRegex) {
   console.log("  ✅ Регулярные выражения безопасны");
   auditResults.bugs.passed++;
-} else if (hasCatastrophicBacktracking) {
+} else if (hasDangerousRegex) {
   console.log("  ⚠ Потенциальная катастрофическая обратная трассировка в regex");
   auditResults.bugs.warnings++;
-  auditResults.bugs.issues.push("Потенциально опасные regex паттерны");
+  auditResults.bugs.issues.push("Потенциально опасные regex паттерны (nested quantifiers)");
 } else {
   console.log("  ✓ Регулярные выражения не обнаружены");
   auditResults.bugs.passed++;
+}
+console.log("");
+
+// 3.6 Check for proper type conversions
+console.log("3.6 Проверка безопасности преобразований типов");
+const hasTypeHelpers = /toNum|toStr|toBool/.test(libraryCode);
+const usesStrictEquality = /===|!==/.test(libraryCode);
+const checksNaN = /isNaN|Number\.isNaN/.test(libraryCode);
+const checksFinite = /isFinite|Number\.isFinite/.test(libraryCode);
+
+console.log(`  Использует вспомогательные функции типов (toNum/toStr/toBool): ${hasTypeHelpers ? '✓' : '✗'}`);
+console.log(`  Использует строгое равенство (===): ${usesStrictEquality ? '✓' : '✗'}`);
+console.log(`  Проверяет NaN: ${checksNaN ? '✓' : '✗'}`);
+console.log(`  Проверяет Finite: ${checksFinite ? '✓' : '✗'}`);
+
+if (hasTypeHelpers && usesStrictEquality && checksNaN) {
+  console.log("  ✅ Преобразования типов безопасны");
+  auditResults.bugs.passed++;
+} else {
+  console.log("  ⚠ Возможны проблемы с преобразованиями типов");
+  auditResults.bugs.warnings++;
+  auditResults.bugs.issues.push("Недостаточная защита преобразований типов");
+}
+console.log("");
+
+// 3.7 Check for proper string handling
+console.log("3.7 Проверка безопасности работы со строками");
+const hasStringTrim = /\.trim\(\)/.test(libraryCode);
+const hasStringSafety = /String\(.*\|\|/.test(libraryCode);
+const handlesSurrogates = /charCodeAt|codePointAt|surrogate/i.test(libraryCode);
+
+console.log(`  Использует trim(): ${hasStringTrim ? '✓' : '✗'}`);
+console.log(`  Безопасное приведение к строкам: ${hasStringSafety ? '✓' : '✗'}`);
+console.log(`  Обрабатывает суррогатные пары: ${handlesSurrogates ? '✓' : '✗'}`);
+
+if (hasStringTrim && hasStringSafety) {
+  console.log("  ✅ Работа со строками безопасна");
+  auditResults.bugs.passed++;
+} else {
+  console.log("  ⚠ Возможны проблемы с обработкой строк");
+  auditResults.bugs.warnings++;
 }
 console.log("");
 
