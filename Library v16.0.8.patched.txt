@@ -6923,6 +6923,95 @@ LC.composeContextOverlay = function(options) {
             priority.push(`⟦STATUS: ${charName}⟧ ${statusText}`);
           }
         }
+        
+        // Add qualia state for HOT characters (extreme states only)
+        if (character && character.qualia_state) {
+          const qs = character.qualia_state;
+          const qualiaDesc = [];
+          
+          // Check for extreme somatic tension
+          if (qs.somatic_tension >= 0.8) {
+            qualiaDesc.push('крайне напряжен');
+          } else if (qs.somatic_tension <= 0.2) {
+            qualiaDesc.push('полностью расслаблен');
+          }
+          
+          // Check for extreme valence
+          if (qs.valence >= 0.8) {
+            qualiaDesc.push('приятное состояние');
+          } else if (qs.valence <= 0.2) {
+            qualiaDesc.push('негативное состояние');
+          }
+          
+          // Check for extreme focus
+          if (qs.focus_aperture <= 0.3) {
+            qualiaDesc.push('туннельное зрение');
+          }
+          
+          // Check for extreme energy
+          if (qs.energy_level >= 0.9) {
+            qualiaDesc.push('очень бодр');
+          } else if (qs.energy_level <= 0.2) {
+            qualiaDesc.push('истощен');
+          }
+          
+          if (qualiaDesc.length > 0) {
+            priority.push(`⟦QUALIA: ${charName}⟧ ${qualiaDesc.join(', ')}`);
+          }
+        }
+        
+        // Add asymmetric perceptions for HOT characters
+        if (character && character.perceptions && hot.length > 1) {
+          const perceptions = character.perceptions;
+          const significantPerceptions = [];
+          
+          // Find other HOT characters that this character has strong opinions about
+          for (let j = 0; j < hot.length; j++) {
+            const otherChar = hot[j];
+            if (otherChar === charName) continue; // Skip self
+            
+            const perception = perceptions[otherChar];
+            if (!perception || typeof perception !== 'object') continue;
+            
+            // Check for extreme perception values
+            const affection = perception.affection || 50;
+            const trust = perception.trust || 50;
+            const respect = perception.respect || 50;
+            const rivalry = perception.rivalry || 50;
+            
+            const perceptionDesc = [];
+            
+            if (affection >= 80) {
+              perceptionDesc.push('очень любит');
+            } else if (affection <= 20) {
+              perceptionDesc.push('не любит');
+            }
+            
+            if (trust >= 80) {
+              perceptionDesc.push('полностью доверяет');
+            } else if (trust <= 20) {
+              perceptionDesc.push('не доверяет');
+            }
+            
+            if (respect >= 80) {
+              perceptionDesc.push('очень уважает');
+            } else if (respect <= 20) {
+              perceptionDesc.push('не уважает');
+            }
+            
+            if (rivalry >= 80) {
+              perceptionDesc.push('сильно соперничает');
+            }
+            
+            if (perceptionDesc.length > 0) {
+              significantPerceptions.push(`${otherChar}: ${perceptionDesc.join(', ')}`);
+            }
+          }
+          
+          if (significantPerceptions.length > 0) {
+            priority.push(`⟦PERCEPTION: ${charName}⟧ ${significantPerceptions.join('; ')}`);
+          }
+        }
       }
     }
 
@@ -6947,6 +7036,8 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦CONFLICT:") === 0) return 735;
       if (line.indexOf("⟦TRAITS:") === 0) return 730;
       if (line.indexOf("⟦STATUS:") === 0) return 728;
+      if (line.indexOf("⟦QUALIA:") === 0) return 727;
+      if (line.indexOf("⟦PERCEPTION:") === 0) return 726;
       if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
       if (line.indexOf("⟦OPENING⟧") === 0)return 700;
       if (line.indexOf("⟦SCENE⟧") === 0 && line.indexOf("Focus") !== -1) return 600;
@@ -6960,7 +7051,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, CONFLICT:0, TRAITS:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, CONFLICT:0, TRAITS:0, STATUS:0, QUALIA:0, PERCEPTION:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
@@ -6973,13 +7064,13 @@ LC.composeContextOverlay = function(options) {
         if (remaining >= 40) {
           const slice = line.slice(0, remaining);
           text += nl + slice;
-          const tag = (line.match(/^⟦([A-Z]+)⟧/)||[])[1] || "GUIDE";
+          const tag = (line.match(/^⟦([A-Z]+)(?::|⟧)/)||[])[1] || "GUIDE";
           parts[tag] = (parts[tag]||0) + nl.length + slice.length;
         }
         break;
       }
       text += nl + line;
-      const tag = (line.match(/^⟦([A-Z]+)⟧/)||[])[1] || "GUIDE";
+      const tag = (line.match(/^⟦([A-Z]+)(?::|⟧)/)||[])[1] || "GUIDE";
       parts[tag] = (parts[tag]||0) + line.length + nl.length;
     }
     
