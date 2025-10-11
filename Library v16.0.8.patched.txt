@@ -1360,6 +1360,9 @@ Contract:
      * @returns {object} The initialized Lincoln state object with all required properties
      */
     lcInit(slot = __SCRIPT_SLOT__) {
+      // =======================================================================
+      // 1. БАЗОВАЯ ИНИЦИАЛИЗАЦИЯ STATE
+      // =======================================================================
       const st = getState();
       const L = (st.lincoln = st.lincoln || {});
       const scriptSlot = toStr(slot || __SCRIPT_SLOT__ || "Library");
@@ -1382,6 +1385,37 @@ Contract:
       // echo cache auto-flush on new session
       try { if ((L.turn|0) <= 0) { this._echoCache = {}; this._echoOrder = []; } } catch(_) {}
       
+      // =======================================================================
+      // 2. ИНИЦИАЛИЗАЦИЯ КОНФИГУРАЦИИ
+      // =======================================================================
+      // User config merge: если в state есть lincoln_config, рекурсивно мержим с LC.CONFIG
+      if (st.lincoln_config && typeof st.lincoln_config === 'object') {
+        try {
+          const deepMerge = (target, source) => {
+            if (!source || typeof source !== 'object' || Array.isArray(source)) return target;
+            const result = { ...target };
+            for (const key in source) {
+              if (Object.prototype.hasOwnProperty.call(source, key)) {
+                const srcVal = source[key];
+                const tgtVal = target[key];
+                if (srcVal && typeof srcVal === 'object' && !Array.isArray(srcVal) && tgtVal && typeof tgtVal === 'object' && !Array.isArray(tgtVal)) {
+                  result[key] = deepMerge(tgtVal, srcVal);
+                } else {
+                  result[key] = srcVal;
+                }
+              }
+            }
+            return result;
+          };
+          LC.CONFIG = deepMerge(LC.CONFIG, st.lincoln_config);
+        } catch (e) {
+          LC.lcWarn?.('Config merge failed: ' + (e && e.message ? e.message : e));
+        }
+      }
+      
+      // =======================================================================
+      // 3. ИНИЦИАЛИЗАЦИЯ КЛЮЧЕВЫХ СИСТЕМ
+      // =======================================================================
       // stateVersion counter for context caching
       L.stateVersion = L.stateVersion || 0;
 
@@ -1392,6 +1426,9 @@ Contract:
         LC._contextCache = {};
       }
 
+      // =======================================================================
+      // 4. ИНИЦИАЛИЗАЦИЯ БАЗОВЫХ ОБЪЕКТОВ СОСТОЯНИЯ
+      // =======================================================================
       // turn/flags
       L.turn = toNum(L.turn, 0);
       L.lastProcessedTurn = toNum(L.lastProcessedTurn, -1);
@@ -1523,30 +1560,15 @@ L.debugMode = toBool(L.debugMode, false);
       }
       // 0 = без капа
 
-      // User config merge: если в state есть lincoln_config, рекурсивно мержим с LC.CONFIG
-      if (st.lincoln_config && typeof st.lincoln_config === 'object') {
-        try {
-          const deepMerge = (target, source) => {
-            if (!source || typeof source !== 'object' || Array.isArray(source)) return target;
-            const result = { ...target };
-            for (const key in source) {
-              if (Object.prototype.hasOwnProperty.call(source, key)) {
-                const srcVal = source[key];
-                const tgtVal = target[key];
-                if (srcVal && typeof srcVal === 'object' && !Array.isArray(srcVal) && tgtVal && typeof tgtVal === 'object' && !Array.isArray(tgtVal)) {
-                  result[key] = deepMerge(tgtVal, srcVal);
-                } else {
-                  result[key] = srcVal;
-                }
-              }
-            }
-            return result;
-          };
-          LC.CONFIG = deepMerge(LC.CONFIG, st.lincoln_config);
-        } catch (e) {
-          LC.lcWarn?.('Config merge failed: ' + (e && e.message ? e.message : e));
-        }
-      }
+      // =======================================================================
+      // 5. РЕГИСТРАЦИЯ И ВНУТРЕННЯЯ ИНИЦИАЛИЗАЦИЯ ДВИЖКОВ
+      // =======================================================================
+      // Движки не требуют явной инициализации, работают по требованию (lazy init)
+      // При необходимости здесь можно добавить вызовы init() методов:
+      // LC.QualiaEngine.init?.(L);
+      // LC.CrucibleEngine.init?.(L);
+      // LC.TimeEngine.init?.(L);
+      // ...
 
       return L;
     },
