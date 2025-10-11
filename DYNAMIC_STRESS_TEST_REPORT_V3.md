@@ -23,61 +23,61 @@ This report presents the results of a comprehensive 2500-turn simulation designe
 
 | Turn | State Size (bytes) | Change | Rumor Count |
 |------|-------------------|--------|-------------|
-| 50 | 9,098 | 0 | 17 |
-| 100 | 13,675 | +4577 | 36 |
-| 150 | 15,751 | +2076 | 45 |
-| 200 | 19,860 | +4109 | 62 |
-| 250 | 23,690 | +3830 | 79 |
-| 300 | 27,054 | +3364 | 92 |
-| 350 | 29,845 | +2791 | 106 |
-| 400 | 34,059 | +4214 | 121 |
-| 450 | 36,049 | +1990 | 133 |
-| 500 | 39,473 | +3424 | 146 |
-| 550 | 40,384 | +911 | 150 |
-| 600 | 40,338 | -46 | 150 |
-| 650 | 40,773 | +435 | 150 |
-| 700 | 40,318 | -455 | 150 |
-| 750 | 40,224 | -94 | 150 |
-| 800 | 40,306 | +82 | 150 |
-| 850 | 40,306 | 0 | 150 |
-| 900 | 40,601 | +295 | 150 |
-| 950 | 40,349 | -252 | 150 |
-| 1000 | 40,940 | +591 | 150 |
-| 1050 | 41,180 | +240 | 150 |
-| 1100 | 40,779 | -401 | 150 |
-| 1150 | 40,707 | -72 | 150 |
-| 1200 | 41,154 | +447 | 150 |
-| 1250 | 42,157 | +1003 | 150 |
-| 1300 | 41,666 | -491 | 150 |
-| 1350 | 41,514 | -152 | 150 |
-| 1400 | 41,718 | +204 | 150 |
-| 1450 | 41,273 | -445 | 150 |
-| 1500 | 41,778 | +505 | 150 |
-| 1550 | 41,552 | -226 | 150 |
-| 1600 | 42,110 | +558 | 150 |
-| 1650 | 41,467 | -643 | 150 |
-| 1700 | 42,514 | +1047 | 150 |
-| 1750 | 41,903 | -611 | 150 |
-| 1800 | 41,590 | -313 | 150 |
-| 1850 | 42,238 | +648 | 150 |
-| 1900 | 42,451 | +213 | 150 |
-| 1950 | 42,053 | -398 | 150 |
-| 2000 | 42,017 | -36 | 150 |
-| 2050 | 42,646 | +629 | 150 |
-| 2100 | 42,577 | -69 | 150 |
-| 2150 | 42,846 | +269 | 150 |
-| 2200 | 43,200 | +354 | 150 |
-| 2250 | 42,766 | -434 | 150 |
-| 2300 | 43,260 | +494 | 150 |
-| 2350 | 43,470 | +210 | 150 |
-| 2400 | 43,350 | -120 | 150 |
-| 2450 | 43,476 | +126 | 150 |
-| 2500 | 42,845 | -631 | 150 |
+| 50 | 9,647 | 0 | 14 |
+| 100 | 12,054 | +2407 | 21 |
+| 150 | 15,774 | +3720 | 33 |
+| 200 | 20,521 | +4747 | 45 |
+| 250 | 24,269 | +3748 | 55 |
+| 300 | 26,727 | +2458 | 64 |
+| 350 | 31,659 | +4932 | 79 |
+| 400 | 37,019 | +5360 | 93 |
+| 450 | 39,677 | +2658 | 100 |
+| 500 | 42,952 | +3275 | 109 |
+| 550 | 46,497 | +3545 | 123 |
+| 600 | 52,150 | +5653 | 139 |
+| 650 | 55,351 | +3201 | 149 |
+| 700 | 55,978 | +627 | 150 |
+| 750 | 58,234 | +2256 | 150 |
+| 800 | 59,030 | +796 | 150 |
+| 850 | 59,662 | +632 | 150 |
+| 900 | 60,763 | +1101 | 150 |
+| 950 | 60,541 | -222 | 150 |
+| 1000 | 61,944 | +1403 | 150 |
+| 1050 | 63,095 | +1151 | 150 |
+| 1100 | 64,119 | +1024 | 150 |
+| 1150 | 67,090 | +2971 | 150 |
+| 1200 | 67,373 | +283 | 150 |
+| 1250 | 69,443 | +2070 | 150 |
+| 1300 | 68,844 | -599 | 150 |
+| 1350 | 71,058 | +2214 | 150 |
+| 1400 | 74,052 | +2994 | 150 |
+| 1450 | 75,450 | +1398 | 150 |
+| 1500 | 76,314 | +864 | 150 |
+| 1550 | 77,017 | +703 | 150 |
+| 1600 | 77,230 | +213 | 150 |
+| 1650 | 79,646 | +2416 | 150 |
+| 1700 | 79,416 | -230 | 150 |
+| 1750 | 81,049 | +1633 | 150 |
+| 1800 | 81,966 | +917 | 150 |
+| 1850 | 84,567 | +2601 | 150 |
+| 1900 | 85,853 | +1286 | 150 |
+| 1950 | 86,571 | +718 | 150 |
+| 2000 | 87,984 | +1413 | 150 |
+| 2050 | 89,209 | +1225 | 150 |
+| 2100 | 89,473 | +264 | 150 |
+| 2150 | 90,900 | +1427 | 150 |
+| 2200 | 92,322 | +1422 | 150 |
+| 2250 | 93,814 | +1492 | 150 |
+| 2300 | 94,644 | +830 | 150 |
+| 2350 | 96,121 | +1477 | 150 |
+| 2400 | 98,444 | +2323 | 150 |
+| 2450 | 98,847 | +403 | 150 |
+| 2500 | 99,798 | +951 | 150 |
 
 **Growth Analysis:**
-- Initial state size: 9,098 bytes
-- Final state size: 42,845 bytes
-- Growth ratio: 4.71x
+- Initial state size: 9,647 bytes
+- Final state size: 99,798 bytes
+- Growth ratio: 10.34x
 - **Status:** ⚠️ EXCESSIVE GROWTH
 
 ### 1.2 Character Status Dynamics
@@ -141,8 +141,8 @@ This report presents the results of a comprehensive 2500-turn simulation designe
 
 **Rumor Lifecycle:**
 - Maximum rumors: 150
-- Minimum rumors: 17
-- Average rumors: 136.7
+- Minimum rumors: 14
+- Average rumors: 131.5
 
 **Verdict:** ✅ Garbage collection working effectively (under RUMOR_HARD_CAP + buffer)
 
@@ -152,7 +152,7 @@ This report presents the results of a comprehensive 2500-turn simulation designe
 
 ### 2.1 Social Hierarchy Dynamics
 
-**Leadership Changes:** 2 different configurations detected
+**Leadership Changes:** 1 different configurations detected
 
 | Turn | Leaders | Outcasts |
 |------|---------|----------|
@@ -180,34 +180,34 @@ This report presents the results of a comprehensive 2500-turn simulation designe
 | 1100 | none | none |
 | 1150 | none | none |
 | 1200 | none | none |
-| 1250 | Эшли | none |
-| 1300 | Эшли | none |
-| 1350 | Эшли | none |
-| 1400 | Эшли | none |
-| 1450 | Эшли | none |
-| 1500 | Эшли | none |
-| 1550 | Эшли | none |
-| 1600 | Эшли | none |
-| 1650 | Эшли | none |
-| 1700 | Эшли | none |
-| 1750 | Эшли | none |
-| 1800 | Эшли | none |
-| 1850 | Эшли | none |
-| 1900 | Эшли | none |
-| 1950 | Эшли | none |
-| 2000 | Эшли | none |
-| 2050 | Эшли | none |
-| 2100 | Эшли | none |
-| 2150 | Эшли | none |
-| 2200 | Эшли | none |
-| 2250 | Эшли | none |
-| 2300 | Эшли | none |
-| 2350 | Эшли | none |
-| 2400 | Эшли | none |
-| 2450 | Эшли | none |
-| 2500 | Эшли | none |
+| 1250 | none | none |
+| 1300 | none | none |
+| 1350 | none | none |
+| 1400 | none | none |
+| 1450 | none | none |
+| 1500 | none | none |
+| 1550 | none | none |
+| 1600 | none | none |
+| 1650 | none | none |
+| 1700 | none | none |
+| 1750 | none | none |
+| 1800 | none | none |
+| 1850 | none | none |
+| 1900 | none | none |
+| 1950 | none | none |
+| 2000 | none | none |
+| 2050 | none | none |
+| 2100 | none | none |
+| 2150 | none | none |
+| 2200 | none | none |
+| 2250 | none | none |
+| 2300 | none | none |
+| 2350 | none | none |
+| 2400 | none | none |
+| 2450 | none | none |
+| 2500 | none | none |
 
-**Analysis:** ✅ Dynamic hierarchy - Limited changes may indicate pattern stagnation
+**Analysis:** ⚠️ Stagnant hierarchy - Limited changes may indicate pattern stagnation
 
 ### 2.2 Social Norms Evolution
 
@@ -287,7 +287,7 @@ System correctly interpreted neutral events without catastrophic bias amplificat
 ### 4.2 Emergent Behavior Quality
 
 **Social Dynamics:** ⚠️ LIMITED
-- 2 different leadership configurations
+- 1 different leadership configurations
 - Potential pattern repetition
 
 ### 4.3 Overall Recommendation
@@ -302,6 +302,6 @@ While the system demonstrates core functionality, addressing these issues would 
 
 ---
 
-**Test Completion Date:** 2025-10-11T14:27:59.917Z  
+**Test Completion Date:** 2025-10-11T21:29:33.048Z  
 **Total Simulation Time:** 2500 turns  
 **Test Status:** COMPLETE
