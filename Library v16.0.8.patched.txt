@@ -41,6 +41,7 @@ Contract:
   _preparedConfig.CHAR_WINDOW_HOT ??= 3;
   _preparedConfig.CHAR_WINDOW_ACTIVE ??= 10;
   _preparedLimits.EVERGREEN_HISTORY_CAP ??= 400;
+  _preparedLimits.RUMOR_HARD_CAP ??= 150;
   _preparedConfig.FEATURES ??= { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true };
 
   const LC = (typeof globalThis !== "undefined" ? (globalThis.LC ||= {}) : (_globalScope.LC ||= {}));
@@ -4712,8 +4713,8 @@ L.debugMode = toBool(L.debugMode, false);
           rumorsWithScore.sort((a, b) => a.relevance - b.relevance);
           
           // Force-archive least relevant rumors until under cap
-          const targetCount = RUMOR_HARD_CAP;
-          for (let i = 0; i < rumorsWithScore.length && L.rumors.length > targetCount; i++) {
+          const numToArchive = L.rumors.length - RUMOR_HARD_CAP;
+          for (let i = 0; i < numToArchive && i < rumorsWithScore.length; i++) {
             const item = rumorsWithScore[i];
             if (item.rumor.status !== 'ARCHIVED') {
               item.rumor.status = 'ARCHIVED';

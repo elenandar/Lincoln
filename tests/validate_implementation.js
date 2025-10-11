@@ -329,7 +329,7 @@ console.log("");
 console.log("✓ REQUIREMENT 7: GC integrated in Output.txt");
 
 const hasPeriodicTrigger = outputCode.includes('L.turn % 25 === 0');
-const hasBulkTrigger = outputCode.includes('L.rumors.length > 100');
+const hasBulkTrigger = outputCode.includes('L.rumors.length > 100') || outputCode.includes('L.rumors.length > RUMOR_HARD_CAP');
 const hasGCCall = outputCode.includes('LC.GossipEngine?.runGarbageCollection?.()');
 const hasSysMessage = outputCode.includes('Проведена плановая очистка слухов');
 
@@ -341,10 +341,10 @@ if (!hasPeriodicTrigger) {
 }
 
 if (!hasBulkTrigger) {
-  console.log("  ❌ FAILED: Missing bulk trigger (rumors > 100)");
+  console.log("  ❌ FAILED: Missing bulk trigger (rumors > RUMOR_HARD_CAP or 100)");
   allTestsPassed = false;
 } else {
-  console.log("  ✅ Bulk trigger: L.rumors.length > 100");
+  console.log("  ✅ Bulk trigger: L.rumors.length > RUMOR_HARD_CAP");
 }
 
 if (!hasGCCall) {
