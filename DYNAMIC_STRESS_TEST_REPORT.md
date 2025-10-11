@@ -23,31 +23,31 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 
 | Turn | State Size (bytes) | Change | Rumor Count |
 |------|-------------------|--------|-------------|
-| 50 | 7,963 | 0 | 11 |
-| 100 | 10,714 | +2751 | 22 |
-| 150 | 14,450 | +3736 | 38 |
-| 200 | 16,825 | +2375 | 47 |
-| 250 | 20,142 | +3317 | 60 |
-| 300 | 21,932 | +1790 | 71 |
-| 350 | 25,764 | +3832 | 85 |
-| 400 | 28,603 | +2839 | 96 |
-| 450 | 29,280 | +677 | 101 |
-| 500 | 32,759 | +3479 | 114 |
-| 550 | 35,136 | +2377 | 127 |
-| 600 | 39,263 | +4127 | 144 |
-| 650 | 42,169 | +2906 | 155 |
-| 700 | 45,152 | +2983 | 167 |
-| 750 | 46,872 | +1720 | 178 |
-| 800 | 51,145 | +4273 | 193 |
-| 850 | 55,310 | +4165 | 213 |
-| 900 | 58,016 | +2706 | 224 |
-| 950 | 60,898 | +2882 | 235 |
-| 1000 | 63,666 | +2768 | 249 |
+| 50 | 8,737 | 0 | 16 |
+| 100 | 11,183 | +2446 | 26 |
+| 150 | 12,903 | +1720 | 34 |
+| 200 | 15,965 | +3062 | 45 |
+| 250 | 22,040 | +6075 | 69 |
+| 300 | 24,292 | +2252 | 81 |
+| 350 | 27,644 | +3352 | 97 |
+| 400 | 32,317 | +4673 | 113 |
+| 450 | 34,785 | +2468 | 123 |
+| 500 | 38,928 | +4143 | 144 |
+| 550 | 41,056 | +2128 | 150 |
+| 600 | 44,661 | +3605 | 165 |
+| 650 | 47,087 | +2426 | 178 |
+| 700 | 50,263 | +3176 | 190 |
+| 750 | 53,810 | +3547 | 203 |
+| 800 | 56,746 | +2936 | 217 |
+| 850 | 59,926 | +3180 | 228 |
+| 900 | 61,881 | +1955 | 240 |
+| 950 | 66,536 | +4655 | 256 |
+| 1000 | 71,382 | +4846 | 275 |
 
 **Growth Analysis:**
-- Initial state size: 7,963 bytes
-- Final state size: 63,666 bytes
-- Growth ratio: 8.00x
+- Initial state size: 8,737 bytes
+- Final state size: 71,382 bytes
+- Growth ratio: 8.17x
 - **Status:** ⚠️ EXCESSIVE GROWTH
 
 ### 1.2 Character Status Dynamics
@@ -80,9 +80,9 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 ### 1.3 Memory Management
 
 **Rumor Lifecycle:**
-- Maximum rumors: 249
-- Minimum rumors: 11
-- Average rumors: 126.5
+- Maximum rumors: 275
+- Minimum rumors: 16
+- Average rumors: 142.5
 
 **Verdict:** ⚠️ Potential memory leak
 
@@ -112,10 +112,10 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 | 700 | none | none |
 | 750 | none | none |
 | 800 | none | none |
-| 850 | Максим | none |
-| 900 | Максим | none |
-| 950 | Максим | none |
-| 1000 | Максим | none |
+| 850 | София | none |
+| 900 | София | none |
+| 950 | София | none |
+| 1000 | София | none |
 
 **Analysis:** ✅ Dynamic hierarchy - Limited changes may indicate pattern stagnation
 
@@ -212,6 +212,6 @@ While the system demonstrates core functionality, addressing these issues would 
 
 ---
 
-**Test Completion Date:** 2025-10-11T11:23:20.294Z  
+**Test Completion Date:** 2025-10-11T11:24:33.247Z  
 **Total Simulation Time:** 1000 turns  
 **Test Status:** COMPLETE
