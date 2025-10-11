@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * Dynamic Stress Test - "The Thousand-Turn Run"
+ * Dynamic Stress Test - "The 2500-Turn Run"
  * 
- * This script performs a comprehensive 1000-turn simulation to verify:
+ * This script performs a comprehensive 2500-turn simulation to verify:
  * 1. Long-term stability (memory, state size)
  * 2. Emergent behavior quality (leaders, norms, diversity)
  * 3. Consciousness stability (qualia state resilience)
  */
 
 console.log("╔══════════════════════════════════════════════════════════════════════════════╗");
-console.log("║                    DYNAMIC STRESS TEST - 1000 TURNS                          ║");
+console.log("║                    DYNAMIC STRESS TEST - 2500 TURNS                          ║");
 console.log("╚══════════════════════════════════════════════════════════════════════════════╝");
 console.log("");
 
@@ -174,14 +174,14 @@ function collectMetrics(turn) {
 
 function runThousandTurnSimulation() {
   console.log("┌──────────────────────────────────────────────────────────────────────────────┐");
-  console.log("│ TASK 3.2: 1000-TURN SIMULATION                                               │");
+  console.log("│ TASK 3.2: 2500-TURN SIMULATION                                               │");
   console.log("└──────────────────────────────────────────────────────────────────────────────┘");
   console.log("");
   
   initializeCharacters();
   
   const metrics = [];
-  const TOTAL_TURNS = 1000;
+  const TOTAL_TURNS = 2500;
   const METRIC_INTERVAL = 50;
   const TIME_JUMP_INTERVAL = 200;
   
@@ -495,17 +495,17 @@ function generateReport(metrics, feedbackTests) {
   console.log("└──────────────────────────────────────────────────────────────────────────────┘");
   console.log("");
   
-  let report = `# Dynamic Stress Test Report - "The Thousand-Turn Run"
+  let report = `# Dynamic Stress Test Report - "The 2500-Turn Run"
 
 **Date:** ${new Date().toISOString().split('T')[0]}  
-**Duration:** 1000 turns  
+**Duration:** 2500 turns  
 **Characters:** 7 (2 MAIN, 5 SECONDARY)
 
 ---
 
 ## Executive Summary
 
-This report presents the results of a comprehensive 1000-turn simulation designed to verify:
+This report presents the results of a comprehensive 2500-turn simulation designed to verify:
 1. **Long-term Stability** - Memory management and state size growth
 2. **Emergent Behavior Quality** - Social dynamics and narrative richness
 3. **Consciousness Stability** - Qualia state resilience under extreme conditions
@@ -728,7 +728,7 @@ ${paranoiaTest.stable ? 'System correctly interpreted neutral events without cat
     report += `✅ **SYSTEM CERTIFIED FOR PRODUCTION**
 
 The Lincoln system has successfully passed all stress tests:
-- ✓ Long-term stability maintained over 1000 turns
+- ✓ Long-term stability maintained over 2500 turns
 - ✓ Memory management effective
 - ✓ Consciousness simulation remains stable under extreme conditions
 - ✓ Emergent social behavior remains interesting and dynamic
@@ -747,7 +747,7 @@ While the system demonstrates core functionality, addressing these issues would 
   report += `\n---
 
 **Test Completion Date:** ${new Date().toISOString()}  
-**Total Simulation Time:** 1000 turns  
+**Total Simulation Time:** 2500 turns  
 **Test Status:** COMPLETE
 `;
 
@@ -771,10 +771,10 @@ try {
   const report = generateReport(metrics, feedbackTests);
   
   // Save report
-  const reportPath = path.join(__dirname, '..', 'DYNAMIC_STRESS_TEST_REPORT.md');
+  const reportPath = path.join(__dirname, '..', 'DYNAMIC_STRESS_TEST_REPORT_V3.md');
   fs.writeFileSync(reportPath, report, 'utf8');
   
-  console.log(`✓ Report saved to: DYNAMIC_STRESS_TEST_REPORT.md`);
+  console.log(`✓ Report saved to: DYNAMIC_STRESS_TEST_REPORT_V3.md`);
   console.log("");
   
   console.log("╔══════════════════════════════════════════════════════════════════════════════╗");
