@@ -7241,6 +7241,47 @@ L.debugMode = toBool(L.debugMode, false);
       },
       
       /**
+       * Generates meaningful descriptive text for a lore entry based on event type and metadata.
+       * 
+       * @param {object} event - The event object with type, participants, and other metadata
+       * @returns {string} Generated text description
+       */
+      _generateLoreText(event) {
+        if (!event || !event.type) return 'Неизвестное событие произошло.';
+        
+        const participants = event.participants || [];
+        const p1 = participants[0] || 'Кто-то';
+        const p2 = participants[1] || 'кого-то';
+        
+        // Generate text based on event type
+        switch (event.type) {
+          case 'betrayal':
+            return `${p1} предал ${p2}, что навсегда изменило их отношения.`;
+          
+          case 'public_humiliation':
+            return `${p1} был публично унижен ${p2} на глазах у всех.`;
+          
+          case 'loyalty_rescue':
+            return `В трудный момент ${p1} проявил верность и спас ${p2}.`;
+          
+          case 'romance':
+            return `${p1} и ${p2} открыли свои чувства друг к другу.`;
+          
+          case 'conflict':
+            return `${p1} вступил в конфликт с ${p2}, который запомнится надолго.`;
+          
+          case 'achievement':
+            return `${p1} достиг выдающегося успеха, о котором говорит вся школа.`;
+          
+          case 'secret_reveal':
+            return `Тайна раскрыта: ${p1} узнал секрет ${p2}, и все об этом узнали.`;
+          
+          default:
+            return `${p1} и ${p2} стали частью школьной легенды.`;
+        }
+      },
+      
+      /**
        * Creates and adds a new lore entry (internal function).
        * 
        * @param {object} event - The event to crystallize into lore
@@ -7264,6 +7305,9 @@ L.debugMode = toBool(L.debugMode, false);
           L.lore.stats = {};
         }
         
+        // Generate meaningful text for the legend
+        const loreText = this._generateLoreText(event);
+        
         // Create the lore entry
         const lore_entry = {
           type: event.type || 'unknown',
@@ -7271,6 +7315,7 @@ L.debugMode = toBool(L.debugMode, false);
           witnesses: event.witnesses || 0,
           impact: event.impact || 0,
           description: event.description || '',
+          Text: loreText,
           turn: L.turn,
           potential: this.calculateLorePotential(event)
         };
