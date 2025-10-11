@@ -1910,6 +1910,15 @@ L.debugMode = toBool(L.debugMode, false);
               conformity: 0.5      // Conformity to norms [0, 1]
             };
           }
+          // Initialize qualia state (phenomenal core) if not present
+          if (!rec.qualia_state) {
+            rec.qualia_state = {
+              somatic_tension: 0.3,  // Мышечное/нервное напряжение [0-1]
+              valence: 0.5,          // Базовый аффект (0-неприятно, 1-приятно)
+              focus_aperture: 0.7,   // Широта фокуса (0-туннельное зрение, 1-рассеянность)
+              energy_level: 0.8      // Уровень энергии/бодрости [0-1]
+            };
+          }
           rec.lastSeen = t; rec.mentions++;
           L.characters[key] = rec;
         }
@@ -4819,6 +4828,17 @@ L.debugMode = toBool(L.debugMode, false);
                 if (char.flags[progressKey] > 1.0) {
                   char.flags[progressKey] = 1.0;
                 }
+                
+                // Notify QualiaEngine about sensations from working on goal
+                if (LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
+                  // Working on a goal creates focused energy
+                  LC.QualiaEngine.resonate(char, {
+                    type: 'achievement',
+                    actor: characterName,
+                    action: 'progress',
+                    intensity: 0.5
+                  });
+                }
               }
             }
             break;
@@ -4851,6 +4871,34 @@ L.debugMode = toBool(L.debugMode, false);
                   change: modifier,
                   finalValue: LC.RelationsEngine.getRelation(action.target, characterName)
                 });
+              }
+              
+              // Notify QualiaEngine about bodily sensations from negative interaction
+              if (LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
+                const actorChar = L.characters[characterName];
+                const targetChar = L.characters[action.target];
+                
+                if (actorChar) {
+                  // Actor feels tension/aggression during negative interaction
+                  LC.QualiaEngine.resonate(actorChar, {
+                    type: 'social',
+                    actor: characterName,
+                    action: 'aggression',
+                    target: action.target,
+                    intensity: Math.min(1, Math.abs(modifier) / 10)
+                  });
+                }
+                
+                if (targetChar) {
+                  // Target receives insult/criticism
+                  LC.QualiaEngine.resonate(targetChar, {
+                    type: 'social',
+                    actor: characterName,
+                    action: 'insult',
+                    target: action.target,
+                    intensity: Math.min(1, Math.abs(modifier) / 10)
+                  });
+                }
               }
               
               // Update social capital for negative interaction
@@ -4892,6 +4940,34 @@ L.debugMode = toBool(L.debugMode, false);
                   change: modifier,
                   finalValue: LC.RelationsEngine.getRelation(action.target, characterName)
                 });
+              }
+              
+              // Notify QualiaEngine about bodily sensations from positive interaction
+              if (LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
+                const actorChar = L.characters[characterName];
+                const targetChar = L.characters[action.target];
+                
+                if (targetChar) {
+                  // Target receives compliment/praise
+                  LC.QualiaEngine.resonate(targetChar, {
+                    type: 'social',
+                    actor: characterName,
+                    action: 'compliment',
+                    target: action.target,
+                    intensity: Math.min(1, modifier / 10)
+                  });
+                }
+                
+                if (actorChar) {
+                  // Actor feels positive from giving kindness
+                  LC.QualiaEngine.resonate(actorChar, {
+                    type: 'social',
+                    actor: characterName,
+                    action: 'compliment',
+                    target: action.target,
+                    intensity: Math.min(1, modifier / 15) // Smaller effect for giver
+                  });
+                }
               }
               
               // Update social capital for positive interaction
@@ -5171,6 +5247,155 @@ L.debugMode = toBool(L.debugMode, false);
         }
         
         return details;
+      }
+    },
+
+    // ========== Qualia Engine (Phenomenal Core) ==========
+    /**
+     * The Qualia Engine simulates the raw, pre-cognitive, bodily sensations
+     * of characters. This is the lowest-level layer of consciousness that
+     * colors all thoughts and decisions.
+     */
+    QualiaEngine: {
+      /**
+       * Translates external events into changes in internal sensations.
+       * This is the "Limbic Resonator" that directly modifies qualia_state
+       * without cognitive interpretation.
+       * @param {object} character - The character object from L.characters
+       * @param {object} event - The event object {type, actor, action, target, intensity}
+       */
+      resonate(character, event) {
+        if (!character || !event || !event.type) return;
+        
+        // Ensure qualia_state exists
+        if (!character.qualia_state) {
+          character.qualia_state = {
+            somatic_tension: 0.3,
+            valence: 0.5,
+            focus_aperture: 0.7,
+            energy_level: 0.8
+          };
+        }
+        
+        const qs = character.qualia_state;
+        const intensity = event.intensity || 1.0;
+        
+        // Event-to-qualia mapping
+        switch (event.type) {
+          case 'social':
+            if (event.action === 'compliment' || event.action === 'praise') {
+              qs.valence = Math.min(1, qs.valence + 0.1 * intensity);
+              qs.somatic_tension = Math.max(0, qs.somatic_tension - 0.05 * intensity);
+            } else if (event.action === 'insult' || event.action === 'criticism') {
+              qs.valence = Math.max(0, qs.valence - 0.2 * intensity);
+              qs.somatic_tension = Math.min(1, qs.somatic_tension + 0.15 * intensity);
+            } else if (event.action === 'threat' || event.action === 'aggression') {
+              qs.valence = Math.max(0, qs.valence - 0.25 * intensity);
+              qs.somatic_tension = Math.min(1, qs.somatic_tension + 0.3 * intensity);
+              qs.focus_aperture = Math.max(0, qs.focus_aperture - 0.2 * intensity);
+            }
+            break;
+            
+          case 'environmental':
+            if (event.action === 'loud_noise' || event.action === 'sudden_sound') {
+              qs.somatic_tension = Math.min(1, qs.somatic_tension + 0.3 * intensity);
+              qs.focus_aperture = Math.max(0, qs.focus_aperture - 0.2 * intensity);
+            } else if (event.action === 'calm' || event.action === 'peaceful') {
+              qs.somatic_tension = Math.max(0, qs.somatic_tension - 0.1 * intensity);
+              qs.valence = Math.min(1, qs.valence + 0.05 * intensity);
+            }
+            break;
+            
+          case 'physical':
+            if (event.action === 'pain' || event.action === 'injury') {
+              qs.valence = Math.max(0, qs.valence - 0.3 * intensity);
+              qs.somatic_tension = Math.min(1, qs.somatic_tension + 0.4 * intensity);
+              qs.energy_level = Math.max(0, qs.energy_level - 0.2 * intensity);
+            } else if (event.action === 'rest' || event.action === 'relaxation') {
+              qs.somatic_tension = Math.max(0, qs.somatic_tension - 0.15 * intensity);
+              qs.energy_level = Math.min(1, qs.energy_level + 0.1 * intensity);
+            }
+            break;
+            
+          case 'achievement':
+            if (event.action === 'success' || event.action === 'progress') {
+              qs.valence = Math.min(1, qs.valence + 0.15 * intensity);
+              qs.energy_level = Math.min(1, qs.energy_level + 0.1 * intensity);
+            } else if (event.action === 'failure' || event.action === 'setback') {
+              qs.valence = Math.max(0, qs.valence - 0.15 * intensity);
+              qs.energy_level = Math.max(0, qs.energy_level - 0.15 * intensity);
+            }
+            break;
+        }
+        
+        // Clamp all values to [0, 1]
+        qs.somatic_tension = Math.max(0, Math.min(1, qs.somatic_tension));
+        qs.valence = Math.max(0, Math.min(1, qs.valence));
+        qs.focus_aperture = Math.max(0, Math.min(1, qs.focus_aperture));
+        qs.energy_level = Math.max(0, Math.min(1, qs.energy_level));
+      },
+      
+      /**
+       * Simulates emotional contagion in a group.
+       * Characters in the same location gradually synchronize their qualia states.
+       * This creates "atmosphere" in a room.
+       * @param {Array<string>} characterNames - Names of characters in the group
+       * @param {number} convergenceRate - How quickly states converge (0-1), default 0.1
+       */
+      runGroupResonance(characterNames, convergenceRate = 0.1) {
+        if (!Array.isArray(characterNames) || characterNames.length < 2) return;
+        
+        const L = LC.lcInit();
+        const characters = [];
+        
+        // Collect all characters with valid qualia states
+        for (let i = 0; i < characterNames.length; i++) {
+          const char = L.characters[characterNames[i]];
+          if (char && char.qualia_state) {
+            characters.push(char);
+          }
+        }
+        
+        if (characters.length < 2) return;
+        
+        // Calculate group average for each qualia dimension
+        const avg = {
+          somatic_tension: 0,
+          valence: 0,
+          focus_aperture: 0,
+          energy_level: 0
+        };
+        
+        for (let i = 0; i < characters.length; i++) {
+          const qs = characters[i].qualia_state;
+          avg.somatic_tension += qs.somatic_tension;
+          avg.valence += qs.valence;
+          avg.focus_aperture += qs.focus_aperture;
+          avg.energy_level += qs.energy_level;
+        }
+        
+        const count = characters.length;
+        avg.somatic_tension /= count;
+        avg.valence /= count;
+        avg.focus_aperture /= count;
+        avg.energy_level /= count;
+        
+        // Move each character's state toward the group average
+        for (let i = 0; i < characters.length; i++) {
+          const qs = characters[i].qualia_state;
+          
+          // Gradual convergence toward group average
+          qs.somatic_tension += (avg.somatic_tension - qs.somatic_tension) * convergenceRate;
+          qs.valence += (avg.valence - qs.valence) * convergenceRate;
+          qs.focus_aperture += (avg.focus_aperture - qs.focus_aperture) * convergenceRate;
+          qs.energy_level += (avg.energy_level - qs.energy_level) * convergenceRate;
+          
+          // Ensure bounds
+          qs.somatic_tension = Math.max(0, Math.min(1, qs.somatic_tension));
+          qs.valence = Math.max(0, Math.min(1, qs.valence));
+          qs.focus_aperture = Math.max(0, Math.min(1, qs.focus_aperture));
+          qs.energy_level = Math.max(0, Math.min(1, qs.energy_level));
+        }
       }
     },
 
