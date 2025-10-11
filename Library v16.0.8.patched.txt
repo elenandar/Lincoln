@@ -1902,6 +1902,16 @@ L.debugMode = toBool(L.debugMode, false);
               aggression: baseAggression   // Агрессивность
             };
           }
+          // Initialize self-concept (perceived traits) if not present
+          if (!rec.self_concept) {
+            // Self-concept starts matching objective personality
+            rec.self_concept = {
+              perceived_trust: rec.personality.trust,
+              perceived_bravery: rec.personality.bravery,
+              perceived_idealism: rec.personality.idealism,
+              perceived_aggression: rec.personality.aggression
+            };
+          }
           // Initialize social standing if not present
           if (!rec.social) {
             rec.social = {
@@ -5352,44 +5362,75 @@ L.debugMode = toBool(L.debugMode, false);
         for (const trait in character.personality) {
           character.personality[trait] = Math.max(0, Math.min(1, character.personality[trait]));
         }
+        
+        // Ensure all self-concept values stay within [0, 1]
+        if (character.self_concept) {
+          for (const trait in character.self_concept) {
+            character.self_concept[trait] = Math.max(0, Math.min(1, character.self_concept[trait]));
+          }
+        }
       },
       
       /**
        * Handles personality evolution from relationship changes.
        * Major betrayals decrease trust and idealism.
        * Major acts of heroism/rescue increase trust and bravery.
+       * 
+       * CrucibleEngine 2.0: Now primarily modifies self-concept (how character sees themselves)
+       * rather than objective personality traits.
        */
       _handleRelationChange(character, eventData, isImportant) {
         const change = eventData.change || 0;
         const finalValue = eventData.finalValue || 0;
         const otherChar = eventData.otherCharacter;
         
+        // Ensure self-concept exists
+        if (!character.self_concept) {
+          character.self_concept = {
+            perceived_trust: character.personality.trust,
+            perceived_bravery: character.personality.bravery,
+            perceived_idealism: character.personality.idealism,
+            perceived_aggression: character.personality.aggression
+          };
+        }
+        
         // Only process significant changes
         if (Math.abs(change) < 30) return;
         
         // Major negative event (betrayal, abandonment)
         if (change < -40 && isImportant) {
-          character.personality.trust = Math.max(0, character.personality.trust - 0.2);
-          character.personality.idealism = Math.max(0, character.personality.idealism - 0.1);
+          // Self-concept changes MORE than objective personality
+          character.self_concept.perceived_trust = Math.max(0, character.self_concept.perceived_trust - 0.25);
+          character.self_concept.perceived_idealism = Math.max(0, character.self_concept.perceived_idealism - 0.15);
+          
+          // Objective personality changes less
+          character.personality.trust = Math.max(0, character.personality.trust - 0.1);
+          character.personality.idealism = Math.max(0, character.personality.idealism - 0.05);
           
           LC.lcSys?.({ 
-            text: `${eventData.character} пережил(а) предательство и стал(а) менее доверчив(ой).`, 
+            text: `${eventData.character} пережил(а) предательство и теперь считает себя менее доверчив(ым/ой).`, 
             level: 'director' 
           });
         }
         // Major positive event (heroic rescue, deep loyalty)
         else if (change > 40 && isImportant) {
-          character.personality.trust = Math.min(1, character.personality.trust + 0.15);
-          character.personality.bravery = Math.min(1, character.personality.bravery + 0.1);
+          // Self-concept changes MORE than objective personality
+          character.self_concept.perceived_trust = Math.min(1, character.self_concept.perceived_trust + 0.2);
+          character.self_concept.perceived_bravery = Math.min(1, character.self_concept.perceived_bravery + 0.15);
+          
+          // Objective personality changes less
+          character.personality.trust = Math.min(1, character.personality.trust + 0.08);
+          character.personality.bravery = Math.min(1, character.personality.bravery + 0.05);
           
           LC.lcSys?.({ 
-            text: `${eventData.character} был(а) спасен(а) и стал(а) более смел(ой) и доверчив(ой).`, 
+            text: `${eventData.character} был(а) спасен(а) и теперь считает себя более смел(ым/ой) и надежн(ым/ой).`, 
             level: 'director' 
           });
         }
         // Extreme hatred can increase aggression
         else if (finalValue < -70 && isImportant) {
-          character.personality.aggression = Math.min(1, character.personality.aggression + 0.1);
+          character.self_concept.perceived_aggression = Math.min(1, character.self_concept.perceived_aggression + 0.15);
+          character.personality.aggression = Math.min(1, character.personality.aggression + 0.05);
         }
       },
       
@@ -5397,40 +5438,78 @@ L.debugMode = toBool(L.debugMode, false);
        * Handles personality evolution from goal completion.
        * Completing difficult goals increases bravery.
        * Repeated failures decrease idealism.
+       * 
+       * CrucibleEngine 2.0: Now primarily modifies self-concept.
        */
       _handleGoalComplete(character, eventData, isImportant) {
         const success = eventData.success;
         
+        // Ensure self-concept exists
+        if (!character.self_concept) {
+          character.self_concept = {
+            perceived_trust: character.personality.trust,
+            perceived_bravery: character.personality.bravery,
+            perceived_idealism: character.personality.idealism,
+            perceived_aggression: character.personality.aggression
+          };
+        }
+        
         if (success && isImportant) {
-          character.personality.bravery = Math.min(1, character.personality.bravery + 0.1);
-          character.personality.idealism = Math.min(1, character.personality.idealism + 0.05);
+          // Self-concept changes MORE than objective personality
+          character.self_concept.perceived_bravery = Math.min(1, character.self_concept.perceived_bravery + 0.15);
+          character.self_concept.perceived_idealism = Math.min(1, character.self_concept.perceived_idealism + 0.1);
+          
+          // Objective personality changes less
+          character.personality.bravery = Math.min(1, character.personality.bravery + 0.05);
+          character.personality.idealism = Math.min(1, character.personality.idealism + 0.03);
           
           LC.lcSys?.({ 
-            text: `${eventData.character} достиг(ла) важной цели и стал(а) более смел(ой).`, 
+            text: `${eventData.character} достиг(ла) важной цели и теперь верит в свою смелость.`, 
             level: 'director' 
           });
         } else if (!success && isImportant) {
-          character.personality.idealism = Math.max(0, character.personality.idealism - 0.1);
+          // Failure damages self-concept more than objective traits
+          character.self_concept.perceived_idealism = Math.max(0, character.self_concept.perceived_idealism - 0.15);
+          character.self_concept.perceived_bravery = Math.max(0, character.self_concept.perceived_bravery - 0.1);
+          
+          character.personality.idealism = Math.max(0, character.personality.idealism - 0.05);
         }
       },
       
       /**
        * Handles personality evolution from rumor spread.
        * Being the subject of widespread negative gossip can change personality.
+       * 
+       * CrucibleEngine 2.0: Public humiliation primarily damages self-concept.
        */
       _handleRumorSpread(character, eventData, isImportant) {
         const spreadCount = eventData.spreadCount || 0;
         const spin = eventData.spin || 'neutral';
         
+        // Ensure self-concept exists
+        if (!character.self_concept) {
+          character.self_concept = {
+            perceived_trust: character.personality.trust,
+            perceived_bravery: character.personality.bravery,
+            perceived_idealism: character.personality.idealism,
+            perceived_aggression: character.personality.aggression
+          };
+        }
+        
         // Only very widespread rumors affect personality
         if (spreadCount < 5) return;
         
         if (spin === 'negative' && isImportant) {
-          character.personality.trust = Math.max(0, character.personality.trust - 0.1);
-          character.personality.aggression = Math.min(1, character.personality.aggression + 0.05);
+          // Public humiliation damages self-concept severely
+          character.self_concept.perceived_trust = Math.max(0, character.self_concept.perceived_trust - 0.15);
+          character.self_concept.perceived_bravery = Math.max(0, character.self_concept.perceived_bravery - 0.1);
+          
+          // Objective personality changes less
+          character.personality.trust = Math.max(0, character.personality.trust - 0.05);
+          character.personality.aggression = Math.min(1, character.personality.aggression + 0.03);
           
           LC.lcSys?.({ 
-            text: `${eventData.character} стал(а) более замкнут(ой) из-за слухов.`, 
+            text: `${eventData.character} стал(а) менее уверен(ой) в себе из-за слухов.`, 
             level: 'director' 
           });
         }
@@ -6747,38 +6826,87 @@ LC.composeContextOverlay = function(options) {
         const character = L.characters[charName];
         if (character && character.personality) {
           const p = character.personality;
+          const sc = character.self_concept || {};
           const traits = [];
+          const conflicts = [];
           
-          // Analyze trust
-          if (p.trust < 0.3) {
+          // Helper function to detect significant divergence
+          const hasDivergence = (objTrait, perceivedTrait) => {
+            if (perceivedTrait === undefined) return false;
+            return Math.abs(objTrait - perceivedTrait) > 0.2;
+          };
+          
+          // Analyze trust (check for self-concept divergence)
+          const trustDiv = hasDivergence(p.trust, sc.perceived_trust);
+          const trustValue = trustDiv ? sc.perceived_trust : p.trust;
+          
+          if (trustValue <= 0.3) {
             traits.push('циничен и не доверяет людям');
-          } else if (p.trust > 0.8) {
+            if (trustDiv && p.trust > 0.5) {
+              conflicts.push('недооценивает свою доверчивость');
+            }
+          } else if (trustValue >= 0.8) {
             traits.push('наивен и открыт');
+            if (trustDiv && p.trust < 0.5) {
+              conflicts.push('переоценивает свою доверчивость');
+            }
+          } else if (trustDiv) {
+            // Moderate trust with divergence
+            if (sc.perceived_trust < p.trust - 0.2) {
+              conflicts.push('считает себя менее доверчивым чем есть');
+            } else if (sc.perceived_trust > p.trust + 0.2) {
+              conflicts.push('считает себя более доверчивым чем есть');
+            }
           }
           
-          // Analyze bravery
-          if (p.bravery < 0.3) {
+          // Analyze bravery (check for self-concept divergence)
+          const braveryDiv = hasDivergence(p.bravery, sc.perceived_bravery);
+          const braveryValue = braveryDiv ? sc.perceived_bravery : p.bravery;
+          
+          if (braveryValue <= 0.3) {
             traits.push('осторожен и боится рисковать');
-          } else if (p.bravery > 0.8) {
+            if (braveryDiv && p.bravery > 0.5) {
+              conflicts.push('недооценивает свою храбрость');
+            }
+          } else if (braveryValue >= 0.8) {
             traits.push('смел и готов рисковать');
+            if (braveryDiv && p.bravery < 0.5) {
+              conflicts.push('переоценивает свою храбрость');
+            }
+          } else if (braveryDiv) {
+            // Moderate bravery with divergence
+            if (sc.perceived_bravery < p.bravery - 0.2) {
+              conflicts.push('недооценивает свою смелость');
+            }
           }
           
-          // Analyze idealism
-          if (p.idealism < 0.3) {
+          // Analyze idealism (check for self-concept divergence)
+          const idealismDiv = hasDivergence(p.idealism, sc.perceived_idealism);
+          const idealismValue = idealismDiv ? sc.perceived_idealism : p.idealism;
+          
+          if (idealismValue <= 0.3) {
             traits.push('прагматичен и циничен');
-          } else if (p.idealism > 0.8) {
+          } else if (idealismValue >= 0.8) {
             traits.push('идеалист и верит в лучшее');
           }
           
-          // Analyze aggression
-          if (p.aggression > 0.7) {
+          // Analyze aggression (check for self-concept divergence)
+          const aggressionDiv = hasDivergence(p.aggression, sc.perceived_aggression);
+          const aggressionValue = aggressionDiv ? sc.perceived_aggression : p.aggression;
+          
+          if (aggressionValue >= 0.7) {
             traits.push('агрессивен и конфликтен');
-          } else if (p.aggression < 0.2) {
+          } else if (aggressionValue <= 0.2) {
             traits.push('миролюбив и избегает конфликтов');
           }
           
           if (traits.length > 0) {
             priority.push(`⟦TRAITS: ${charName}⟧ ${traits.join(', ')}`);
+          }
+          
+          // Add internal conflict tag if there's significant divergence
+          if (conflicts.length > 0) {
+            priority.push(`⟦CONFLICT: ${charName}⟧ Внутренний конфликт: ${conflicts.join(', ')}`);
           }
         }
         
@@ -6816,6 +6944,7 @@ LC.composeContextOverlay = function(options) {
       if (line.indexOf("⟦SUGGESTION⟧") === 0) return 760;
       if (line.indexOf("⟦GOAL⟧") === 0)   return 750;
       if (line.indexOf("⟦SECRET⟧") === 0) return 740;
+      if (line.indexOf("⟦CONFLICT:") === 0) return 735;
       if (line.indexOf("⟦TRAITS:") === 0) return 730;
       if (line.indexOf("⟦STATUS:") === 0) return 728;
       if (line.indexOf("⟦MOOD⟧") === 0)   return 725;
@@ -6831,7 +6960,7 @@ LC.composeContextOverlay = function(options) {
 
     const MAX = Number.isFinite(Number(opts.limit)) ? Number(opts.limit) : (LC.CONFIG?.LIMITS?.CONTEXT_LENGTH ?? 800);
     let text = "";
-    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, TRAITS:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
+    const parts = { GUIDE:0, INTENT:0, TASK:0, CANON:0, GOAL:0, SECRET:0, CONFLICT:0, TRAITS:0, MOOD:0, OPENING:0, SCENE:0, META:0, WORLD:0, SUGGESTION:0 };
     for (let i=0;i<uniq.length;i++){
       const line = uniq[i];
       const nl = text ? "\n" : "";
