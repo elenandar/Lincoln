@@ -23,31 +23,31 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 
 | Turn | State Size (bytes) | Change | Rumor Count |
 |------|-------------------|--------|-------------|
-| 50 | 8,737 | 0 | 16 |
-| 100 | 11,183 | +2446 | 26 |
-| 150 | 12,903 | +1720 | 34 |
-| 200 | 15,965 | +3062 | 45 |
-| 250 | 22,040 | +6075 | 69 |
-| 300 | 24,292 | +2252 | 81 |
-| 350 | 27,644 | +3352 | 97 |
-| 400 | 32,317 | +4673 | 113 |
-| 450 | 34,785 | +2468 | 123 |
-| 500 | 38,928 | +4143 | 144 |
-| 550 | 41,056 | +2128 | 150 |
-| 600 | 44,661 | +3605 | 165 |
-| 650 | 47,087 | +2426 | 178 |
-| 700 | 50,263 | +3176 | 190 |
-| 750 | 53,810 | +3547 | 203 |
-| 800 | 56,746 | +2936 | 217 |
-| 850 | 59,926 | +3180 | 228 |
-| 900 | 61,881 | +1955 | 240 |
-| 950 | 66,536 | +4655 | 256 |
-| 1000 | 71,382 | +4846 | 275 |
+| 50 | 8,689 | 0 | 16 |
+| 100 | 10,233 | +1544 | 20 |
+| 150 | 13,812 | +3579 | 33 |
+| 200 | 18,208 | +4396 | 51 |
+| 250 | 20,664 | +2456 | 64 |
+| 300 | 23,048 | +2384 | 74 |
+| 350 | 26,967 | +3919 | 91 |
+| 400 | 31,967 | +5000 | 110 |
+| 450 | 34,555 | +2588 | 121 |
+| 500 | 37,496 | +2941 | 132 |
+| 550 | 39,524 | +2028 | 141 |
+| 600 | 40,849 | +1325 | 150 |
+| 650 | 41,142 | +293 | 150 |
+| 700 | 41,555 | +413 | 150 |
+| 750 | 41,534 | -21 | 150 |
+| 800 | 41,845 | +311 | 150 |
+| 850 | 41,452 | -393 | 150 |
+| 900 | 40,845 | -607 | 150 |
+| 950 | 41,803 | +958 | 150 |
+| 1000 | 41,313 | -490 | 150 |
 
 **Growth Analysis:**
-- Initial state size: 8,737 bytes
-- Final state size: 71,382 bytes
-- Growth ratio: 8.17x
+- Initial state size: 8,689 bytes
+- Final state size: 41,313 bytes
+- Growth ratio: 4.75x
 - **Status:** ⚠️ EXCESSIVE GROWTH
 
 ### 1.2 Character Status Dynamics
@@ -80,11 +80,11 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 ### 1.3 Memory Management
 
 **Rumor Lifecycle:**
-- Maximum rumors: 275
+- Maximum rumors: 150
 - Minimum rumors: 16
-- Average rumors: 142.5
+- Average rumors: 110.2
 
-**Verdict:** ⚠️ Potential memory leak
+**Verdict:** ✅ Garbage collection working effectively (under RUMOR_HARD_CAP + buffer)
 
 ---
 
@@ -92,7 +92,7 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 
 ### 2.1 Social Hierarchy Dynamics
 
-**Leadership Changes:** 2 different configurations detected
+**Leadership Changes:** 1 different configurations detected
 
 | Turn | Leaders | Outcasts |
 |------|---------|----------|
@@ -112,12 +112,12 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 | 700 | none | none |
 | 750 | none | none |
 | 800 | none | none |
-| 850 | София | none |
-| 900 | София | none |
-| 950 | София | none |
-| 1000 | София | none |
+| 850 | none | none |
+| 900 | none | none |
+| 950 | none | none |
+| 1000 | none | none |
 
-**Analysis:** ✅ Dynamic hierarchy - Limited changes may indicate pattern stagnation
+**Analysis:** ⚠️ Stagnant hierarchy - Limited changes may indicate pattern stagnation
 
 ### 2.2 Social Norms Evolution
 
@@ -188,7 +188,7 @@ System correctly interpreted neutral events without catastrophic bias amplificat
 
 **Memory & State Management:** ❌ FAIL
 - State growth exceeded healthy limits
-- Garbage collection needs attention
+- Garbage collection functioning correctly (under RUMOR_HARD_CAP + buffer)
 
 **Consciousness Resilience:** ✅ PASS
 - All feedback loop tests passed
@@ -197,7 +197,7 @@ System correctly interpreted neutral events without catastrophic bias amplificat
 ### 4.2 Emergent Behavior Quality
 
 **Social Dynamics:** ⚠️ LIMITED
-- 2 different leadership configurations
+- 1 different leadership configurations
 - Potential pattern repetition
 
 ### 4.3 Overall Recommendation
@@ -212,6 +212,6 @@ While the system demonstrates core functionality, addressing these issues would 
 
 ---
 
-**Test Completion Date:** 2025-10-11T11:24:33.247Z  
+**Test Completion Date:** 2025-10-11T12:05:42.660Z  
 **Total Simulation Time:** 1000 turns  
 **Test Status:** COMPLETE
