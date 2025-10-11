@@ -51,6 +51,7 @@ Contract:
   LC.CONFIG.LIMITS.CONTEXT_LENGTH ??= 800;
   LC.CONFIG.LIMITS.ANTI_ECHO ??= { CACHE_MAX: 256, MIN_LENGTH: 200, SOFT_PRUNE_80: true };
   LC.CONFIG.LIMITS.EVERGREEN_HISTORY_CAP ??= 400;
+  LC.CONFIG.LIMITS.RUMOR_HARD_CAP ??= 150;
   LC.CONFIG.CHAR_WINDOW_HOT ??= 3;
   LC.CONFIG.CHAR_WINDOW_ACTIVE ??= 10;
   LC.CONFIG.FEATURES ??= {
@@ -4650,6 +4651,7 @@ L.debugMode = toBool(L.debugMode, false);
        * ACTIVE → FADED (when 75% of characters know it)
        * FADED → ARCHIVED (after 50 turns)
        * ARCHIVED rumors are removed from L.rumors
+       * LRF Protocol: If rumors exceed RUMOR_HARD_CAP, force-archive least relevant
        */
       runGarbageCollection() {
         const L = LC.lcInit();
@@ -4657,6 +4659,7 @@ L.debugMode = toBool(L.debugMode, false);
         
         const KNOWLEDGE_THRESHOLD = 0.75; // 75% of characters
         const FADE_AGE_THRESHOLD = 50; // 50 turns
+        const RUMOR_HARD_CAP = LC.CONFIG?.LIMITS?.RUMOR_HARD_CAP || 150;
         
         // Count total important characters
         const totalCharacters = Object.keys(L.characters || {}).length;
@@ -4696,10 +4699,41 @@ L.debugMode = toBool(L.debugMode, false);
         L.rumors = L.rumors.filter(r => r.status !== 'ARCHIVED');
         const removedCount = beforeCount - L.rumors.length;
         
+        // LRF Protocol: Proactive cleanup if still exceeding hard cap
+        let lrfCount = 0;
+        if (L.rumors.length > RUMOR_HARD_CAP) {
+          // Calculate relevance score for each rumor
+          const rumorsWithScore = L.rumors.map(r => ({
+            rumor: r,
+            relevance: (r.knownBy.length * 2) - (L.turn - r.turn)
+          }));
+          
+          // Sort by relevance (ascending - least relevant first)
+          rumorsWithScore.sort((a, b) => a.relevance - b.relevance);
+          
+          // Force-archive least relevant rumors until under cap
+          const targetCount = RUMOR_HARD_CAP;
+          for (let i = 0; i < rumorsWithScore.length && L.rumors.length > targetCount; i++) {
+            const item = rumorsWithScore[i];
+            if (item.rumor.status !== 'ARCHIVED') {
+              item.rumor.status = 'ARCHIVED';
+              lrfCount++;
+              L.stateVersion++;
+            }
+          }
+          
+          // Remove newly archived rumors
+          L.rumors = L.rumors.filter(r => r.status !== 'ARCHIVED');
+        }
+        
         // Log summary if any changes occurred
-        if (fadedCount > 0 || archivedCount > 0 || removedCount > 0) {
+        if (fadedCount > 0 || archivedCount > 0 || removedCount > 0 || lrfCount > 0) {
+          const logParts = [`🗑️ GossipGC: ${fadedCount} faded, ${removedCount} archived/removed`];
+          if (lrfCount > 0) {
+            logParts.push(`${lrfCount} force-archived (LRF)`);
+          }
           LC.lcSys({ 
-            text: `🗑️ GossipGC: ${fadedCount} faded, ${removedCount} archived/removed`, 
+            text: logParts.join(', '), 
             level: 'director' 
           });
         }
