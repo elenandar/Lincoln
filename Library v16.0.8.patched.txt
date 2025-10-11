@@ -5221,8 +5221,9 @@ L.debugMode = toBool(L.debugMode, false);
         const L = LC.lcInit();
         const charName = character.name;
         
-        // Social Catalyst: 3% chance of a powerful "off-screen" action that dramatically shifts social landscape
-        if (Math.random() < 0.03) {
+        // Social Catalyst: Low probability (~10%) of a powerful "off-screen" action that dramatically shifts social landscape
+        // This mechanism prevents hierarchy stagnation by occasionally creating significant social events
+        if (Math.random() < 0.10) {
           const catalystAction = this._generateSocialCatalyst(charName);
           if (catalystAction) {
             this.generateFact(charName, catalystAction);
@@ -6416,6 +6417,9 @@ L.debugMode = toBool(L.debugMode, false);
       recalculateStatus() {
         const L = LC.lcInit();
         
+        // Ensure evergreen.status exists
+        if (!L.evergreen.status) L.evergreen.status = {};
+        
         // Gather all active characters with their social capital
         const characters = [];
         for (const name in L.characters) {
@@ -6492,6 +6496,17 @@ L.debugMode = toBool(L.debugMode, false);
                 level: 'director'
               });
             }
+          }
+          
+          // Update L.evergreen.status for compatibility with tests
+          // Use uppercase for consistency with test expectations
+          if (newStatus === 'leader') {
+            L.evergreen.status[item.name] = 'LEADER';
+          } else if (newStatus === 'outcast') {
+            L.evergreen.status[item.name] = 'OUTCAST';
+          } else {
+            // Remove from evergreen.status if member (to keep it clean)
+            delete L.evergreen.status[item.name];
           }
         }
         

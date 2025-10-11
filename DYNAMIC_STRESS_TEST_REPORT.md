@@ -23,31 +23,31 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 
 | Turn | State Size (bytes) | Change | Rumor Count |
 |------|-------------------|--------|-------------|
-| 50 | 8,405 | 0 | 13 |
-| 100 | 11,824 | +3419 | 28 |
-| 150 | 15,387 | +3563 | 44 |
-| 200 | 19,215 | +3828 | 61 |
-| 250 | 21,323 | +2108 | 70 |
-| 300 | 26,321 | +4998 | 87 |
-| 350 | 29,647 | +3326 | 103 |
-| 400 | 32,430 | +2783 | 117 |
-| 450 | 36,522 | +4092 | 132 |
-| 500 | 40,484 | +3962 | 152 |
-| 550 | 44,306 | +3822 | 169 |
-| 600 | 47,597 | +3291 | 182 |
-| 650 | 50,416 | +2819 | 193 |
-| 700 | 53,350 | +2934 | 204 |
-| 750 | 55,698 | +2348 | 217 |
-| 800 | 59,453 | +3755 | 231 |
-| 850 | 61,291 | +1838 | 242 |
-| 900 | 64,240 | +2949 | 253 |
-| 950 | 67,733 | +3493 | 269 |
-| 1000 | 71,686 | +3953 | 283 |
+| 50 | 7,963 | 0 | 11 |
+| 100 | 10,714 | +2751 | 22 |
+| 150 | 14,450 | +3736 | 38 |
+| 200 | 16,825 | +2375 | 47 |
+| 250 | 20,142 | +3317 | 60 |
+| 300 | 21,932 | +1790 | 71 |
+| 350 | 25,764 | +3832 | 85 |
+| 400 | 28,603 | +2839 | 96 |
+| 450 | 29,280 | +677 | 101 |
+| 500 | 32,759 | +3479 | 114 |
+| 550 | 35,136 | +2377 | 127 |
+| 600 | 39,263 | +4127 | 144 |
+| 650 | 42,169 | +2906 | 155 |
+| 700 | 45,152 | +2983 | 167 |
+| 750 | 46,872 | +1720 | 178 |
+| 800 | 51,145 | +4273 | 193 |
+| 850 | 55,310 | +4165 | 213 |
+| 900 | 58,016 | +2706 | 224 |
+| 950 | 60,898 | +2882 | 235 |
+| 1000 | 63,666 | +2768 | 249 |
 
 **Growth Analysis:**
-- Initial state size: 8,405 bytes
-- Final state size: 71,686 bytes
-- Growth ratio: 8.53x
+- Initial state size: 7,963 bytes
+- Final state size: 63,666 bytes
+- Growth ratio: 8.00x
 - **Status:** ⚠️ EXCESSIVE GROWTH
 
 ### 1.2 Character Status Dynamics
@@ -80,9 +80,9 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 ### 1.3 Memory Management
 
 **Rumor Lifecycle:**
-- Maximum rumors: 283
-- Minimum rumors: 13
-- Average rumors: 152.5
+- Maximum rumors: 249
+- Minimum rumors: 11
+- Average rumors: 126.5
 
 **Verdict:** ⚠️ Potential memory leak
 
@@ -92,7 +92,7 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 
 ### 2.1 Social Hierarchy Dynamics
 
-**Leadership Changes:** 1 different configurations detected
+**Leadership Changes:** 2 different configurations detected
 
 | Turn | Leaders | Outcasts |
 |------|---------|----------|
@@ -112,12 +112,12 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 | 700 | none | none |
 | 750 | none | none |
 | 800 | none | none |
-| 850 | none | none |
-| 900 | none | none |
-| 950 | none | none |
-| 1000 | none | none |
+| 850 | Максим | none |
+| 900 | Максим | none |
+| 950 | Максим | none |
+| 1000 | Максим | none |
 
-**Analysis:** ⚠️ Stagnant hierarchy - Limited changes may indicate pattern stagnation
+**Analysis:** ✅ Dynamic hierarchy - Limited changes may indicate pattern stagnation
 
 ### 2.2 Social Norms Evolution
 
@@ -197,7 +197,7 @@ System correctly interpreted neutral events without catastrophic bias amplificat
 ### 4.2 Emergent Behavior Quality
 
 **Social Dynamics:** ⚠️ LIMITED
-- 1 different leadership configurations
+- 2 different leadership configurations
 - Potential pattern repetition
 
 ### 4.3 Overall Recommendation
@@ -212,6 +212,6 @@ While the system demonstrates core functionality, addressing these issues would 
 
 ---
 
-**Test Completion Date:** 2025-10-11T11:10:53.691Z  
+**Test Completion Date:** 2025-10-11T11:23:20.294Z  
 **Total Simulation Time:** 1000 turns  
 **Test Status:** COMPLETE
