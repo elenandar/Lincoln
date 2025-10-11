@@ -2728,9 +2728,10 @@ L.debugMode = toBool(L.debugMode, false);
             if (typeof rels === 'object' && rels !== null) {
               for (const other in rels) {
                 const value = rels[other];
+                let description = '';
+                
                 if (typeof value === 'number') {
-                  // Convert numeric value to text description
-                  let description = '';
+                  // Legacy numeric value
                   if (value > 75) {
                     description = `${char} и ${other} — близкие друзья`;
                   } else if (value > 50) {
@@ -2746,6 +2747,35 @@ L.debugMode = toBool(L.debugMode, false);
                   } else {
                     description = `${char} и ${other} — враги`;
                   }
+                } else if (typeof value === 'object' && value !== null) {
+                  // Multi-vector format
+                  const aff = value.affection || 50;
+                  const trust = value.trust || 50;
+                  const resp = value.respect || 50;
+                  const riv = value.rivalry || 50;
+                  
+                  // Create nuanced description based on vectors
+                  const parts = [];
+                  if (aff > 70) parts.push('близки');
+                  else if (aff > 50) parts.push('дружелюбны');
+                  else if (aff < 30) parts.push('холодны');
+                  
+                  if (trust > 70) parts.push('доверяют');
+                  else if (trust < 30) parts.push('не доверяют');
+                  
+                  if (resp > 70) parts.push('уважают');
+                  else if (resp < 30) parts.push('не уважают');
+                  
+                  if (riv > 70) parts.push('соперничают');
+                  
+                  if (parts.length > 0) {
+                    description = `${char} и ${other} — ${parts.join(', ')}`;
+                  } else {
+                    description = `${char} и ${other} — нейтральные отношения`;
+                  }
+                }
+                
+                if (description) {
                   relationDescriptions.push(description);
                 }
               }
@@ -3130,12 +3160,17 @@ L.debugMode = toBool(L.debugMode, false);
               // Create unique key for this goal
               const goalKey = `${character}_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
               
+              // Generate a basic plan for the goal
+              const plan = this.generateBasicPlan(goalText);
+              
               // Store goal in state.lincoln.goals
               L.goals[goalKey] = {
                 character: character,
                 text: goalText,
                 status: "active",
-                turnCreated: L.turn
+                turnCreated: L.turn,
+                plan: plan,
+                planProgress: 0 // Tracks which step is currently being worked on
               };
               
               // Increment stateVersion to invalidate context cache
@@ -3145,6 +3180,75 @@ L.debugMode = toBool(L.debugMode, false);
             LC.lcWarn?.(`Goal analysis regex error: ${err && err.message ? err.message : err}`);
           }
         }
+      },
+
+      /**
+       * Generates a basic plan with subtasks for a goal.
+       * This creates a simple hierarchical structure based on goal keywords.
+       * @param {string} goalText - The goal text
+       * @returns {Array} Array of subtask objects
+       */
+      generateBasicPlan(goalText) {
+        if (!goalText) return [];
+        
+        const textLower = goalText.toLowerCase();
+        const plan = [];
+        
+        // Pattern-based plan generation
+        if (textLower.includes('найти') || textLower.includes('узнать') || textLower.includes('раскрыть')) {
+          plan.push({ text: 'Собрать первоначальную информацию', status: 'pending' });
+          plan.push({ text: 'Проверить источники', status: 'pending' });
+          plan.push({ text: 'Сделать вывод', status: 'pending' });
+        } else if (textLower.includes('победить') || textLower.includes('победы') || textLower.includes('соревнование')) {
+          plan.push({ text: 'Подготовиться', status: 'pending' });
+          plan.push({ text: 'Выполнить основное действие', status: 'pending' });
+          plan.push({ text: 'Добиться результата', status: 'pending' });
+        } else if (textLower.includes('помочь') || textLower.includes('поддержать')) {
+          plan.push({ text: 'Определить, что нужно', status: 'pending' });
+          plan.push({ text: 'Предпринять действие', status: 'pending' });
+        } else if (textLower.includes('стать') || textLower.includes('добиться')) {
+          plan.push({ text: 'Начать работу над целью', status: 'pending' });
+          plan.push({ text: 'Достичь промежуточного прогресса', status: 'pending' });
+          plan.push({ text: 'Завершить достижение', status: 'pending' });
+        } else {
+          // Generic plan for unknown goal types
+          plan.push({ text: 'Начать работу', status: 'pending' });
+          plan.push({ text: 'Продолжить усилия', status: 'pending' });
+          plan.push({ text: 'Достичь цели', status: 'pending' });
+        }
+        
+        return plan;
+      },
+
+      /**
+       * Updates plan progress for a goal.
+       * Marks current step as in-progress or complete and advances to next step.
+       * @param {string} goalKey - The goal key
+       * @param {string} status - New status ('in-progress' or 'complete')
+       */
+      updatePlanProgress(goalKey, status) {
+        const L = LC.lcInit();
+        if (!L.goals || !L.goals[goalKey]) return;
+        
+        const goal = L.goals[goalKey];
+        if (!goal.plan || !Array.isArray(goal.plan)) return;
+        
+        const currentStep = goal.planProgress || 0;
+        if (currentStep >= goal.plan.length) return; // All steps complete
+        
+        if (status === 'in-progress') {
+          goal.plan[currentStep].status = 'in-progress';
+        } else if (status === 'complete') {
+          goal.plan[currentStep].status = 'complete';
+          goal.planProgress = (goal.planProgress || 0) + 1;
+          
+          // Check if all steps are complete
+          if (goal.planProgress >= goal.plan.length) {
+            goal.status = 'completed';
+          }
+        }
+        
+        L.stateVersion++;
       }
     },
 
@@ -3155,6 +3259,141 @@ L.debugMode = toBool(L.debugMode, false);
         conflict: -10,
         betrayal: -25,
         loyalty: 10
+      },
+
+      /**
+       * Gets the relationship value between two characters.
+       * Supports both legacy numeric values and new multi-vector format.
+       * @param {string} char1 - First character name
+       * @param {string} char2 - Second character name
+       * @returns {number|object} Relationship value (number for legacy, object for multi-vector)
+       */
+      getRelation(char1, char2) {
+        const L = LC.lcInit();
+        if (!L.evergreen?.relations?.[char1]?.[char2]) return null;
+        return L.evergreen.relations[char1][char2];
+      },
+
+      /**
+       * Gets a specific vector value from a relationship.
+       * For legacy numeric relations, maps to affection.
+       * @param {string} char1 - First character name
+       * @param {string} char2 - Second character name
+       * @param {string} vector - Vector name (affection, trust, respect, rivalry)
+       * @returns {number} Vector value (0-100 scale)
+       */
+      getVector(char1, char2, vector = 'affection') {
+        const rel = this.getRelation(char1, char2);
+        if (rel === null) return 50; // Default neutral
+        if (typeof rel === 'number') {
+          // Legacy numeric - map to affection, derive others
+          if (vector === 'affection') return Math.max(0, Math.min(100, rel + 50));
+          if (vector === 'trust') return Math.max(0, Math.min(100, rel * 0.8 + 50));
+          if (vector === 'respect') return Math.max(0, Math.min(100, rel * 0.7 + 50));
+          if (vector === 'rivalry') return Math.max(0, Math.min(100, -rel * 0.6 + 50));
+          return 50;
+        }
+        if (typeof rel === 'object' && rel !== null) {
+          return typeof rel[vector] === 'number' ? rel[vector] : 50;
+        }
+        return 50;
+      },
+
+      /**
+       * Updates relationship between two characters.
+       * Supports both legacy numeric and new multi-vector updates.
+       * @param {string} char1 - First character name
+       * @param {string} char2 - Second character name
+       * @param {number|object} change - Numeric change for legacy mode, or object with vector changes
+       */
+      updateRelation(char1, char2, change) {
+        const L = LC.lcInit();
+        if (!L.evergreen) L.evergreen = {};
+        if (!L.evergreen.relations) L.evergreen.relations = {};
+        
+        // Ensure character relation objects exist
+        if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
+          L.evergreen.relations[char1] = {};
+        }
+        if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
+          L.evergreen.relations[char2] = {};
+        }
+
+        // Get current values
+        const current1to2 = L.evergreen.relations[char1][char2];
+        const current2to1 = L.evergreen.relations[char2][char1];
+
+        if (typeof change === 'number') {
+          // Legacy numeric mode - maintain backward compatibility
+          const val1 = typeof current1to2 === 'number' ? current1to2 : 50;
+          const val2 = typeof current2to1 === 'number' ? current2to1 : 50;
+          L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, val1 + change));
+          L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, val2 + change));
+          return;
+        }
+
+        if (typeof change === 'object' && change !== null) {
+          // Multi-vector mode
+          // Initialize as multi-vector if not already
+          if (typeof current1to2 !== 'object' || current1to2 === null) {
+            const oldVal = typeof current1to2 === 'number' ? current1to2 : 0;
+            L.evergreen.relations[char1][char2] = {
+              affection: Math.max(0, Math.min(100, oldVal + 50)),
+              trust: Math.max(0, Math.min(100, oldVal * 0.8 + 50)),
+              respect: Math.max(0, Math.min(100, oldVal * 0.7 + 50)),
+              rivalry: Math.max(0, Math.min(100, -oldVal * 0.6 + 50))
+            };
+          } else {
+            // Already object, ensure all vectors exist
+            if (typeof L.evergreen.relations[char1][char2].affection !== 'number') {
+              L.evergreen.relations[char1][char2].affection = 50;
+            }
+            if (typeof L.evergreen.relations[char1][char2].trust !== 'number') {
+              L.evergreen.relations[char1][char2].trust = 50;
+            }
+            if (typeof L.evergreen.relations[char1][char2].respect !== 'number') {
+              L.evergreen.relations[char1][char2].respect = 50;
+            }
+            if (typeof L.evergreen.relations[char1][char2].rivalry !== 'number') {
+              L.evergreen.relations[char1][char2].rivalry = 50;
+            }
+          }
+          
+          if (typeof current2to1 !== 'object' || current2to1 === null) {
+            const oldVal = typeof current2to1 === 'number' ? current2to1 : 0;
+            L.evergreen.relations[char2][char1] = {
+              affection: Math.max(0, Math.min(100, oldVal + 50)),
+              trust: Math.max(0, Math.min(100, oldVal * 0.8 + 50)),
+              respect: Math.max(0, Math.min(100, oldVal * 0.7 + 50)),
+              rivalry: Math.max(0, Math.min(100, -oldVal * 0.6 + 50))
+            };
+          } else {
+            // Already object, ensure all vectors exist
+            if (typeof L.evergreen.relations[char2][char1].affection !== 'number') {
+              L.evergreen.relations[char2][char1].affection = 50;
+            }
+            if (typeof L.evergreen.relations[char2][char1].trust !== 'number') {
+              L.evergreen.relations[char2][char1].trust = 50;
+            }
+            if (typeof L.evergreen.relations[char2][char1].respect !== 'number') {
+              L.evergreen.relations[char2][char1].respect = 50;
+            }
+            if (typeof L.evergreen.relations[char2][char1].rivalry !== 'number') {
+              L.evergreen.relations[char2][char1].rivalry = 50;
+            }
+          }
+
+          // Apply vector changes
+          const vectors = ['affection', 'trust', 'respect', 'rivalry'];
+          for (const vector of vectors) {
+            if (typeof change[vector] === 'number') {
+              L.evergreen.relations[char1][char2][vector] = Math.max(0, Math.min(100, 
+                L.evergreen.relations[char1][char2][vector] + change[vector]));
+              L.evergreen.relations[char2][char1][vector] = Math.max(0, Math.min(100,
+                L.evergreen.relations[char2][char1][vector] + change[vector]));
+            }
+          }
+        }
       },
 
       /**
@@ -3243,36 +3482,40 @@ L.debugMode = toBool(L.debugMode, false);
                     const char1 = participants[0];
                     const char2 = participants[1];
                     
-                    // Ensure nested object structure exists
-                    if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
-                      L.evergreen.relations[char1] = {};
-                    }
-                    if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
-                      L.evergreen.relations[char2] = {};
+                    // Map event types to vector changes (multi-vector mode)
+                    let vectorChange = null;
+                    if (type === 'romance') {
+                      vectorChange = { affection: 12, trust: 8, respect: 5, rivalry: -3 };
+                    } else if (type === 'conflict') {
+                      vectorChange = { affection: -8, trust: -5, respect: 2, rivalry: 7 };
+                    } else if (type === 'betrayal') {
+                      vectorChange = { affection: -20, trust: -25, respect: -10, rivalry: 15 };
+                    } else if (type === 'loyalty') {
+                      vectorChange = { affection: 8, trust: 12, respect: 5, rivalry: -5 };
                     }
                     
-                    // Update numeric values (default to 50 if not set)
-                    const currentVal1to2 = typeof L.evergreen.relations[char1][char2] === 'number' ? L.evergreen.relations[char1][char2] : 50;
-                    const currentVal2to1 = typeof L.evergreen.relations[char2][char1] === 'number' ? L.evergreen.relations[char2][char1] : 50;
-                    
-                    L.evergreen.relations[char1][char2] = Math.max(-100, Math.min(100, currentVal1to2 + modifier));
-                    L.evergreen.relations[char2][char1] = Math.max(-100, Math.min(100, currentVal2to1 + modifier));
+                    // Use helper to update (supports both legacy and multi-vector)
+                    // For now, use legacy numeric mode for compatibility
+                    this.updateRelation(char1, char2, modifier);
                     
                     // Notify Crucible about significant relationship changes
                     if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
+                      const finalValue = this.getRelation(char1, char2);
                       LC.Crucible.analyzeEvent({
                         type: 'RELATION_CHANGE',
                         character: char1,
                         otherCharacter: char2,
                         change: modifier,
-                        finalValue: L.evergreen.relations[char1][char2]
+                        finalValue: finalValue,
+                        vectorChange: vectorChange
                       });
                       LC.Crucible.analyzeEvent({
                         type: 'RELATION_CHANGE',
                         character: char2,
                         otherCharacter: char1,
                         change: modifier,
-                        finalValue: L.evergreen.relations[char2][char1]
+                        finalValue: this.getRelation(char2, char1),
+                        vectorChange: vectorChange
                       });
                     }
                     
@@ -4466,15 +4709,27 @@ L.debugMode = toBool(L.debugMode, false);
           let strongestValue = 0;
           
           for (const otherChar in relations) {
-            if (typeof relations[otherChar] === 'number') {
-              const absValue = Math.abs(relations[otherChar]);
-              if (absValue > strongestValue && absValue >= 30) { // Threshold for "strong" relation
-                strongestValue = absValue;
-                strongestRelation = {
-                  target: otherChar,
-                  value: relations[otherChar]
-                };
-              }
+            const rel = relations[otherChar];
+            let absValue = 0;
+            let value = 0;
+            
+            if (typeof rel === 'number') {
+              // Legacy numeric
+              absValue = Math.abs(rel);
+              value = rel;
+            } else if (typeof rel === 'object' && rel !== null) {
+              // Multi-vector: use affection as primary indicator
+              const aff = (rel.affection || 50) - 50; // Convert to -50 to +50 scale
+              absValue = Math.abs(aff);
+              value = aff;
+            }
+            
+            if (absValue > strongestValue && absValue >= 30) { // Threshold for "strong" relation
+              strongestValue = absValue;
+              strongestRelation = {
+                target: otherChar,
+                value: value
+              };
             }
           }
           
@@ -4540,6 +4795,26 @@ L.debugMode = toBool(L.debugMode, false);
                 const progressKey = 'goal_progress_' + action.goalKey;
                 char.flags[progressKey] = (char.flags[progressKey] || 0) + 0.25;
                 
+                // Update plan progress if goal has a plan
+                if (L.goals[action.goalKey] && L.goals[action.goalKey].plan) {
+                  const goal = L.goals[action.goalKey];
+                  const currentStep = goal.planProgress || 0;
+                  
+                  // Every 4 work sessions (1.0 progress), complete one step
+                  if (char.flags[progressKey] >= 1.0 && currentStep < goal.plan.length) {
+                    if (LC.GoalsEngine && typeof LC.GoalsEngine.updatePlanProgress === 'function') {
+                      LC.GoalsEngine.updatePlanProgress(action.goalKey, 'complete');
+                      // Reset progress for next step
+                      char.flags[progressKey] = 0;
+                    }
+                  } else if (char.flags[progressKey] > 0) {
+                    // Mark current step as in-progress
+                    if (LC.GoalsEngine && typeof LC.GoalsEngine.updatePlanProgress === 'function') {
+                      LC.GoalsEngine.updatePlanProgress(action.goalKey, 'in-progress');
+                    }
+                  }
+                }
+                
                 // Cap progress at 1.0
                 if (char.flags[progressKey] > 1.0) {
                   char.flags[progressKey] = 1.0;
@@ -4551,29 +4826,14 @@ L.debugMode = toBool(L.debugMode, false);
           case 'SOCIAL_NEGATIVE':
             // Negative social interaction - decrease relationship
             if (action.target && LC.RelationsEngine) {
-              // Ensure relations structure exists
-              if (!L.evergreen) L.evergreen = {};
-              if (!L.evergreen.relations) L.evergreen.relations = {};
-              if (typeof L.evergreen.relations[characterName] !== 'object' || L.evergreen.relations[characterName] === null) {
-                L.evergreen.relations[characterName] = {};
-              }
-              if (typeof L.evergreen.relations[action.target] !== 'object' || L.evergreen.relations[action.target] === null) {
-                L.evergreen.relations[action.target] = {};
-              }
-              
               // Apply relationship change (magnitude based on mood if present)
               let modifier = -5; // Base negative interaction
               if (action.mood === 'ANGRY' || action.mood === 'FRUSTRATED') {
                 modifier = -10; // More intense when angry
               }
               
-              const currentVal1 = typeof L.evergreen.relations[characterName][action.target] === 'number' 
-                ? L.evergreen.relations[characterName][action.target] : 50;
-              const currentVal2 = typeof L.evergreen.relations[action.target][characterName] === 'number'
-                ? L.evergreen.relations[action.target][characterName] : 50;
-              
-              L.evergreen.relations[characterName][action.target] = Math.max(-100, Math.min(100, currentVal1 + modifier));
-              L.evergreen.relations[action.target][characterName] = Math.max(-100, Math.min(100, currentVal2 + modifier));
+              // Use RelationsEngine helper for update
+              LC.RelationsEngine.updateRelation(characterName, action.target, modifier);
               
               // Notify Crucible about relationship changes
               if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
@@ -4582,14 +4842,14 @@ L.debugMode = toBool(L.debugMode, false);
                   character: characterName,
                   otherCharacter: action.target,
                   change: modifier,
-                  finalValue: L.evergreen.relations[characterName][action.target]
+                  finalValue: LC.RelationsEngine.getRelation(characterName, action.target)
                 });
                 LC.Crucible.analyzeEvent({
                   type: 'RELATION_CHANGE',
                   character: action.target,
                   otherCharacter: characterName,
                   change: modifier,
-                  finalValue: L.evergreen.relations[action.target][characterName]
+                  finalValue: LC.RelationsEngine.getRelation(action.target, characterName)
                 });
               }
               
@@ -4607,29 +4867,14 @@ L.debugMode = toBool(L.debugMode, false);
           case 'SOCIAL_POSITIVE':
             // Positive social interaction - increase relationship
             if (action.target && LC.RelationsEngine) {
-              // Ensure relations structure exists
-              if (!L.evergreen) L.evergreen = {};
-              if (!L.evergreen.relations) L.evergreen.relations = {};
-              if (typeof L.evergreen.relations[characterName] !== 'object' || L.evergreen.relations[characterName] === null) {
-                L.evergreen.relations[characterName] = {};
-              }
-              if (typeof L.evergreen.relations[action.target] !== 'object' || L.evergreen.relations[action.target] === null) {
-                L.evergreen.relations[action.target] = {};
-              }
-              
               // Apply relationship change (magnitude based on mood if present)
               let modifier = 5; // Base positive interaction
               if (action.mood === 'HAPPY' || action.mood === 'EXCITED') {
                 modifier = 8; // More intense when happy
               }
               
-              const currentVal1 = typeof L.evergreen.relations[characterName][action.target] === 'number'
-                ? L.evergreen.relations[characterName][action.target] : 50;
-              const currentVal2 = typeof L.evergreen.relations[action.target][characterName] === 'number'
-                ? L.evergreen.relations[action.target][characterName] : 50;
-              
-              L.evergreen.relations[characterName][action.target] = Math.max(-100, Math.min(100, currentVal1 + modifier));
-              L.evergreen.relations[action.target][characterName] = Math.max(-100, Math.min(100, currentVal2 + modifier));
+              // Use RelationsEngine helper for update
+              LC.RelationsEngine.updateRelation(characterName, action.target, modifier);
               
               // Notify Crucible about relationship changes
               if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
@@ -4638,14 +4883,14 @@ L.debugMode = toBool(L.debugMode, false);
                   character: characterName,
                   otherCharacter: action.target,
                   change: modifier,
-                  finalValue: L.evergreen.relations[characterName][action.target]
+                  finalValue: LC.RelationsEngine.getRelation(characterName, action.target)
                 });
                 LC.Crucible.analyzeEvent({
                   type: 'RELATION_CHANGE',
                   character: action.target,
                   otherCharacter: characterName,
                   change: modifier,
-                  finalValue: L.evergreen.relations[action.target][characterName]
+                  finalValue: LC.RelationsEngine.getRelation(action.target, characterName)
                 });
               }
               
@@ -5902,7 +6147,18 @@ LC.composeContextOverlay = function(options) {
         const turnsSince = L.turn - (goal.turnCreated || 0);
         if (turnsSince >= 0 && turnsSince < 20) {
           const char = goal.character || 'Unknown';
-          activeGoals.push(`${char}: ${goal.text}`);
+          let goalLine = `${char}: ${goal.text}`;
+          
+          // Add plan progress if plan exists
+          if (goal.plan && Array.isArray(goal.plan) && goal.plan.length > 0) {
+            const currentStep = goal.planProgress || 0;
+            if (currentStep < goal.plan.length) {
+              const step = goal.plan[currentStep];
+              goalLine += ` [Шаг ${currentStep + 1}/${goal.plan.length}: ${step.text}]`;
+            }
+          }
+          
+          activeGoals.push(goalLine);
         }
       }
       if (activeGoals.length > 0) {
