@@ -3382,6 +3382,164 @@ L.debugMode = toBool(L.debugMode, false);
             LC.lcWarn?.(`Goal analysis regex error: ${err && err.message ? err.message : err}`);
           }
         }
+        
+        // GENESIS PHASE 2: Lore-inspired goal generation
+        // Occasionally generate goals for characters inspired by existing legends
+        this._tryGenerateLoreInspiredGoals();
+      },
+      
+      /**
+       * GENESIS PHASE 2: Attempts to generate lore-inspired goals for characters.
+       * This runs with low probability to avoid spamming.
+       */
+      _tryGenerateLoreInspiredGoals() {
+        const L = LC.lcInit();
+        
+        // Only run this occasionally (5% chance per turn)
+        if (Math.random() > 0.05) return;
+        
+        // Need lore entries to inspire goals
+        if (!L.lore || !Array.isArray(L.lore.entries) || L.lore.entries.length === 0) return;
+        
+        // Get all active characters
+        const activeChars = [];
+        for (const charName in L.characters) {
+          const char = L.characters[charName];
+          if (char && char.status === 'ACTIVE') {
+            activeChars.push({ name: charName, char: char });
+          }
+        }
+        
+        if (activeChars.length === 0) return;
+        
+        // Pick a random active character
+        const selectedChar = activeChars[Math.floor(Math.random() * activeChars.length)];
+        
+        // Pick a random legend to inspire from
+        const legend = L.lore.entries[Math.floor(Math.random() * L.lore.entries.length)];
+        
+        // Generate appropriate goal based on legend type and character traits
+        const goalData = this._generateLoreInspiredGoal(selectedChar, legend);
+        
+        if (goalData && goalData.goalText) {
+          const goalKey = `${selectedChar.name}_lore_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+          
+          L.goals[goalKey] = {
+            character: selectedChar.name,
+            text: goalData.goalText,
+            status: "active",
+            turnCreated: L.turn,
+            plan: goalData.plan || [],
+            planProgress: 0,
+            inspiredByLore: legend.type // Tag this as lore-inspired
+          };
+          
+          L.stateVersion++;
+          
+          // Log the new lore-inspired goal
+          LC.lcSys?.({
+            text: `💭 ${selectedChar.name} вдохновлён(а) легендой о "${legend.type}": ${goalData.goalText}`,
+            level: 'director'
+          });
+        }
+      },
+      
+      /**
+       * GENESIS PHASE 2: Generates a goal inspired by a legend.
+       * @param {object} charData - Object with name and char properties
+       * @param {object} legend - The legend object
+       * @returns {object|null} Object with goalText and plan, or null
+       */
+      _generateLoreInspiredGoal(charData, legend) {
+        if (!charData || !legend) return null;
+        
+        const char = charData.char;
+        const legendType = legend.type;
+        
+        // Different legend types inspire different goals
+        // Also consider character personality
+        const personality = char.personality || {};
+        
+        let goalText = null;
+        let plan = [];
+        
+        if (legendType === 'achievement' || legendType === 'public_humiliation') {
+          // Ambitious characters want to achieve similar success
+          // Those who were humiliated want to avoid it
+          if (personality.aggression > 0.6 || personality.idealism > 0.6) {
+            goalText = 'добиться статуса лидера в группе';
+            plan = [
+              { text: 'Завоевать уважение группы', status: 'pending' },
+              { text: 'Продемонстрировать лидерские качества', status: 'pending' },
+              { text: 'Стать признанным лидером', status: 'pending' }
+            ];
+          } else {
+            goalText = 'избежать публичного позора';
+            plan = [
+              { text: 'Быть осторожным в публичных ситуациях', status: 'pending' },
+              { text: 'Поддерживать хорошую репутацию', status: 'pending' }
+            ];
+          }
+        }
+        else if (legendType === 'betrayal') {
+          // After betrayal legends, characters want to avoid disgrace
+          // or to protect themselves
+          if (personality.trust > 0.6) {
+            goalText = 'быть более осторожным в выборе друзей';
+            plan = [
+              { text: 'Наблюдать за поведением других', status: 'pending' },
+              { text: 'Проверить истинные намерения людей', status: 'pending' }
+            ];
+          } else {
+            goalText = 'не допустить предательства';
+            plan = [
+              { text: 'Держать дистанцию с ненадёжными людьми', status: 'pending' },
+              { text: 'Создать круг доверенных лиц', status: 'pending' }
+            ];
+          }
+        }
+        else if (legendType === 'loyalty_rescue') {
+          // Legends of loyalty inspire protective goals
+          if (personality.bravery > 0.6) {
+            goalText = 'защитить друзей от опасности';
+            plan = [
+              { text: 'Следить за угрозами', status: 'pending' },
+              { text: 'Быть готовым вступиться', status: 'pending' }
+            ];
+          } else {
+            goalText = 'укрепить дружеские связи';
+            plan = [
+              { text: 'Проводить больше времени с друзьями', status: 'pending' },
+              { text: 'Поддерживать товарищей', status: 'pending' }
+            ];
+          }
+        }
+        else if (legendType === 'romance') {
+          // Romance legends inspire relationship goals
+          goalText = 'найти близкого человека';
+          plan = [
+            { text: 'Познакомиться поближе с интересным человеком', status: 'pending' },
+            { text: 'Развить отношения', status: 'pending' }
+          ];
+        }
+        else if (legendType === 'conflict') {
+          // Conflict legends inspire goals to avoid or prepare for conflict
+          if (personality.aggression > 0.6) {
+            goalText = 'доказать свою силу';
+            plan = [
+              { text: 'Подготовиться к возможным конфликтам', status: 'pending' },
+              { text: 'Показать, что не стоит связываться', status: 'pending' }
+            ];
+          } else {
+            goalText = 'избежать конфликтов';
+            plan = [
+              { text: 'Быть дипломатичным', status: 'pending' },
+              { text: 'Решать проблемы мирным путём', status: 'pending' }
+            ];
+          }
+        }
+        
+        return goalText ? { goalText, plan } : null;
       },
 
       /**
@@ -3838,6 +3996,43 @@ L.debugMode = toBool(L.debugMode, false);
     // ========== Information Engine (Subjective Reality) ==========
     InformationEngine: {
       /**
+       * GENESIS PHASE 2: Finds a legend relevant to the current event.
+       * @param {object} event - The event being interpreted
+       * @returns {object|null} A relevant legend or null if none found
+       */
+      _findRelevantLegend(event) {
+        const L = LC.lcInit();
+        if (!L.lore || !Array.isArray(L.lore.entries)) return null;
+        if (!event || !event.type) return null;
+        
+        // Try to find a legend with matching event type or action
+        const eventTypeMatch = event.eventType || event.action || event.type;
+        
+        for (const legend of L.lore.entries) {
+          // Direct type match (e.g., betrayal event vs betrayal legend)
+          if (legend.type === eventTypeMatch || legend.type === event.type) {
+            return legend;
+          }
+          
+          // Semantic matches (e.g., "insult" action matches "public_humiliation" legend)
+          if (event.action === 'insult' && legend.type === 'public_humiliation') {
+            return legend;
+          }
+          if (event.action === 'threat' && legend.type === 'conflict') {
+            return legend;
+          }
+          if (event.eventType === 'betrayal' && legend.type === 'betrayal') {
+            return legend;
+          }
+          if (event.eventType === 'loyalty' && legend.type === 'loyalty_rescue') {
+            return legend;
+          }
+        }
+        
+        return null;
+      },
+      
+      /**
        * Interprets an event through a character's subjective lens.
        * The same event can be interpreted differently based on the character's
        * current phenomenal state (qualia_state).
@@ -3865,41 +4060,58 @@ L.debugMode = toBool(L.debugMode, false);
           interpretation: 'neutral'
         };
         
+        // GENESIS PHASE 2: Check if there's a relevant legend
+        const relevantLegend = this._findRelevantLegend(event);
+        let legendInfluence = 1.0; // Multiplier for emotional reaction
+        
+        if (relevantLegend) {
+          // Legend strengthens emotional reaction to similar events
+          // Higher potential legends have stronger influence (up to +30% reaction)
+          const potentialFactor = Math.min(relevantLegend.potential || 0, 100) / 100;
+          legendInfluence = 1.0 + (potentialFactor * 0.3);
+          
+          // Legends also slightly increase somatic tension (recalling past events)
+          if (character.qualia_state) {
+            character.qualia_state.somatic_tension = Math.min(1, 
+              character.qualia_state.somatic_tension + 0.05);
+          }
+        }
+        
         // Interpret based on event type and qualia state
         if (event.type === 'social') {
           if (event.action === 'compliment' || event.action === 'praise') {
             // High valence (pleasant) → interpret as sincere
             if (qs.valence > 0.7) {
               interpretation.interpretation = 'sincere';
-              interpretation.subjectiveModifier = (event.rawModifier || 5) * 1.3;
+              interpretation.subjectiveModifier = (event.rawModifier || 5) * 1.3 * legendInfluence;
             }
             // High tension → interpret as sarcasm/suspicion
             else if (qs.somatic_tension > 0.8) {
               interpretation.interpretation = 'sarcasm';
-              interpretation.subjectiveModifier = (event.rawModifier || 5) * 0.3;
+              interpretation.subjectiveModifier = (event.rawModifier || 5) * 0.3 * legendInfluence;
               // Actually decrease trust instead
-              interpretation.trustModifier = -5;
+              interpretation.trustModifier = -5 * legendInfluence;
             }
             // Neutral state
             else {
               interpretation.interpretation = 'polite';
-              interpretation.subjectiveModifier = event.rawModifier || 5;
+              interpretation.subjectiveModifier = (event.rawModifier || 5) * legendInfluence;
             }
           }
           else if (event.action === 'insult' || event.action === 'criticism') {
             // High tension → interpret as threat
             if (qs.somatic_tension > 0.7) {
               interpretation.interpretation = 'threatening';
-              interpretation.subjectiveModifier = (event.rawModifier || -10) * 1.5;
+              interpretation.subjectiveModifier = (event.rawModifier || -10) * 1.5 * legendInfluence;
             }
             // High valence → dismiss as joke
             else if (qs.valence > 0.7) {
               interpretation.interpretation = 'banter';
-              interpretation.subjectiveModifier = (event.rawModifier || -10) * 0.4;
+              interpretation.subjectiveModifier = (event.rawModifier || -10) * 0.4 * legendInfluence;
             }
             else {
               interpretation.interpretation = 'offensive';
-              interpretation.subjectiveModifier = event.rawModifier || -10;
+              interpretation.subjectiveModifier = (event.rawModifier || -10) * legendInfluence;
             }
           }
           else if (event.action === 'threat' || event.action === 'aggression') {
@@ -3907,11 +4119,11 @@ L.debugMode = toBool(L.debugMode, false);
             if (qs.energy_level < 0.3) {
               // Low energy → feel more threatened
               interpretation.interpretation = 'overwhelming';
-              interpretation.subjectiveModifier = (event.rawModifier || -15) * 1.4;
+              interpretation.subjectiveModifier = (event.rawModifier || -15) * 1.4 * legendInfluence;
             }
             else {
               interpretation.interpretation = 'hostile';
-              interpretation.subjectiveModifier = event.rawModifier || -15;
+              interpretation.subjectiveModifier = (event.rawModifier || -15) * legendInfluence;
             }
           }
         }
@@ -3922,10 +4134,10 @@ L.debugMode = toBool(L.debugMode, false);
             const trustTrait = character.personality?.trust || 0.5;
             if (trustTrait > 0.7) {
               interpretation.interpretation = 'devastating';
-              interpretation.subjectiveModifier = (event.rawModifier || -25) * 1.3;
+              interpretation.subjectiveModifier = (event.rawModifier || -25) * 1.3 * legendInfluence;
             } else {
               interpretation.interpretation = 'expected';
-              interpretation.subjectiveModifier = (event.rawModifier || -25) * 0.9;
+              interpretation.subjectiveModifier = (event.rawModifier || -25) * 0.9 * legendInfluence;
             }
           }
           else if (event.eventType === 'loyalty') {
@@ -3933,10 +4145,10 @@ L.debugMode = toBool(L.debugMode, false);
             const trustTrait = character.personality?.trust || 0.5;
             if (trustTrait < 0.3) {
               interpretation.interpretation = 'surprising';
-              interpretation.subjectiveModifier = (event.rawModifier || 10) * 1.4;
+              interpretation.subjectiveModifier = (event.rawModifier || 10) * 1.4 * legendInfluence;
             } else {
               interpretation.interpretation = 'appreciated';
-              interpretation.subjectiveModifier = event.rawModifier || 10;
+              interpretation.subjectiveModifier = (event.rawModifier || 10) * legendInfluence;
             }
           }
         }
@@ -6408,13 +6620,51 @@ L.debugMode = toBool(L.debugMode, false);
         const baseStrength = L.society.norms[normType]?.strength || 0.5;
         
         // Boost norm strength with corresponding myths
+        let mythBoost = 0;
         if (LC.MemoryEngine && typeof LC.MemoryEngine.getMythStrengthForTheme === 'function') {
-          const mythBoost = LC.MemoryEngine.getMythStrengthForTheme(normType);
+          mythBoost = LC.MemoryEngine.getMythStrengthForTheme(normType);
           // Myths can increase norm strength by up to 20%
-          return Math.min(1, baseStrength + mythBoost * 0.2);
         }
         
-        return baseStrength;
+        // GENESIS PHASE 2: Lore-based norm influence
+        // Legends can reinforce or weaken norms based on their "moral"
+        let loreModifier = 0;
+        if (L.lore && Array.isArray(L.lore.entries)) {
+          for (const legend of L.lore.entries) {
+            if (legend.type === normType) {
+              // Legend of this type reinforces the norm
+              // Each legend adds +0.05 to norm strength
+              loreModifier += 0.05;
+            } else if (this._isCounterNorm(legend.type, normType)) {
+              // Contradictory legends weaken the norm
+              loreModifier -= 0.03;
+            }
+          }
+        }
+        
+        // Combine base strength with myth boost and lore modifier
+        return Math.min(1, Math.max(0, baseStrength + mythBoost * 0.2 + loreModifier));
+      },
+      
+      /**
+       * Checks if one legend type counters/weakens another norm type.
+       * @param {string} legendType - The legend type
+       * @param {string} normType - The norm type
+       * @returns {boolean} True if the legend counters the norm
+       */
+      _isCounterNorm(legendType, normType) {
+        // Map of opposing concepts
+        const opposites = {
+          'betrayal': ['loyalty_rescue'],
+          'loyalty_rescue': ['betrayal'],
+          'conflict': ['romance'],
+          'romance': ['conflict'],
+          'public_humiliation': ['achievement'],
+          'achievement': ['public_humiliation']
+        };
+        
+        const counterTypes = opposites[legendType] || [];
+        return counterTypes.indexOf(normType) !== -1;
       }
     },
 
