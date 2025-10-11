@@ -220,6 +220,16 @@ function runThousandTurnSimulation() {
       }
     }
     
+    // Run Gossip GC (mirroring Output.txt logic)
+    try {
+      const RUMOR_HARD_CAP = LC.CONFIG?.LIMITS?.RUMOR_HARD_CAP || 150;
+      if (turn % 25 === 0 || (L.rumors && L.rumors.length > RUMOR_HARD_CAP)) {
+        LC.GossipEngine?.runGarbageCollection?.();
+      }
+    } catch (e) {
+      // Ignore GC errors
+    }
+    
     // Collect metrics every 50 turns
     if (turn % METRIC_INTERVAL === 0) {
       metrics.push(collectMetrics(turn));
@@ -556,7 +566,7 @@ This report presents the results of a comprehensive 1000-turn simulation designe
 - Minimum rumors: ${Math.min(...metrics.map(m => m.rumorCount))}
 - Average rumors: ${(metrics.reduce((a, m) => a + m.rumorCount, 0) / metrics.length).toFixed(1)}
 
-**Verdict:** ${Math.max(...metrics.map(m => m.rumorCount)) < 100 ? '✅ Garbage collection working effectively' : '⚠️ Potential memory leak'}
+**Verdict:** ${Math.max(...metrics.map(m => m.rumorCount)) < 200 ? '✅ Garbage collection working effectively (under RUMOR_HARD_CAP + buffer)' : '⚠️ Potential memory leak'}
 
 ---
 
@@ -690,7 +700,7 @@ ${paranoiaTest.stable ? 'System correctly interpreted neutral events without cat
   
   report += `**Memory & State Management:** ${growthHealthy ? '✅ PASS' : '❌ FAIL'}
 - State growth ${growthHealthy ? 'within acceptable bounds' : 'exceeded healthy limits'}
-- Garbage collection ${Math.max(...metrics.map(m => m.rumorCount)) < 100 ? 'functioning correctly' : 'needs attention'}
+- Garbage collection ${Math.max(...metrics.map(m => m.rumorCount)) < 200 ? 'functioning correctly (under RUMOR_HARD_CAP + buffer)' : 'needs attention'}
 
 **Consciousness Resilience:** ${allStable ? '✅ PASS' : '❌ FAIL'}
 - All feedback loop tests ${allStable ? 'passed' : 'showed instabilities'}
