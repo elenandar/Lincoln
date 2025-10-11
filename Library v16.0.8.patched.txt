@@ -1321,7 +1321,8 @@ Contract:
       CONTINUE_THRESHOLD_MULT: { SOFT: 0.96, HARD: 0.90 }
     },
     EXTENDED_STORE_CAP: 120,
-    EVENTS_WINDOW_TURNS: 50
+    EVENTS_WINDOW_TURNS: 50,
+    LORE_ACTIVE_CAP: 5
   },
   FEATURES: { USE_NORM_CACHE: false, ANALYZE_RELATIONS: true },
   RELATIONSHIP_MODIFIERS: {
@@ -1552,11 +1553,13 @@ L.debugMode = toBool(L.debugMode, false);
       // lore tracking (school legends/folklore)
       L.lore = L.lore || {
         entries: [],    // Array of lore_entry objects
+        archive: [],    // Array of archived legends
         stats: {},      // Statistics by event type for novelty detection
         coolDown: 0     // Turn number until which new lore creation is blocked
       };
       // Ensure lore structure integrity
       L.lore.entries = Array.isArray(L.lore.entries) ? L.lore.entries : [];
+      L.lore.archive = Array.isArray(L.lore.archive) ? L.lore.archive : [];
       L.lore.stats = (L.lore.stats && typeof L.lore.stats === 'object') ? L.lore.stats : {};
       L.lore.coolDown = toNum(L.lore.coolDown, 0);
       
@@ -7249,10 +7252,13 @@ L.debugMode = toBool(L.debugMode, false);
         
         // Ensure lore structure exists
         if (!L.lore) {
-          L.lore = { entries: [], stats: {}, coolDown: 0 };
+          L.lore = { entries: [], archive: [], stats: {}, coolDown: 0 };
         }
         if (!Array.isArray(L.lore.entries)) {
           L.lore.entries = [];
+        }
+        if (!Array.isArray(L.lore.archive)) {
+          L.lore.archive = [];
         }
         if (!L.lore.stats || typeof L.lore.stats !== 'object') {
           L.lore.stats = {};
@@ -7269,8 +7275,20 @@ L.debugMode = toBool(L.debugMode, false);
           potential: this.calculateLorePotential(event)
         };
         
-        // Add to entries
+        // Add to entries (maintain chronological order: oldest to newest)
         L.lore.entries.push(lore_entry);
+        
+        // Check if we exceed the active cap and need to archive
+        const activeCapRaw = CONFIG?.LIMITS?.LORE_ACTIVE_CAP;
+        const activeCap = (typeof activeCapRaw === 'number') ? activeCapRaw : 5;
+        
+        if (L.lore.entries.length > activeCap) {
+          // Move oldest legend(s) to archive
+          while (L.lore.entries.length > activeCap) {
+            const oldestLegend = L.lore.entries.shift(); // Remove from beginning (oldest)
+            L.lore.archive.push(oldestLegend);
+          }
+        }
         
         // Update statistics
         const typeKey = `type_${lore_entry.type}`;
