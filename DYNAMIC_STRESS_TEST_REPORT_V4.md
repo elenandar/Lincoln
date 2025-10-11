@@ -23,61 +23,61 @@ This report presents the results of a comprehensive 2500-turn simulation designe
 
 | Turn | State Size (bytes) | Change | Rumor Count |
 |------|-------------------|--------|-------------|
-| 50 | 8,704 | 0 | 11 |
-| 100 | 12,852 | +4148 | 17 |
-| 150 | 14,030 | +1178 | 22 |
-| 200 | 16,694 | +2664 | 22 |
-| 250 | 17,623 | +929 | 22 |
-| 300 | 19,798 | +2175 | 24 |
-| 350 | 20,677 | +879 | 22 |
-| 400 | 24,886 | +4209 | 31 |
-| 450 | 27,132 | +2246 | 33 |
-| 500 | 29,994 | +2862 | 38 |
-| 550 | 33,102 | +3108 | 47 |
-| 600 | 33,743 | +641 | 46 |
-| 650 | 37,564 | +3821 | 56 |
-| 700 | 37,993 | +429 | 56 |
-| 750 | 38,838 | +845 | 54 |
-| 800 | 41,612 | +2774 | 61 |
-| 850 | 42,070 | +458 | 63 |
-| 900 | 44,476 | +2406 | 66 |
-| 950 | 47,200 | +2724 | 72 |
-| 1000 | 47,918 | +718 | 70 |
-| 1050 | 48,661 | +743 | 71 |
-| 1100 | 50,717 | +2056 | 75 |
-| 1150 | 52,222 | +1505 | 77 |
-| 1200 | 54,590 | +2368 | 80 |
-| 1250 | 54,513 | -77 | 77 |
-| 1300 | 58,655 | +4142 | 84 |
-| 1350 | 59,169 | +514 | 85 |
-| 1400 | 64,193 | +5024 | 96 |
-| 1450 | 64,796 | +603 | 92 |
-| 1500 | 65,267 | +471 | 88 |
-| 1550 | 67,422 | +2155 | 92 |
-| 1600 | 69,963 | +2541 | 100 |
-| 1650 | 72,497 | +2534 | 104 |
-| 1700 | 77,528 | +5031 | 116 |
-| 1750 | 77,887 | +359 | 114 |
-| 1800 | 77,948 | +61 | 113 |
-| 1850 | 79,024 | +1076 | 116 |
-| 1900 | 80,758 | +1734 | 115 |
-| 1950 | 81,276 | +518 | 116 |
-| 2000 | 86,592 | +5316 | 127 |
-| 2050 | 87,616 | +1024 | 130 |
-| 2100 | 87,852 | +236 | 126 |
-| 2150 | 90,014 | +2162 | 129 |
-| 2200 | 92,764 | +2750 | 135 |
-| 2250 | 95,921 | +3157 | 140 |
-| 2300 | 97,288 | +1367 | 143 |
-| 2350 | 100,143 | +2855 | 144 |
-| 2400 | 100,430 | +287 | 141 |
-| 2450 | 101,702 | +1272 | 143 |
-| 2500 | 104,151 | +2449 | 148 |
+| 50 | 10,576 | 0 | 12 |
+| 100 | 13,153 | +2577 | 16 |
+| 150 | 13,457 | +304 | 16 |
+| 200 | 16,756 | +3299 | 24 |
+| 250 | 19,482 | +2726 | 27 |
+| 300 | 20,001 | +519 | 27 |
+| 350 | 24,679 | +4678 | 38 |
+| 400 | 25,768 | +1089 | 39 |
+| 450 | 27,751 | +1983 | 41 |
+| 500 | 29,195 | +1444 | 42 |
+| 550 | 30,499 | +1304 | 43 |
+| 600 | 34,036 | +3537 | 50 |
+| 650 | 35,620 | +1584 | 50 |
+| 700 | 38,985 | +3365 | 58 |
+| 750 | 40,560 | +1575 | 60 |
+| 800 | 42,991 | +2431 | 67 |
+| 850 | 43,849 | +858 | 68 |
+| 900 | 46,143 | +2294 | 75 |
+| 950 | 47,829 | +1686 | 81 |
+| 1000 | 50,879 | +3050 | 84 |
+| 1050 | 50,003 | -876 | 79 |
+| 1100 | 51,243 | +1240 | 80 |
+| 1150 | 53,236 | +1993 | 84 |
+| 1200 | 55,372 | +2136 | 87 |
+| 1250 | 59,893 | +4521 | 97 |
+| 1300 | 60,465 | +572 | 97 |
+| 1350 | 61,489 | +1024 | 101 |
+| 1400 | 63,056 | +1567 | 100 |
+| 1450 | 64,483 | +1427 | 100 |
+| 1500 | 66,988 | +2505 | 102 |
+| 1550 | 69,313 | +2325 | 105 |
+| 1600 | 70,651 | +1338 | 105 |
+| 1650 | 72,863 | +2212 | 108 |
+| 1700 | 74,962 | +2099 | 113 |
+| 1750 | 76,288 | +1326 | 116 |
+| 1800 | 78,053 | +1765 | 118 |
+| 1850 | 79,599 | +1546 | 121 |
+| 1900 | 82,158 | +2559 | 129 |
+| 1950 | 85,367 | +3209 | 141 |
+| 2000 | 85,079 | -288 | 136 |
+| 2050 | 87,814 | +2735 | 139 |
+| 2100 | 88,288 | +474 | 137 |
+| 2150 | 88,873 | +585 | 137 |
+| 2200 | 90,803 | +1930 | 142 |
+| 2250 | 94,030 | +3227 | 146 |
+| 2300 | 94,731 | +701 | 147 |
+| 2350 | 94,314 | -417 | 145 |
+| 2400 | 97,116 | +2802 | 147 |
+| 2450 | 97,286 | +170 | 147 |
+| 2500 | 98,670 | +1384 | 149 |
 
 **Growth Analysis:**
-- Initial state size: 8,704 bytes
-- Final state size: 104,151 bytes
-- Growth ratio: 11.97x
+- Initial state size: 10,576 bytes
+- Final state size: 98,670 bytes
+- Growth ratio: 9.33x
 - **Status:** ⚠️ EXCESSIVE GROWTH
 
 ### 1.2 Character Status Dynamics
@@ -140,9 +140,9 @@ This report presents the results of a comprehensive 2500-turn simulation designe
 ### 1.3 Memory Management
 
 **Rumor Lifecycle:**
-- Maximum rumors: 148
-- Minimum rumors: 11
-- Average rumors: 83.0
+- Maximum rumors: 149
+- Minimum rumors: 12
+- Average rumors: 89.5
 
 **Verdict:** ✅ Garbage collection working effectively (under RUMOR_HARD_CAP + buffer)
 
@@ -180,32 +180,32 @@ This report presents the results of a comprehensive 2500-turn simulation designe
 | 1100 | none | none |
 | 1150 | none | none |
 | 1200 | none | none |
-| 1250 | none | none |
-| 1300 | none | none |
-| 1350 | none | none |
-| 1400 | none | none |
-| 1450 | Анна | none |
-| 1500 | Анна | none |
-| 1550 | Анна | none |
-| 1600 | Анна | none |
-| 1650 | none | none |
-| 1700 | none | none |
-| 1750 | none | none |
-| 1800 | none | none |
-| 1850 | none | none |
-| 1900 | none | none |
-| 1950 | none | none |
-| 2000 | none | none |
-| 2050 | none | none |
-| 2100 | none | none |
-| 2150 | none | none |
-| 2200 | none | none |
-| 2250 | none | none |
-| 2300 | none | none |
-| 2350 | none | none |
-| 2400 | none | none |
-| 2450 | Хлоя | none |
-| 2500 | Хлоя | none |
+| 1250 | Дмитрий | none |
+| 1300 | Дмитрий | none |
+| 1350 | Дмитрий | none |
+| 1400 | Дмитрий | none |
+| 1450 | Максим | none |
+| 1500 | Максим | none |
+| 1550 | Максим | none |
+| 1600 | Максим | none |
+| 1650 | Максим | none |
+| 1700 | Максим | none |
+| 1750 | Максим | none |
+| 1800 | Максим | none |
+| 1850 | Дмитрий | none |
+| 1900 | Дмитрий | none |
+| 1950 | Дмитрий | none |
+| 2000 | Дмитрий | none |
+| 2050 | Дмитрий | none |
+| 2100 | Дмитрий | none |
+| 2150 | Дмитрий | none |
+| 2200 | Дмитрий | none |
+| 2250 | Дмитрий | none |
+| 2300 | Дмитрий | none |
+| 2350 | Дмитрий | none |
+| 2400 | Дмитрий | none |
+| 2450 | Дмитрий | none |
+| 2500 | Дмитрий | none |
 
 **Analysis:** ✅ Dynamic hierarchy - Multiple leader transitions indicate healthy social dynamics
 
@@ -219,41 +219,48 @@ No explicit norm tracking data available in this simulation.
 
 **KEY VERIFICATION:** LoreEngine Functionality Check
 
-✅ **LOREENGINE OPERATIONAL** - 4 legends automatically generated during 2500-turn simulation.
+✅ **LOREENGINE OPERATIONAL** - 5 legends automatically generated during 2500-turn simulation.
 
 **Legend Details:**
 
-1. **betrayal** (Turn 4)
-   - Potential: 90.0
-   - Participants: Максим, Дмитрий
-   - Witnesses: 10
+1. **conflict** (Turn 7)
+   - Potential: 80.0
+   - Participants: Максим, София
+   - Witnesses: 5
    - Impact: 0.00
    - Text: "undefined"
 
-2. **conflict** (Turn 205)
-   - Potential: 85.0
-   - Participants: Хлоя, Эшли, Анна
-   - Witnesses: 5
-   - Impact: 15.00
-   - Text: "undefined"
-
-3. **public_humiliation** (Turn 407)
-   - Potential: 88.3
-   - Participants: Дмитрий, Анна
+2. **public_humiliation** (Turn 217)
+   - Potential: 88.6
+   - Participants: Леонид, Дмитрий
    - Witnesses: 10
-   - Impact: 10.00
+   - Impact: 10.75
    - Text: "undefined"
 
-4. **loyalty_rescue** (Turn 1434)
-   - Potential: 92.4
-   - Participants: Максим, Леонид, Дмитрий, Анна
+3. **betrayal** (Turn 421)
+   - Potential: 95.3
+   - Participants: Эшли, Дмитрий, Анна
+   - Witnesses: 10
+   - Impact: 15.75
+   - Text: "undefined"
+
+4. **loyalty_rescue** (Turn 1227)
+   - Potential: 92.8
+   - Participants: Хлоя, Леонид, Дмитрий, Анна
    - Witnesses: 5
-   - Impact: 22.25
+   - Impact: 23.50
+   - Text: "undefined"
+
+5. **romance** (Turn 1519)
+   - Potential: 96.8
+   - Participants: Максим, София, Дмитрий
+   - Witnesses: 10
+   - Impact: 20.25
    - Text: "undefined"
 
 **Analysis:**
 - Legends emerged organically through simulation dynamics
-- Average potential: 88.9
+- Average potential: 90.7
 - Filtering system correctly identified truly legendary events
 - No spam: cooldown mechanism prevented excessive legend creation
 
@@ -329,7 +336,7 @@ System correctly interpreted neutral events without catastrophic bias amplificat
 - Qualia state management robust
 
 **LoreEngine Functionality:** ✅ PASS
-- Legend generation: 4 legends created
+- Legend generation: 5 legends created
 - Emergent "school legends" successfully generated
 
 ### 4.2 Emergent Behavior Quality
@@ -349,6 +356,6 @@ While the system demonstrates core functionality, addressing these issues would 
 
 ---
 
-**Test Completion Date:** 2025-10-11T21:37:37.349Z  
+**Test Completion Date:** 2025-10-11T22:47:26.486Z  
 **Total Simulation Time:** 2500 turns  
 **Test Status:** COMPLETE
