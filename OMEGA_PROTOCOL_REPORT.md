@@ -2,7 +2,7 @@
 
 **Final Micro-Mechanism Verification Test**
 
-**Date**: 2025-10-12T11:26:37.773Z
+**Date**: 2025-10-12T11:42:27.728Z
 **Test Turn**: 501
 
 ## Executive Summary
@@ -18,7 +18,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| StateVersion | 782 | 786 | ✓ Incremented |
+| StateVersion | 830 | 834 | ✓ Incremented |
 
 ## 1. InformationEngine: Phenomenal State (qualia_state)
 
@@ -28,8 +28,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Component | Before | After | Δ |
 |-----------|--------|-------|---|
-| somatic_tension | 0.050 | 0.200 | 0.150 |
-| valence | 1.000 | 0.800 | -0.200 |
+| somatic_tension | 0.000 | 0.117 | 0.117 |
+| valence | 1.000 | 0.844 | -0.156 |
 | focus_aperture | 0.700 | 0.700 | 0.000 |
 | energy_level | 0.800 | 0.800 | 0.000 |
 
@@ -37,7 +37,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Component | Before | After | Δ |
 |-----------|--------|-------|---|
-| somatic_tension | 0.000 | 0.000 | 0.000 |
+| somatic_tension | 0.065 | 0.065 | 0.000 |
 | valence | 1.000 | 1.000 | 0.000 |
 | focus_aperture | 0.700 | 0.700 | 0.000 |
 | energy_level | 0.800 | 0.800 | 0.000 |
@@ -48,8 +48,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Reason |
 |-----------|--------|-------|--------|
-| Максим | disappointed | offended | обвинение |
-| Хлоя | happy | happy | радость |
+| Максим | happy | offended | обвинение |
+| Хлоя | disappointed | disappointed | разочарование |
 
 ## 3. RelationsEngine: Relationship Dynamics
 
@@ -75,8 +75,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Δ | Status Before | Status After |
 |-----------|--------|-------|---|---------------|--------------|
-| Максим | 30 | 12 | -18 | outcast | outcast |
-| Хлоя | 200 | 164 | -36 | leader | leader |
+| Максим | 98 | 85 | -13 | member | member |
+| Хлоя | 150 | 124 | -26 | member | member |
 
 ## 6. GoalsEngine: Goal Generation
 
