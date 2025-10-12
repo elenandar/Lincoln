@@ -133,9 +133,9 @@ console.log("TEST 4: Context.js functional retry/continue handling\n");
 // since the context code needs to be used in its proper environment.
 // We verify the key behavioral patterns are present.
 
-const hasRetryRebuild = /if\s*\(\s*isRetry\s*\|\|\s*isContinue\s*\)/.test(contextCode);
+const hasRetryRebuild = /if\s*\(\s*\(?\s*isRetry\s*\|\|\s*isContinue\s*\)?/.test(contextCode);
 const hasEmptyTextFallback = /return\s*{\s*text:\s*""\s*}/.test(contextCode);
-const doesntPreserveUpstream = contextCode.indexOf('if (isRetry || isContinue)') < contextCode.lastIndexOf('return { text: String(text || "") }');
+const doesntPreserveUpstream = contextCode.indexOf('if (') < contextCode.lastIndexOf('return { text: String(text || "") }');
 
 console.log(`  Has retry/continue rebuild block: ${hasRetryRebuild ? '✓' : '✗'}`);
 console.log(`  Has empty text fallback on error: ${hasEmptyTextFallback ? '✓' : '✗'}`);

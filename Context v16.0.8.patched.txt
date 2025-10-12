@@ -27,7 +27,7 @@ const modifier = function (text) {
   // Если это Retry или Continue, мы не можем доверять входящему 'text'.
   // Он может содержать "грязные" данные или быть результатом нажатия UI кнопки,
   // которая обходит наш Output.js. Мы должны принудительно пересобрать контекст с нуля.
-  if (isRetry || isContinue) {
+  if ((isRetry || isContinue) && L.turn > 0) {
     try {
       const limit = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) || 800;
       const built = LC.composeContextOverlay?.({ limit, allowPartial: false }); // allowPartial: false для полной сборки
