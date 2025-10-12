@@ -106,13 +106,18 @@ class TestHarness {
     
     const result = eval(wrappedCode);
     
-    // Add to history
-    global.history.push({
-      type: 'action',
-      text: result.text || inputText,
-      message: result.text || inputText
-    });
-    global.info.actionCount++;
+    // Only add to history for normal (story) actions, not retry/continue
+    const currentAction = global.state?.lincoln?.currentAction?.type;
+    const shouldAddToHistory = currentAction !== 'retry' && currentAction !== 'continue';
+    
+    if (shouldAddToHistory) {
+      global.history.push({
+        type: 'action',
+        text: result.text || inputText,
+        message: result.text || inputText
+      });
+      global.info.actionCount++;
+    }
     
     return result;
   }
