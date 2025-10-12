@@ -17,12 +17,12 @@
 
 const path = require('path');
 const fs = require('fs');
-const harness = require('../test_harness.js');
+const harness = require('../../test_harness.js');
 
 console.log("=== Test: Vanishing Opening Bug Reproduction ===\n");
 
 // Load Opening.txt content
-const openingPath = path.join(__dirname, '..', '..', 'Opening.txt');
+const openingPath = path.join(__dirname, '..', '..', '..', 'Opening.txt');
 const openingText = fs.readFileSync(openingPath, 'utf8').trim();
 
 console.log("Opening.txt content loaded:");
@@ -33,7 +33,7 @@ console.log(`  First line: "${openingText.split(/\r?\n/)[0].slice(0, 50)}..."\n`
 console.log("Loading game scripts...");
 harness.reset();
 
-const baseDir = path.join(__dirname, '..', '..');
+const baseDir = path.join(__dirname, '..', '..', '..');
 harness.loadScript(path.join(baseDir, 'Library v16.0.8.patched.txt'));
 harness.loadScript(path.join(baseDir, 'Input v16.0.8.patched.txt'));
 harness.loadScript(path.join(baseDir, 'Context v16.0.8.patched.txt'));
