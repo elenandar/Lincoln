@@ -1331,6 +1331,7 @@ Contract:
     betrayal: -25,
     loyalty: 10
   },
+  ACADEMIC_SUBJECTS: ['Математика', 'Литература', 'История', 'Химия'],
   RECAP_V2: {
     SCORE_THRESHOLD: 1.0,
     COOLDOWN_TURNS: 3,
@@ -1562,6 +1563,12 @@ L.debugMode = toBool(L.debugMode, false);
       L.lore.archive = Array.isArray(L.lore.archive) ? L.lore.archive : [];
       L.lore.stats = (L.lore.stats && typeof L.lore.stats === 'object') ? L.lore.stats : {};
       L.lore.coolDown = toNum(L.lore.coolDown, 0);
+      
+      // academics tracking (Bell Curve Protocol, Phase 1)
+      L.academics = L.academics || { grades: {} };
+      if (!L.academics.grades || typeof L.academics.grades !== 'object') {
+        L.academics.grades = {};
+      }
       
       const defaultEvergreenCapRaw = CONFIG?.LIMITS?.EVERGREEN_HISTORY_CAP;
       const defaultEvergreenCapNum = Number(defaultEvergreenCapRaw);
@@ -2026,6 +2033,23 @@ L.debugMode = toBool(L.debugMode, false);
               focus_aperture: 0.7,   // Широта фокуса (0-туннельное зрение, 1-рассеянность)
               energy_level: 0.8      // Уровень энергии/бодрости [0-1]
             };
+          }
+          // Initialize academic aptitude and effort if not present
+          if (!rec.aptitude) {
+            rec.aptitude = {};
+            const subjects = CONFIG.ACADEMIC_SUBJECTS || [];
+            for (let s = 0; s < subjects.length; s++) {
+              // Random aptitude between 0.4 and 0.9
+              rec.aptitude[subjects[s]] = 0.4 + Math.random() * 0.5;
+            }
+          }
+          if (!rec.effort) {
+            rec.effort = {};
+            const subjects = CONFIG.ACADEMIC_SUBJECTS || [];
+            for (let s = 0; s < subjects.length; s++) {
+              // Random effort between 0.4 and 0.9
+              rec.effort[subjects[s]] = 0.4 + Math.random() * 0.5;
+            }
           }
           // Initialize perceptions (subjective view of other characters)
           if (!rec.perceptions) {
@@ -5471,6 +5495,31 @@ L.debugMode = toBool(L.debugMode, false);
             LC.lcWarn?.("LivingWorld simulation error for " + activeCharacters[i].name + ": " + (e && e.message));
           }
         }
+        
+        // Academic Test Event: Generate with ~20% probability during time jumps
+        // This simulates off-screen academic activities
+        if (Math.random() < 0.20 && activeCharacters.length > 0) {
+          const subjects = CONFIG.ACADEMIC_SUBJECTS || [];
+          if (subjects.length > 0) {
+            // Pick a random subject
+            const subject = subjects[Math.floor(Math.random() * subjects.length)];
+            
+            // Generate test for all active characters
+            for (let i = 0; i < activeCharacters.length; i++) {
+              const charName = activeCharacters[i].name;
+              const character = L.characters[charName];
+              
+              if (character && LC.AcademicsEngine) {
+                try {
+                  const grade = LC.AcademicsEngine.calculateGrade(character, subject);
+                  LC.AcademicsEngine.recordGrade(charName, subject, grade);
+                } catch (e) {
+                  LC.lcWarn?.("Academic test error for " + charName + ": " + (e && e.message));
+                }
+              }
+            }
+          }
+        }
       },
       
       /**
@@ -6038,6 +6087,83 @@ L.debugMode = toBool(L.debugMode, false);
     },
 
     // ================= END: LivingWorldEngine ===================================
+
+    // =======================================================================
+    // == AcademicsEngine: Симуляция академической успеваемости (Bell Curve Phase 1)
+    // =======================================================================
+    // ========== Academics Engine ==========
+    AcademicsEngine: {
+      /**
+       * Calculates a grade for a character in a specific subject.
+       * Grade is based on aptitude, effort, current mood (valence), and randomness.
+       * @param {object} character - The character object
+       * @param {string} subject - The subject name (e.g., 'Математика')
+       * @returns {number} Grade on a 5-point scale (1-5, allowing decimals)
+       */
+      calculateGrade(character, subject) {
+        if (!character || !subject) return 3; // Default neutral grade
+        
+        // Get aptitude and effort for this subject
+        const aptitude = character.aptitude?.[subject] || 0.5;
+        const effort = character.effort?.[subject] || 0.5;
+        
+        // Get current mood (valence) - affects performance
+        const valence = character.qualia_state?.valence || 0.5;
+        
+        // Mood modifier: positive mood slightly boosts performance, negative hurts it
+        const moodModifier = (valence - 0.5) * 0.3; // -0.15 to +0.15
+        
+        // Combine factors: aptitude (50%), effort (30%), mood (20%)
+        const basePerformance = (aptitude * 0.5) + (effort * 0.3) + ((valence - 0.5 + 0.5) * 0.2);
+        
+        // Add some randomness (±0.15)
+        const randomFactor = (Math.random() - 0.5) * 0.3;
+        
+        // Final performance score [0, 1]
+        const performance = Math.max(0, Math.min(1, basePerformance + randomFactor));
+        
+        // Convert to 5-point scale: 0-0.2 -> 1, 0.2-0.4 -> 2, etc.
+        // But allow for more nuanced scores with decimals
+        const grade = 1 + (performance * 4);
+        
+        // Round to one decimal place
+        return Math.round(grade * 10) / 10;
+      },
+      
+      /**
+       * Records a grade for a character in a specific subject.
+       * Stores it in L.academics.grades[characterName][subject] as an array of grades.
+       * @param {string} characterName - The character's name
+       * @param {string} subject - The subject name
+       * @param {number} grade - The grade to record
+       */
+      recordGrade(characterName, subject, grade) {
+        if (!characterName || !subject || typeof grade !== 'number') return;
+        
+        const L = LC.lcInit();
+        
+        // Ensure grades structure exists
+        if (!L.academics.grades[characterName]) {
+          L.academics.grades[characterName] = {};
+        }
+        
+        // Ensure subject array exists
+        if (!Array.isArray(L.academics.grades[characterName][subject])) {
+          L.academics.grades[characterName][subject] = [];
+        }
+        
+        // Add the grade
+        L.academics.grades[characterName][subject].push({
+          grade: grade,
+          turn: L.turn
+        });
+        
+        // Increment state version to invalidate context cache
+        L.stateVersion++;
+      }
+    },
+
+    // ================= END: AcademicsEngine ===================================
 
     // =======================================================================
     // == CrucibleEngine: Эволюция личности и "Я-концепции"
