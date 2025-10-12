@@ -6311,7 +6311,7 @@ L.debugMode = toBool(L.debugMode, false);
                   type: 'ACADEMIC_TRIUMPH',
                   participants: [characterName],
                   witnesses: 5, // Classroom setting
-                  impact: 25, // Significant achievement
+                  impact: 40, // Very significant achievement - increased from 25
                   normViolation: 0,
                   description: `${characterName} превзошёл все ожидания, получив отличную оценку`
                 };

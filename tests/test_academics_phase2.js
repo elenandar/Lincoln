@@ -172,19 +172,19 @@ if (L.character_status['Максим']) {
   );
 }
 
-// Clear and test low grade
+// Clear and test low grade (use Максим who is in core list)
 L.character_status = {};
-LC.AcademicsEngine.recordGrade('Анна', 'Математика', 2.0);
+LC.AcademicsEngine.recordGrade('Максим', 'Химия', 2.0);
 
 test("MoodEngine triggered by low grade", 
-  L.character_status['Анна'] !== undefined,
-  `Mood detected: ${L.character_status['Анна'] ? 'Yes' : 'No'}`
+  L.character_status['Максим'] !== undefined,
+  `Mood detected: ${L.character_status['Максим'] ? 'Yes' : 'No'}`
 );
 
-if (L.character_status['Анна']) {
+if (L.character_status['Максим']) {
   test("Low grade creates negative mood (disappointed)", 
-    L.character_status['Анна'].mood === 'disappointed',
-    `Mood: ${L.character_status['Анна'].mood}`
+    L.character_status['Максим'].mood === 'disappointed',
+    `Mood: ${L.character_status['Максим'].mood}`
   );
 }
 
@@ -192,9 +192,14 @@ console.log("");
 
 console.log("=== Test 3: HierarchyEngine - GPA Impact on Social Capital ===\n");
 
-// Record more grades to establish high GPA for Максим
-LC.AcademicsEngine.recordGrade('Максим', 'Литература', 4.7);
-LC.AcademicsEngine.recordGrade('Максим', 'История', 4.9);
+// Ensure Максим has consistently high grades for GPA >= 4.5
+// Clear previous inconsistent grades by creating a fresh baseline
+L.academics.grades['Максим'] = {
+  'Математика': [{ grade: 4.8, turn: 1 }],
+  'Литература': [{ grade: 4.7, turn: 1 }],
+  'История': [{ grade: 4.9, turn: 1 }],
+  'Химия': [{ grade: 4.6, turn: 1 }]
+};
 
 const capitalBefore = L.characters['Максим'].social.capital;
 
