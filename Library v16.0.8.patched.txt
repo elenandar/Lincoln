@@ -1332,6 +1332,7 @@ Contract:
     loyalty: 10
   },
   ACADEMIC_SUBJECTS: ['Математика', 'Литература', 'История', 'Химия'],
+  GRADES_HISTORY_LIMIT: 10,
   RECAP_V2: {
     SCORE_THRESHOLD: 1.0,
     COOLDOWN_TURNS: 3,
@@ -6263,6 +6264,12 @@ L.debugMode = toBool(L.debugMode, false);
           grade: grade,
           turn: L.turn
         });
+        
+        // Sliding Window: Remove oldest grade if limit exceeded (Memory Leak Hotfix)
+        const limit = LC.CONFIG.GRADES_HISTORY_LIMIT || 10;
+        if (L.academics.grades[characterName][subject].length > limit) {
+          L.academics.grades[characterName][subject].shift(); // Remove oldest grade
+        }
         
         // PHASE 2: Update mood based on grade performance
         // High grades (4.5+) -> positive mood, Low grades (<2.5) -> negative mood
