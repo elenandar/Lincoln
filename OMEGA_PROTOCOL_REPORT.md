@@ -2,7 +2,7 @@
 
 **Final Micro-Mechanism Verification Test**
 
-**Date**: 2025-10-12T10:43:46.820Z
+**Date**: 2025-10-12T10:44:20.061Z
 **Test Turn**: 501
 
 ## Executive Summary
@@ -18,7 +18,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| StateVersion | 775 | 777 | ✓ Incremented |
+| StateVersion | 712 | 712 | ✗ Unchanged |
 
 ## 1. InformationEngine: Phenomenal State (qualia_state)
 
@@ -48,7 +48,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Reason |
 |-----------|--------|-------|--------|
-| Максим | disappointed | disappointed | разочарование |
+| Максим | happy | happy | радость |
 | Хлоя | disappointed | disappointed | разочарование |
 
 ## 3. RelationsEngine: Relationship Dynamics
@@ -75,7 +75,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Δ | Status Before | Status After |
 |-----------|--------|-------|---|---------------|--------------|
-| Максим | 110 | 110 | 0 | member | member |
+| Максим | 78 | 78 | 0 | member | member |
 | Хлоя | 200 | 200 | 0 | leader | leader |
 
 ## 6. GoalsEngine: Goal Generation
@@ -94,7 +94,7 @@ This report documents the detailed internal response of all system engines to a 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
 | Total Legends | 2 | 2 | 0 |
-| Last Legend Type | loyalty_rescue | loyalty_rescue | - |
+| Last Legend Type | conflict | conflict | - |
 
 **Note**: Event did not reach legendary threshold.
 
