@@ -18,6 +18,15 @@ console.log("");
 const fs = require('fs');
 const path = require('path');
 
+// Capture console output for saving to file
+const reportLines = [];
+const originalLog = console.log;
+console.log = function(...args) {
+  const line = args.map(arg => String(arg)).join(' ');
+  reportLines.push(line);
+  originalLog.apply(console, args);
+};
+
 // Load all script files
 const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
 const inputCode = fs.readFileSync(path.join(__dirname, '..', 'Input v16.0.8.patched.txt'), 'utf8');
@@ -784,6 +793,12 @@ if (totalFailed === 0 && totalWarnings === 0) {
 console.log("╔══════════════════════════════════════════════════════════════════════════════╗");
 console.log("║                      АУДИТ ЗАВЕРШЕН                                          ║");
 console.log("╚══════════════════════════════════════════════════════════════════════════════╝");
+
+// Save report to file
+const reportPath = path.join(__dirname, '..', 'FINAL_STATIC_AUDIT_V7.md');
+const reportContent = '```\n' + reportLines.join('\n') + '\n```\n';
+fs.writeFileSync(reportPath, reportContent, 'utf8');
+originalLog(`\n✓ Report saved to: FINAL_STATIC_AUDIT_V7.md\n`);
 
 // Exit code based on results
 process.exit(totalFailed > 0 ? 1 : 0);

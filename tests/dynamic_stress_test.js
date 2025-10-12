@@ -859,10 +859,10 @@ try {
   const report = generateReport(metrics, feedbackTests);
   
   // Save report
-  const reportPath = path.join(__dirname, '..', 'DYNAMIC_STRESS_TEST_REPORT_V4.md');
+  const reportPath = path.join(__dirname, '..', 'DYNAMIC_STRESS_TEST_REPORT_V7.md');
   fs.writeFileSync(reportPath, report, 'utf8');
   
-  console.log(`✓ Report saved to: DYNAMIC_STRESS_TEST_REPORT_V4.md`);
+  console.log(`✓ Report saved to: DYNAMIC_STRESS_TEST_REPORT_V7.md`);
   console.log("");
   
   console.log("╔══════════════════════════════════════════════════════════════════════════════╗");
