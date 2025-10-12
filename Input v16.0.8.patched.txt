@@ -210,6 +210,16 @@ function replyStopSilent(){
 const tokens = cmdRaw ? cmdRaw.trim().split(/\s+/) : [];
 const args   = tokens.slice(1);
 
+  // Check if input is a response to an active TASK offer (recap/epoch)
+  if (!cmd && L.currentAction?.wantRecap) {
+    const lowerInput = userText.toLowerCase().trim();
+    if (lowerInput === "нет" || lowerInput === "no") {
+      // Player declined the task without using a command
+      delete L.currentAction.wantRecap;
+      L.recapMuteUntil = L.turn + 5;
+      return replyStop("🚫 Recap postponed for 5 turns.");
+    }
+  }
 
   if (!cmd) LC.detectInputType(raw);
 
