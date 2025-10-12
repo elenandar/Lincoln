@@ -19,6 +19,15 @@ Basic validation test for test_harness.js functionality:
 
 Validates that the turn counter (`state.turn`) correctly updates during different user actions.
 
+### test_library_units.js
+
+**Legion Protocol Part 2** - Unit tests for core Library.js functions:
+- Tests `LC.sanitizeAliases` with dirty arrays and objects (duplicates and garbage removal)
+- Tests `LC.CommandsRegistry` for programmatic command registration
+- Tests `LC.Utils.getEventDramaticMultiplier` with different event types (public_accusation, conflict, etc.)
+- Tests `LC.TimeEngine` basic functionality (advance() method)
+- Tests `LC.GossipEngine` basic functionality (generateRumorId() method)
+
 **Test Steps**:
 1. **Initial State**: Verify `state.turn` starts at 0
 2. **Say Action**: Verify turn increments to 1 after first user input
@@ -44,6 +53,7 @@ node run_all_tests.js
 cd tests/unit
 node test_harness_basic.js
 node test_turn_counter_integrity.js
+node test_library_units.js
 ```
 
 ## Expected Output
