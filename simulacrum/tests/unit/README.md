@@ -1,10 +1,19 @@
-# State Tests - Protocol 'Цербер'
+# Unit Tests
 
 ## Overview
 
-This directory contains state integrity tests for validating that Lincoln's state object correctly updates and maintains data consistency across different game actions. These tests implement "Протокол 'Цербер', Часть 3 — Проверка Памяти" (Cerberus Protocol, Part 3 - Memory Verification).
+This directory contains **unit tests** for the Simulacrum test harness. Unit tests focus on testing individual components in isolation.
 
 ## Test Files
+
+### test_harness_basic.js
+
+Basic validation test for test_harness.js functionality:
+- Initializes mock state, history, worldInfo
+- Loads game scripts
+- Executes a complete turn simulation
+- Implements user action wrappers
+- Resets state properly
 
 ### test_turn_counter_integrity.js
 
@@ -28,11 +37,13 @@ Validates that the turn counter (`state.turn`) correctly updates during differen
 ## Running the Tests
 
 ```bash
-# From repository root
-node simulacrum/tests/state_tests/test_turn_counter_integrity.js
+# From simulacrum directory - run all tests
+node run_all_tests.js
 
-# Or as executable
-./simulacrum/tests/state_tests/test_turn_counter_integrity.js
+# Run a specific unit test
+cd tests/unit
+node test_harness_basic.js
+node test_turn_counter_integrity.js
 ```
 
 ## Expected Output
@@ -69,6 +80,6 @@ The turn counter behavior is controlled by:
 ## Related Documentation
 
 - Main test harness: `simulacrum/test_harness.js`
-- Example tests: `simulacrum/tests/example_test_case.js`
-- Chaos tests: `simulacrum/tests/chaos_tests/test_chaos_scenarios.js`
+- Master test runner: `simulacrum/run_all_tests.js`
+- Integration tests: `simulacrum/tests/integration/`
 - System documentation: `SYSTEM_DOCUMENTATION.md`

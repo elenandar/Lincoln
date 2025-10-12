@@ -14,7 +14,7 @@
  */
 
 const path = require('path');
-const harness = require('../test_harness.js');
+const harness = require('../../test_harness.js');
 
 console.log("=== Adaptation Protocol Part 1 - Validation ===\n");
 
