@@ -11,7 +11,7 @@
  */
 
 const path = require('path');
-const harness = require('../test_harness.js');
+const harness = require('../../test_harness.js');
 
 console.log("=== Project Simulacrum - Test Harness Validation ===\n");
 
