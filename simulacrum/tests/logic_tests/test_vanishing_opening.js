@@ -41,20 +41,19 @@ harness.loadScript(path.join(baseDir, 'Output v16.0.8.patched.txt'));
 
 console.log("  ✓ All scripts loaded\n");
 
-// Set up the scenario: Opening.txt in history at game start
+// Set up the scenario: Opening.txt in story at game start
 console.log("Setting up test scenario...");
-console.log("  Adding Opening.txt to history as first entry");
+console.log("  Adding Opening.txt to story.results as first entry");
 
-// Add Opening.txt as the first history entry
+// Add Opening.txt as the first result entry
 // This simulates the scenario where Opening.txt is the story start
-global.history.push({
-  type: 'story',
-  text: openingText
-});
+if (!global.state.story) {
+  global.state.story = { actions: [], results: [] };
+}
+global.state.story.results.push(openingText);
 
-console.log(`  ✓ History length: ${global.history.length}`);
-console.log(`  ✓ First entry type: ${global.history[0].type}`);
-console.log(`  ✓ First entry text length: ${global.history[0].text.length}\n`);
+console.log(`  ✓ Results length: ${global.state.story.results.length}`);
+console.log(`  ✓ First result text length: ${global.state.story.results[0].length}\n`);
 
 // Simulate first Continue action at game start
 console.log("Simulating first Continue action...");

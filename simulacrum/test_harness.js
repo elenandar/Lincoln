@@ -32,11 +32,12 @@ class TestHarness {
       memory: {
         frontMemory: "",
         authorsNote: ""
+      },
+      story: {
+        actions: [],  // Player actions (from Input)
+        results: []   // AI responses (from Output)
       }
     };
-
-    // AI Dungeon history array (sequence of actions)
-    global.history = [];
 
     // AI Dungeon world info entries
     global.worldInfo = [];
@@ -106,16 +107,12 @@ class TestHarness {
     
     const result = eval(wrappedCode);
     
-    // Only add to history for normal (story) actions, not retry/continue
+    // Only add to actions for normal (story) actions, not retry/continue
     const currentAction = global.state?.lincoln?.currentAction?.type;
-    const shouldAddToHistory = currentAction !== 'retry' && currentAction !== 'continue';
+    const shouldAddToActions = currentAction !== 'retry' && currentAction !== 'continue';
     
-    if (shouldAddToHistory) {
-      global.history.push({
-        type: 'action',
-        text: result.text || inputText,
-        message: result.text || inputText
-      });
+    if (shouldAddToActions && global.state?.story?.actions) {
+      global.state.story.actions.push(result.text || inputText);
       global.info.actionCount++;
     }
     
@@ -161,6 +158,12 @@ class TestHarness {
     const wrappedCode = `(function() { ${this.scripts[scriptKey]} })()`;
     
     const result = eval(wrappedCode);
+    
+    // Add AI response to results array
+    if (global.state?.story?.results) {
+      global.state.story.results.push(result.text || aiResponse);
+    }
+    
     return result;
   }
 
@@ -232,9 +235,9 @@ class TestHarness {
       global.state.lincoln.currentAction = { type: 'retry' };
     }
 
-    // Remove last history entry
-    if (global.history.length > 0) {
-      global.history.pop();
+    // Remove last result (AI response)
+    if (global.state?.story?.results?.length > 0) {
+      global.state.story.results.pop();
     }
 
     // Re-execute with empty input (retry uses last context)
@@ -258,16 +261,30 @@ class TestHarness {
 
   /**
    * Simulates the "Erase" action (undo last entry)
+   * Mimics the /revert command from play.py
    * 
    * @returns {boolean} True if an entry was erased
    */
   performErase() {
-    if (global.history.length > 0) {
-      global.history.pop();
+    const hasActions = global.state?.story?.actions?.length > 0;
+    const hasResults = global.state?.story?.results?.length > 0;
+    
+    if (hasActions || hasResults) {
+      // Remove last action
+      if (hasActions) {
+        global.state.story.actions.pop();
+      }
+      
+      // Remove last result
+      if (hasResults) {
+        global.state.story.results.pop();
+      }
+      
+      // Decrement action count
       global.info.actionCount = Math.max(0, global.info.actionCount - 1);
       
-      // Also decrement turn counter if it exists
-      if (global.state && global.state.lincoln && global.state.lincoln.turn > 0) {
+      // Decrement turn counter if it exists
+      if (global.state?.lincoln?.turn > 0) {
         global.state.lincoln.turn--;
       }
       
@@ -287,11 +304,54 @@ class TestHarness {
 
   /**
    * Gets the current history array
+   * For backward compatibility, combines actions and results
    * 
-   * @returns {array} The history array
+   * @returns {array} The combined history array
    */
   getHistory() {
-    return global.history || [];
+    const actions = global.state?.story?.actions || [];
+    const results = global.state?.story?.results || [];
+    
+    // Interleave actions and results
+    const history = [];
+    const maxLength = Math.max(actions.length, results.length);
+    
+    for (let i = 0; i < maxLength; i++) {
+      if (i < actions.length) {
+        history.push({
+          type: 'action',
+          text: actions[i],
+          message: actions[i]
+        });
+      }
+      if (i < results.length) {
+        history.push({
+          type: 'result',
+          text: results[i],
+          message: results[i]
+        });
+      }
+    }
+    
+    return history;
+  }
+
+  /**
+   * Gets the actions array (player inputs)
+   * 
+   * @returns {array} The actions array
+   */
+  getActions() {
+    return global.state?.story?.actions || [];
+  }
+
+  /**
+   * Gets the results array (AI responses)
+   * 
+   * @returns {array} The results array
+   */
+  getResults() {
+    return global.state?.story?.results || [];
   }
 
   /**

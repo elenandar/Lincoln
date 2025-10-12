@@ -20,11 +20,14 @@ let allTestsPassed = true;
 // Test 1: Initial state
 console.log("TEST 1: Initial State Verification");
 console.log("  Checking global.state exists:", typeof global.state === 'object' ? '✓' : '✗');
-console.log("  Checking global.history exists:", Array.isArray(global.history) ? '✓' : '✗');
+console.log("  Checking global.state.story.actions exists:", Array.isArray(global.state?.story?.actions) ? '✓' : '✗');
+console.log("  Checking global.state.story.results exists:", Array.isArray(global.state?.story?.results) ? '✓' : '✗');
 console.log("  Checking global.worldInfo exists:", Array.isArray(global.worldInfo) ? '✓' : '✗');
 console.log("  Checking global.info exists:", typeof global.info === 'object' ? '✓' : '✗');
 
-if (typeof global.state === 'object' && Array.isArray(global.history) && 
+if (typeof global.state === 'object' && 
+    Array.isArray(global.state?.story?.actions) &&
+    Array.isArray(global.state?.story?.results) &&
     Array.isArray(global.worldInfo) && typeof global.info === 'object') {
   console.log("  ✅ PASSED: All global objects initialized\n");
 } else {
@@ -138,9 +141,12 @@ if (loaded && inputLoaded && contextLoaded && outputLoaded) {
     console.log("  Turn executed without error:", '✓');
     console.log("  Result has 'context' field:", 'context' in result ? '✓' : '✗');
     console.log("  Result has 'output' field:", 'output' in result ? '✓' : '✗');
-    console.log("  History updated:", global.history.length > 0 ? '✓' : '✗');
+    const actionsUpdated = (global.state?.story?.actions?.length || 0) > 0;
+    const resultsUpdated = (global.state?.story?.results?.length || 0) > 0;
+    console.log("  Actions updated:", actionsUpdated ? '✓' : '✗');
+    console.log("  Results updated:", resultsUpdated ? '✓' : '✗');
     
-    if ('context' in result && 'output' in result && global.history.length > 0) {
+    if ('context' in result && 'output' in result && actionsUpdated && resultsUpdated) {
       console.log("  ✅ PASSED: Turn execution works\n");
     } else {
       console.log("  ❌ FAILED: Turn execution incomplete\n");
@@ -156,15 +162,18 @@ if (loaded && inputLoaded && contextLoaded && outputLoaded) {
 
 // Test 10: Reset functionality
 console.log("TEST 10: Reset Functionality");
-const historyBefore = global.history.length;
+const actionsBefore = global.state?.story?.actions?.length || 0;
+const resultsBefore = global.state?.story?.results?.length || 0;
 harness.reset();
-const historyAfter = global.history.length;
+const actionsAfter = global.state?.story?.actions?.length || 0;
+const resultsAfter = global.state?.story?.results?.length || 0;
 // After reset, state should only have _versionCheckDone flag
 const stateReset = !global.state.lincoln || Object.keys(global.state.lincoln).length <= 1;
-console.log("  History cleared:", historyAfter === 0 ? '✓' : '✗');
+console.log("  Actions cleared:", actionsAfter === 0 ? '✓' : '✗');
+console.log("  Results cleared:", resultsAfter === 0 ? '✓' : '✗');
 console.log("  State reset:", stateReset ? '✓' : '✗');
 
-if (historyAfter === 0 && stateReset) {
+if (actionsAfter === 0 && resultsAfter === 0 && stateReset) {
   console.log("  ✅ PASSED: Reset works\n");
 } else {
   console.log("  ❌ FAILED: Reset failed\n");

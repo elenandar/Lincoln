@@ -32,43 +32,48 @@ console.log("Step 3: Executing first turn (Say action)...");
 const turn1 = harness.performSay("Максим подошёл к Хлое.");
 console.log("  Context includes INTENT:", turn1.context.includes("⟦INTENT⟧") ? '✓' : '✗');
 console.log("  Context includes GUIDE:", turn1.context.includes("⟦GUIDE⟧") ? '✓' : '✗');
-console.log("  History length:", global.history.length);
+console.log("  Actions count:", harness.getActions().length);
+console.log("  Results count:", harness.getResults().length);
 console.log("  Turn number:", harness.getState().turn);
 console.log();
 
 // Execute second turn
 console.log("Step 4: Executing second turn...");
 const turn2 = harness.performSay("— Привет, Хлоя!");
-console.log("  History length:", global.history.length);
+console.log("  Actions count:", harness.getActions().length);
+console.log("  Results count:", harness.getResults().length);
 console.log("  Turn number:", harness.getState().turn);
 console.log();
 
 // Test retry
 console.log("Step 5: Testing Retry action...");
-const historyBeforeRetry = global.history.length;
+const resultsBeforeRetry = harness.getResults().length;
 const retryResult = harness.performRetry();
-const historyAfterRetry = global.history.length;
-console.log("  History removed last entry:", historyAfterRetry < historyBeforeRetry ? '✓' : '✗');
+const resultsAfterRetry = harness.getResults().length;
+console.log("  Results removed last entry:", resultsAfterRetry < resultsBeforeRetry ? '✓' : '✗');
 // Note: Action type may be changed by Input script based on empty input detection
 console.log("  Retry executed successfully:", !retryResult.stopped ? '✓' : '✗');
 console.log();
 
 // Test continue
 console.log("Step 6: Testing Continue action...");
-const historyBeforeContinue = global.history.length;
+const actionsBeforeContinue = harness.getActions().length;
 const continueResult = harness.performContinue();
-const historyAfterContinue = global.history.length;
-console.log("  History unchanged:", historyAfterContinue === historyBeforeContinue ? '✓' : '✗');
+const actionsAfterContinue = harness.getActions().length;
+console.log("  Actions unchanged:", actionsAfterContinue === actionsBeforeContinue ? '✓' : '✗');
 console.log("  Action type was 'continue':", harness.getState().currentAction?.type === 'continue' ? '✓' : '✗');
 console.log();
 
 // Test erase
 console.log("Step 7: Testing Erase action...");
-const historyBeforeErase = global.history.length;
+const actionsBeforeErase = harness.getActions().length;
+const resultsBeforeErase = harness.getResults().length;
 const erased = harness.performErase();
-const historyAfterErase = global.history.length;
+const actionsAfterErase = harness.getActions().length;
+const resultsAfterErase = harness.getResults().length;
 console.log("  Entry erased:", erased ? '✓' : '✗');
-console.log("  History reduced:", historyAfterErase === historyBeforeErase - 1 ? '✓' : '✗');
+console.log("  Actions reduced:", actionsAfterErase === actionsBeforeErase - 1 ? '✓' : '✗');
+console.log("  Results reduced:", resultsAfterErase === resultsBeforeErase - 1 ? '✓' : '✗');
 console.log();
 
 // Test command execution
