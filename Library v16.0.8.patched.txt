@@ -8655,8 +8655,12 @@ L.debugMode = toBool(L.debugMode, false);
       return { total:+total.toFixed(3), rows: rows.reverse() };
     },
     checkRecapOfferV2(){
-      const L = this.lcInit();
-      if (L.currentAction?.type === 'retry' || L.currentAction?.type === 'command') return false;
+      const L = this.lcInit ? this.lcInit() : {};
+      if (L.currentAction?.type === 'retry') {
+        // Retry protection: immediately exit, do NOT offer recap
+        return false;
+      }
+      if (L.currentAction?.type === 'command') return false;
       if (L.recapDraft || L.epochDraft) return false;
       if (L.turn < (L.recapMuteUntil || 0)) return false;
 

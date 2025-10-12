@@ -1,5 +1,5 @@
 /*
-Module: Context — Lincoln v16.0.8-compat6d
+Module: Context — Lincoln v16.0.9-hardened
 Contract:
 - Reads flags: ...
 - Writes flags: ...
@@ -7,55 +7,67 @@ Contract:
 - Invariants:
   - Turn +1 on story input and the UI Continue button.
   - Turn +0 on slash commands (including `/continue`) and retries.
-  - `/continue` slash command accepts recap/epoch drafts (not the UI button).
   - Context overlay falls back to upstream text when empty or on error.
-- Config: LIMITS.*, CHAR_WINDOW_*, FEATURES.*, OUTPUT_BUDGET_MS (optional)
+  - **NEW:** Actively sanitizes context on retries and continues to prevent data leaks.
 */
-// === CONTEXT MODIFIER v16.0.8-compat6d ===
+// === CONTEXT MODIFIER v16.0.9-hardened ===
 const __SCRIPT_SLOT__ = "Context";
-if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
+if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.9-hardened";
 
 const modifier = function (text) {
-  
   if (typeof LC === "undefined") return { text: String(text || "") };
 
   const L = LC.lcInit(__SCRIPT_SLOT__);
-  const RETRY_KEEP_CONTEXT = (L.currentAction?.RETRY_KEEP_CONTEXT === true);
-  LC.DATA_VERSION = "16.0.8-compat6d";
+  LC.DATA_VERSION = "16.0.9-hardened";
 
   const isRetry = L.currentAction?.type === 'retry';
-  if (isRetry && !RETRY_KEEP_CONTEXT) return { text: String(text || "") };
+  const isContinue = L.currentAction?.type === 'continue';
+
+  // --- HARDENING PROTOCOL ---
+  // Если это Retry или Continue, мы не можем доверять входящему 'text'.
+  // Он может содержать "грязные" данные или быть результатом нажатия UI кнопки,
+  // которая обходит наш Output.js. Мы должны принудительно пересобрать контекст с нуля.
+  if (isRetry || isContinue) {
+    try {
+      const limit = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) || 800;
+      const built = LC.composeContextOverlay?.({ limit, allowPartial: false }); // allowPartial: false для полной сборки
+      const overlay = (built && typeof built.text === "string") ? built.text.trim() : "";
+      
+      if (overlay) {
+        // Успешная пересборка. Возвращаем чистый, полный контекст.
+        return { text: overlay };
+      } else {
+        // Пересборка не удалась, возвращаем пустую строку, чтобы предотвратить утечку "грязного" text.
+        LC.lcWarn?.("CTX-HARDEN: Forced rebuild resulted in an empty overlay. Blanking context.");
+        return { text: "" };
+      }
+    } catch (e) {
+      LC.lcWarn?.("CTX-HARDEN: Forced context rebuild failed: " + (e && e.message));
+      // В случае критической ошибки, лучше обнулить контекст, чем допустить утечку.
+      return { text: "" };
+    }
+  }
+  // --- END HARDENING PROTOCOL ---
 
   const isCmd = L.currentAction?.type === 'command';
   const wantsRecap = L.currentAction?.task === 'recap';
   const wantsEpoch = L.currentAction?.task === 'epoch';
 
-  // Если это чистая команда (нет задач на драфты) — не трать бюджет на сборку оверлея
   if (isCmd && !wantsRecap && !wantsEpoch) {
     return { text: String(text || "") };
   }
 
   const limit = (LC.CONFIG && LC.CONFIG.LIMITS && LC.CONFIG.LIMITS.CONTEXT_LENGTH) || 800;
   
-  /**
-   * Safely slices a string without breaking Unicode surrogate pairs.
-   * @param {string} str - The string to slice
-   * @param {number} maxLength - Maximum length
-   * @returns {string} Safely sliced string
-   */
   function safeSlice(str, maxLength) {
     if (str.length <= maxLength) return str;
-    // Check if we're cutting in the middle of a surrogate pair
     const charCode = str.charCodeAt(maxLength - 1);
-    // High surrogate range: 0xD800-0xDBFF
     if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-      // We're at a high surrogate, cut one character earlier to avoid breaking the pair
       return str.slice(0, maxLength - 1);
     }
     return str.slice(0, maxLength);
   }
   
-  // CTX: build overlay with safe fallback to upstream text
   let overlay = "";
   try {
     const built = LC.composeContextOverlay?.({ limit, allowPartial: true });
