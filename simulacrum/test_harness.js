@@ -56,6 +56,37 @@ class TestHarness {
     
     // Last context sent to AI
     this.lastContext = "";
+    
+    // Provide backward compatibility getter for history
+    // This allows library code to read history as if it still exists
+    Object.defineProperty(global, 'history', {
+      get: () => {
+        const actions = global.state?.story?.actions || [];
+        const results = global.state?.story?.results || [];
+        const history = [];
+        const maxLength = Math.max(actions.length, results.length);
+        
+        for (let i = 0; i < maxLength; i++) {
+          if (i < actions.length) {
+            history.push({
+              type: 'action',
+              text: actions[i],
+              message: actions[i]
+            });
+          }
+          if (i < results.length) {
+            history.push({
+              type: 'result',
+              text: results[i],
+              message: results[i]
+            });
+          }
+        }
+        
+        return history;
+      },
+      configurable: true  // Allow it to be redefined if needed
+    });
   }
 
   /**
@@ -78,6 +109,8 @@ class TestHarness {
       
       // Execute Library immediately if it's the Library script
       if (scriptName.includes('Library')) {
+        // Make history available as a variable in the eval scope for backward compatibility
+        const history = global.history;
         eval(code);
       }
       

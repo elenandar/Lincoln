@@ -112,7 +112,7 @@ All existing tests updated to use new structure:
 
 ### Structure Verification
 ```
-✓ global.history exists: false (removed as required)
+✓ global.history is getter (not undefined): true
 ✓ state.story exists: true
 ✓ state.story.actions is array: true
 ✓ state.story.results is array: true
@@ -124,13 +124,16 @@ All existing tests updated to use new structure:
 ## Compatibility
 
 ### Breaking Changes
-- `global.history` no longer exists
-- Code that directly accessed `global.history` must be updated
+- `global.history` is no longer a direct array
+- It's now a getter property that dynamically builds an interleaved view
+- Code that tried to modify `global.history` directly will not work
+- Use `state.story.actions` and `state.story.results` instead
 
 ### Backward Compatibility
-- `getHistory()` method provides interleaved view for legacy code
-- All existing test harness methods still work
-- State access patterns remain compatible
+- `global.history` is now a getter property that returns interleaved actions/results
+- This allows existing Library code to access `history` without modification
+- The getter is created in `reset()` and updated whenever actions/results change
+- `getHistory()` method also provides backward compatibility
 
 ## Benefits
 

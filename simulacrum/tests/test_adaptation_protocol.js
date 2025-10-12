@@ -9,7 +9,7 @@
  * Validates:
  * 1. state.story.actions[] for player inputs
  * 2. state.story.results[] for AI responses
- * 3. No global.history
+ * 3. global.history provides backward compatibility via getter
  * 4. performErase() removes from both arrays (mimics /revert)
  */
 
@@ -36,12 +36,12 @@ console.log("Test 1: state.story Structure");
 console.log("  ✓ state.story exists:", typeof global.state?.story === 'object');
 console.log("  ✓ state.story.actions is array:", Array.isArray(global.state?.story?.actions));
 console.log("  ✓ state.story.results is array:", Array.isArray(global.state?.story?.results));
-console.log("  ✓ global.history removed:", typeof global.history === 'undefined');
+console.log("  ✓ global.history is getter (backward compat):", Array.isArray(global.history));
 
 if (typeof global.state?.story === 'object' &&
     Array.isArray(global.state?.story?.actions) &&
     Array.isArray(global.state?.story?.results) &&
-    typeof global.history === 'undefined') {
+    Array.isArray(global.history)) {
   console.log("  ✅ PASSED: Correct structure\n");
 } else {
   console.log("  ❌ FAILED: Structure mismatch\n");
