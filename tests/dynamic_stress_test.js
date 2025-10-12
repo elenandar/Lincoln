@@ -667,7 +667,7 @@ This report presents the results of a comprehensive 2500-turn simulation designe
    - Participants: ${legend.participants.join(', ')}
    - Witnesses: ${legend.witnesses}
    - Impact: ${legend.impact.toFixed(2)}
-   - Text: "${legend.text}"
+   - Text: "${legend.Text}"
 
 `;
     });
