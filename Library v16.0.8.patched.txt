@@ -3636,6 +3636,101 @@ L.debugMode = toBool(L.debugMode, false);
         }
         
         L.stateVersion++;
+      },
+      
+      /**
+       * PHASE 2: Generates academic goals for characters based on their GPA.
+       * This should be called periodically (e.g., during off-screen cycles).
+       * Low GPA characters get "improve_grades" goals, high GPA get "become_valedictorian".
+       */
+      generateAcademicGoals() {
+        const L = LC.lcInit();
+        
+        // Only run this occasionally (10% chance per call)
+        if (Math.random() > 0.10) return;
+        
+        // Need AcademicsEngine
+        if (!LC.AcademicsEngine || typeof LC.AcademicsEngine.getGPA !== 'function') return;
+        
+        // Get all active characters
+        const activeChars = [];
+        for (const charName in L.characters) {
+          const char = L.characters[charName];
+          if (char && char.status === 'ACTIVE') {
+            const gpa = LC.AcademicsEngine.getGPA(charName);
+            activeChars.push({ name: charName, char: char, gpa: gpa });
+          }
+        }
+        
+        if (activeChars.length === 0) return;
+        
+        // Pick a random active character
+        const selectedChar = activeChars[Math.floor(Math.random() * activeChars.length)];
+        
+        // Only generate goals for characters who have grades
+        if (selectedChar.gpa === 0) return;
+        
+        // Check if character already has an active academic goal
+        const hasAcademicGoal = Object.values(L.goals).some(goal => 
+          goal.character === selectedChar.name && 
+          goal.status === 'active' &&
+          (goal.text.includes('оценк') || goal.text.includes('учёб') || goal.text.includes('лучший'))
+        );
+        
+        if (hasAcademicGoal) return; // Don't create duplicate academic goals
+        
+        let goalText = null;
+        let plan = [];
+        
+        // Generate goals based on GPA
+        if (selectedChar.gpa < 2.5) {
+          // Low GPA: Goal to improve grades
+          goalText = 'исправить оценки в этом семестре';
+          plan = [
+            { text: 'Начать больше заниматься', status: 'pending' },
+            { text: 'Получить хотя бы одну хорошую оценку', status: 'pending' },
+            { text: 'Поднять средний балл', status: 'pending' }
+          ];
+        } else if (selectedChar.gpa >= 4.5) {
+          // High GPA: Goal to become valedictorian (best student)
+          goalText = 'стать лучшим учеником класса';
+          plan = [
+            { text: 'Поддерживать отличную успеваемость', status: 'pending' },
+            { text: 'Получать только пятёрки', status: 'pending' },
+            { text: 'Добиться признания как лучший ученик', status: 'pending' }
+          ];
+        } else if (selectedChar.gpa >= 3.5) {
+          // Medium-high GPA: Goal to reach excellence
+          goalText = 'повысить оценки до уровня отличника';
+          plan = [
+            { text: 'Улучшить результаты по слабым предметам', status: 'pending' },
+            { text: 'Стабилизировать высокие оценки', status: 'pending' },
+            { text: 'Войти в число отличников', status: 'pending' }
+          ];
+        }
+        
+        if (goalText) {
+          const goalKey = `${selectedChar.name}_academic_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+          
+          L.goals[goalKey] = {
+            character: selectedChar.name,
+            text: goalText,
+            status: "active",
+            turnCreated: L.turn,
+            plan: plan,
+            planProgress: 0,
+            academicGoal: true, // Tag this as academic goal
+            currentGPA: selectedChar.gpa
+          };
+          
+          L.stateVersion++;
+          
+          // Log the new academic goal
+          LC.lcSys?.({
+            text: `📚 ${selectedChar.name} поставил(а) себе академическую цель (GPA: ${selectedChar.gpa.toFixed(1)}): ${goalText}`,
+            level: 'director'
+          });
+        }
       }
     },
 
@@ -5520,6 +5615,16 @@ L.debugMode = toBool(L.debugMode, false);
             }
           }
         }
+        
+        // PHASE 2: Academic Goal Generation
+        // Occasionally generate academic goals based on GPA (10% probability during time jumps)
+        if (LC.GoalsEngine && typeof LC.GoalsEngine.generateAcademicGoals === 'function') {
+          try {
+            LC.GoalsEngine.generateAcademicGoals();
+          } catch (e) {
+            LC.lcWarn?.("Academic goal generation error: " + (e && e.message));
+          }
+        }
       },
       
       /**
@@ -6133,6 +6238,7 @@ L.debugMode = toBool(L.debugMode, false);
       /**
        * Records a grade for a character in a specific subject.
        * Stores it in L.academics.grades[characterName][subject] as an array of grades.
+       * PHASE 2: Now triggers MoodEngine updates based on grade performance.
        * @param {string} characterName - The character's name
        * @param {string} subject - The subject name
        * @param {number} grade - The grade to record
@@ -6158,8 +6264,141 @@ L.debugMode = toBool(L.debugMode, false);
           turn: L.turn
         });
         
+        // PHASE 2: Update mood based on grade performance
+        // High grades (4.5+) -> positive mood, Low grades (<2.5) -> negative mood
+        if (LC.MoodEngine && typeof LC.MoodEngine.analyze === 'function') {
+          let moodText = '';
+          if (grade >= 4.5) {
+            moodText = `${characterName} был счастлив после получения отличной оценки по предмету ${subject}.`;
+          } else if (grade < 2.5) {
+            moodText = `${characterName} был разочарован после получения плохой оценки по предмету ${subject}.`;
+          }
+          
+          if (moodText) {
+            try {
+              LC.MoodEngine.analyze(moodText);
+            } catch (e) {
+              LC.lcWarn?.("MoodEngine error in recordGrade: " + (e && e.message));
+            }
+          }
+        }
+        
+        // PHASE 2: Detect legendary academic events for LoreEngine
+        if (LC.LoreEngine && typeof LC.LoreEngine.observe === 'function') {
+          const character = L.characters[characterName];
+          if (character) {
+            // Calculate historical average to detect dramatic changes
+            const allGrades = [];
+            for (const subj in L.academics.grades[characterName]) {
+              if (Array.isArray(L.academics.grades[characterName][subj])) {
+                for (const gradeEntry of L.academics.grades[characterName][subj]) {
+                  if (gradeEntry && typeof gradeEntry.grade === 'number') {
+                    allGrades.push(gradeEntry.grade);
+                  }
+                }
+              }
+            }
+            
+            // Remove the just-added grade to get historical average
+            if (allGrades.length > 1) {
+              allGrades.pop();
+              const avgGrade = allGrades.reduce((a, b) => a + b, 0) / allGrades.length;
+              
+              // ACADEMIC_TRIUMPH: Low performer suddenly gets excellent grade (5.0)
+              if (avgGrade < 3.0 && grade >= 5.0) {
+                // This is dramatic enough to potentially become a legend
+                const event = {
+                  type: 'ACADEMIC_TRIUMPH',
+                  participants: [characterName],
+                  witnesses: 5, // Classroom setting
+                  impact: 25, // Significant achievement
+                  normViolation: 0,
+                  description: `${characterName} превзошёл все ожидания, получив отличную оценку`
+                };
+                
+                // Check if this event meets lore criteria
+                const potential = LC.LoreEngine.calculateLorePotential(event);
+                const threshold = LC.LoreEngine.getCurrentThreshold();
+                
+                if (potential >= threshold && !LC.LoreEngine._isDuplicate(event)) {
+                  LC.LoreEngine._crystallize(event);
+                }
+              }
+            }
+            
+            // ACADEMIC_DISGRACE: High-status student fails dramatically
+            // Check if character has "Отличник" tag or high social status
+            const isExcellentStudent = character.tags && character.tags.includes('Отличник');
+            const isHighStatus = character.social && (character.social.status === 'leader' || character.social.capital > 130);
+            
+            if ((isExcellentStudent || isHighStatus) && grade <= 2.0) {
+              const event = {
+                type: 'ACADEMIC_DISGRACE',
+                participants: [characterName],
+                witnesses: 5, // Classroom setting
+                impact: 20,
+                normViolation: 15, // Violates expectations
+                description: `${characterName} опозорился, получив низкую оценку`
+              };
+              
+              const potential = LC.LoreEngine.calculateLorePotential(event);
+              const threshold = LC.LoreEngine.getCurrentThreshold();
+              
+              if (potential >= threshold && !LC.LoreEngine._isDuplicate(event)) {
+                LC.LoreEngine._crystallize(event);
+              }
+            }
+          }
+        }
+        
         // Increment state version to invalidate context cache
         L.stateVersion++;
+      },
+      
+      /**
+       * Calculates the GPA (Grade Point Average) for a character across all subjects.
+       * PHASE 2: New method to support social status calculations.
+       * @param {object} character - The character object (or character name)
+       * @returns {number} GPA on a 5-point scale (1-5), or 0 if no grades exist
+       */
+      getGPA(character) {
+        const L = LC.lcInit();
+        
+        // Handle both character object and character name
+        let characterName;
+        if (typeof character === 'string') {
+          characterName = character;
+        } else if (character && character.name) {
+          characterName = character.name;
+        } else {
+          return 0;
+        }
+        
+        // Get all grades for this character
+        const characterGrades = L.academics?.grades?.[characterName];
+        if (!characterGrades || typeof characterGrades !== 'object') {
+          return 0;
+        }
+        
+        // Calculate average across all subjects
+        let totalGrade = 0;
+        let gradeCount = 0;
+        
+        for (const subject in characterGrades) {
+          if (Array.isArray(characterGrades[subject]) && characterGrades[subject].length > 0) {
+            // Get the most recent grade for this subject
+            const recentGrade = characterGrades[subject][characterGrades[subject].length - 1];
+            if (recentGrade && typeof recentGrade.grade === 'number') {
+              totalGrade += recentGrade.grade;
+              gradeCount++;
+            }
+          }
+        }
+        
+        if (gradeCount === 0) return 0;
+        
+        // Return average, rounded to 1 decimal place
+        return Math.round((totalGrade / gradeCount) * 10) / 10;
       }
     },
 
@@ -6941,6 +7180,7 @@ L.debugMode = toBool(L.debugMode, false);
       
       /**
        * Recalculates social status for all characters based on their capital.
+       * PHASE 2: Now includes GPA as a factor in social capital and adds academic tags.
        * This should be called periodically (e.g., every 20 turns).
        */
       recalculateStatus() {
@@ -6961,6 +7201,41 @@ L.debugMode = toBool(L.debugMode, false);
               capital: 100,
               conformity: 0.5
             };
+          }
+          
+          // PHASE 2: Add GPA-based capital adjustment
+          if (LC.AcademicsEngine && typeof LC.AcademicsEngine.getGPA === 'function') {
+            const gpa = LC.AcademicsEngine.getGPA(name);
+            if (gpa > 0) {
+              // High GPA (4.5+) adds social capital, low GPA (< 2.5) reduces it
+              let gpaBonus = 0;
+              if (gpa >= 4.5) {
+                gpaBonus = 15; // Отличник bonus
+              } else if (gpa >= 4.0) {
+                gpaBonus = 8;  // Good student bonus
+              } else if (gpa < 2.5) {
+                gpaBonus = -10; // Poor grades penalty
+              }
+              
+              char.social.capital = Math.max(0, Math.min(200, char.social.capital + gpaBonus));
+              
+              // PHASE 2: Add academic tags based on GPA
+              if (!char.tags) char.tags = [];
+              
+              // Remove old academic tags
+              char.tags = char.tags.filter(tag => tag !== 'Отличник' && tag !== 'Двоечник');
+              
+              // Add new tags based on current GPA
+              if (gpa >= 4.5) {
+                if (!char.tags.includes('Отличник')) {
+                  char.tags.push('Отличник');
+                }
+              } else if (gpa < 2.5) {
+                if (!char.tags.includes('Двоечник')) {
+                  char.tags.push('Двоечник');
+                }
+              }
+            }
           }
           
           characters.push({
@@ -7401,6 +7676,13 @@ L.debugMode = toBool(L.debugMode, false);
           
           case 'secret_reveal':
             return `Тайна раскрыта: ${p1} узнал секрет ${p2}, и все об этом узнали.`;
+          
+          // PHASE 2: Academic event types
+          case 'ACADEMIC_TRIUMPH':
+            return `${p1}, который всегда отставал в учёбе, вдруг сдал важный тест на отлично, шокировав всех.`;
+          
+          case 'ACADEMIC_DISGRACE':
+            return `${p1}, считавшегося отличником, поймали на списывании, что стало настоящим скандалом.`;
           
           default:
             return `${p1} и ${p2} стали частью школьной легенды.`;
