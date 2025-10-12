@@ -2,7 +2,7 @@
 
 **Final Micro-Mechanism Verification Test**
 
-**Date**: 2025-10-12T11:42:27.728Z
+**Date**: 2025-10-12T11:51:39.519Z
 **Test Turn**: 501
 
 ## Executive Summary
@@ -18,7 +18,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| StateVersion | 830 | 834 | ✓ Incremented |
+| StateVersion | 655 | 662 | ✓ Incremented |
 
 ## 1. InformationEngine: Phenomenal State (qualia_state)
 
@@ -28,7 +28,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Component | Before | After | Δ |
 |-----------|--------|-------|---|
-| somatic_tension | 0.000 | 0.117 | 0.117 |
+| somatic_tension | 0.020 | 0.137 | 0.117 |
 | valence | 1.000 | 0.844 | -0.156 |
 | focus_aperture | 0.700 | 0.700 | 0.000 |
 | energy_level | 0.800 | 0.800 | 0.000 |
@@ -37,8 +37,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Component | Before | After | Δ |
 |-----------|--------|-------|---|
-| somatic_tension | 0.065 | 0.065 | 0.000 |
-| valence | 1.000 | 1.000 | 0.000 |
+| somatic_tension | 0.000 | 0.400 | 0.400 |
+| valence | 1.000 | 0.500 | -0.500 |
 | focus_aperture | 0.700 | 0.700 | 0.000 |
 | energy_level | 0.800 | 0.800 | 0.000 |
 
@@ -49,7 +49,7 @@ This report documents the detailed internal response of all system engines to a 
 | Character | Before | After | Reason |
 |-----------|--------|-------|--------|
 | Максим | happy | offended | обвинение |
-| Хлоя | disappointed | disappointed | разочарование |
+| Хлоя | happy | offended | being_accused |
 
 ## 3. RelationsEngine: Relationship Dynamics
 
@@ -75,7 +75,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Δ | Status Before | Status After |
 |-----------|--------|-------|---|---------------|--------------|
-| Максим | 98 | 85 | -13 | member | member |
+| Максим | 10 | 0 | -10 | outcast | outcast |
 | Хлоя | 150 | 124 | -26 | member | member |
 
 ## 6. GoalsEngine: Goal Generation
@@ -94,7 +94,7 @@ This report documents the detailed internal response of all system engines to a 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
 | Total Legends | 3 | 3 | 0 |
-| Last Legend Type | loyalty_rescue | loyalty_rescue | - |
+| Last Legend Type | conflict | conflict | - |
 
 **Note**: Event did not reach legendary threshold.
 
