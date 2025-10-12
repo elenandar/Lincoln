@@ -19,10 +19,10 @@ console.log("=== Протокол 'Легион': Нагрузочный Тес�
 // Helper function to load all scripts
 function loadAllScripts() {
   const baseDir = path.join(__dirname, '..', '..', '..');
-  harness.loadScript(path.join(baseDir, 'Library v16.0.8.patched.txt'));
-  harness.loadScript(path.join(baseDir, 'Input v16.0.8.patched.txt'));
-  harness.loadScript(path.join(baseDir, 'Context v16.0.8.patched.txt'));
-  harness.loadScript(path.join(baseDir, 'Output v16.0.8.patched.txt'));
+  harness.loadScript(path.join(baseDir, 'v16.0.8', 'Library v16.0.8.patched.txt'));
+  harness.loadScript(path.join(baseDir, 'v16.0.8', 'Input v16.0.8.patched.txt'));
+  harness.loadScript(path.join(baseDir, 'v16.0.8', 'Context v16.0.8.patched.txt'));
+  harness.loadScript(path.join(baseDir, 'v16.0.8', 'Output v16.0.8.patched.txt'));
 }
 
 // Test counter

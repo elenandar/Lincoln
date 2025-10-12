@@ -13,7 +13,7 @@ console.log("╚═════════════════════�
 console.log("");
 
 // Load library code
-const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
+const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Library v16.0.8.patched.txt'), 'utf8');
 
 // Mock functions
 const mockFunctions = {
