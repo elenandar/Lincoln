@@ -178,7 +178,7 @@ const modifier = function (text) {
     try {
       // Run garbage collection periodically OR when exceeding hard cap
       const RUMOR_HARD_CAP = LC.CONFIG?.LIMITS?.RUMOR_HARD_CAP || 150;
-      if (L.turn % 25 === 0 || (L.rumors && L.rumors.length > RUMOR_HARD_CAP)) {
+      if ((L.turn > 0 && L.turn % 25 === 0) || (L.rumors && L.rumors.length > RUMOR_HARD_CAP)) {
         LC.GossipEngine?.runGarbageCollection?.();
         LC.lcSys({ text: "Проведена плановая очистка слухов.", level: 'director' });
       }
@@ -187,7 +187,7 @@ const modifier = function (text) {
     }
     try {
       // Run character garbage collection periodically
-      if (L.turn % 50 === 0) {
+      if (L.turn > 0 && L.turn % 50 === 0) {
         LC.CharacterGC?.run?.();
         LC.lcSys({ text: "Проведена плановая архивация персонажей.", level: 'director' });
       }
