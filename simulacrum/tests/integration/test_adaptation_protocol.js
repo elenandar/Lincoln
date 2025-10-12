@@ -21,10 +21,10 @@ console.log("=== Adaptation Protocol Part 1 - Validation ===\n");
 let allTestsPassed = true;
 
 // Load scripts
-const libraryPath = path.join(__dirname, '..', '..', 'Library v16.0.8.patched.txt');
-const inputPath = path.join(__dirname, '..', '..', 'Input v16.0.8.patched.txt');
-const contextPath = path.join(__dirname, '..', '..', 'Context v16.0.8.patched.txt');
-const outputPath = path.join(__dirname, '..', '..', 'Output v16.0.8.patched.txt');
+const libraryPath = path.join(__dirname, '..', '..', '..', 'Library v16.0.8.patched.txt');
+const inputPath = path.join(__dirname, '..', '..', '..', 'Input v16.0.8.patched.txt');
+const contextPath = path.join(__dirname, '..', '..', '..', 'Context v16.0.8.patched.txt');
+const outputPath = path.join(__dirname, '..', '..', '..', 'Output v16.0.8.patched.txt');
 
 harness.loadScript(libraryPath);
 harness.loadScript(inputPath);

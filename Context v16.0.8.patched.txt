@@ -1,5 +1,5 @@
 /*
-Module: Context — Lincoln v16.0.9-hardened
+Module: Context — Lincoln v16.0.8-compat6d
 Contract:
 - Reads flags: ...
 - Writes flags: ...
@@ -10,15 +10,15 @@ Contract:
   - Context overlay falls back to upstream text when empty or on error.
   - **NEW:** Actively sanitizes context on retries and continues to prevent data leaks.
 */
-// === CONTEXT MODIFIER v16.0.9-hardened ===
+// === CONTEXT MODIFIER v16.0.8-compat6d ===
 const __SCRIPT_SLOT__ = "Context";
-if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.9-hardened";
+if (typeof LC !== "undefined") LC.DATA_VERSION = "16.0.8-compat6d";
 
 const modifier = function (text) {
   if (typeof LC === "undefined") return { text: String(text || "") };
 
   const L = LC.lcInit(__SCRIPT_SLOT__);
-  LC.DATA_VERSION = "16.0.9-hardened";
+  LC.DATA_VERSION = "16.0.8-compat6d";
 
   const isRetry = L.currentAction?.type === 'retry';
   const isContinue = L.currentAction?.type === 'continue';
