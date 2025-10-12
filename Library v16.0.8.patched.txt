@@ -3839,7 +3839,7 @@ L.debugMode = toBool(L.debugMode, false);
         if (!eventInfo || eventInfo.dramaticMultiplier <= 15) return;
         
         // 75% probability for goal generation
-        if (Math.random() > 0.75) return;
+        if (Math.random() < 0.25) return; // Skip 25% of the time
         
         // Get participants
         if (!eventInfo.participants || eventInfo.participants.length === 0) return;
@@ -4029,7 +4029,10 @@ L.debugMode = toBool(L.debugMode, false);
         romance: 15,
         conflict: -10,
         betrayal: -25,
-        loyalty: 10
+        loyalty: 10,
+        public_accusation: -15,
+        public_humiliation: -20,
+        loyalty_rescue: 12
       },
 
       /**
@@ -4307,7 +4310,7 @@ L.debugMode = toBool(L.debugMode, false);
         const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
 
         // Check for relationship-affecting events
-        const relationshipEvents = ['romance', 'conflict', 'betrayal', 'loyalty'];
+        const relationshipEvents = ['romance', 'conflict', 'betrayal', 'loyalty', 'public_accusation', 'public_humiliation', 'loyalty_rescue'];
         for (const type of relationshipEvents) {
           if (!LC._eventPatterns || !LC._eventPatterns[type]) continue;
           const regs = LC._eventPatterns[type];
@@ -4338,6 +4341,12 @@ L.debugMode = toBool(L.debugMode, false);
                       vectorChange = { affection: -20, trust: -25, respect: -10, rivalry: 15 };
                     } else if (type === 'loyalty') {
                       vectorChange = { affection: 8, trust: 12, respect: 5, rivalry: -5 };
+                    } else if (type === 'public_accusation') {
+                      vectorChange = { affection: -12, trust: -18, respect: -8, rivalry: 10 };
+                    } else if (type === 'public_humiliation') {
+                      vectorChange = { affection: -15, trust: -12, respect: -15, rivalry: 12 };
+                    } else if (type === 'loyalty_rescue') {
+                      vectorChange = { affection: 10, trust: 15, respect: 8, rivalry: -6 };
                     }
                     
                     // CALIBRATION: Apply dramatic multiplier to changes
@@ -4383,7 +4392,6 @@ L.debugMode = toBool(L.debugMode, false);
                     if (eventInfo && eventInfo.dramaticMultiplier > 10) {
                       this._applyDivisionEffect(char1, char2, type, eventInfo);
                     }
-                    }
                     
                     // Notify Crucible about significant relationship changes
                     if (LC.Crucible && typeof LC.Crucible.analyzeEvent === 'function') {
@@ -4422,7 +4430,7 @@ L.debugMode = toBool(L.debugMode, false);
        * CALIBRATION: Applies "division effect" for high-drama events (multiplier > 10).
        * Creates camps of supporters among witnesses, affecting their relationships.
        * @param {string} char1 - First character in the drama
-       * @string} char2 - Second character in the drama
+       * @param {string} char2 - Second character in the drama
        * @param {string} eventType - Type of event (betrayal, conflict, etc.)
        * @param {object} eventInfo - Event info with participants and multiplier
        */
@@ -4879,7 +4887,12 @@ L.debugMode = toBool(L.debugMode, false);
           { regex: /это\s+было\s+полное\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
           { regex: /испытал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
           { regex: /(?:был|была)\s+разочарован(?:а)?/i, mood: 'disappointed', reason: 'разочарование' },
-          { regex: /почувствовал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' }
+          { regex: /почувствовал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
+          
+          // CALIBRATION: Accused/Humiliated (for dramatic events)
+          { regex: /(?:публично\s+)?обвинил(?:а|и)?|обвинен(?:а|ы)?/i, mood: 'offended', reason: 'обвинение' },
+          { regex: /(?:публично\s+)?унизил(?:а|и)?|унижен(?:а|ы)?/i, mood: 'embarrassed', reason: 'унижение' },
+          { regex: /опозорил(?:а|и)?|опозорен(?:а|ы)?/i, mood: 'embarrassed', reason: 'позор' }
         ];
 
         // Check each sentence for mood markers
