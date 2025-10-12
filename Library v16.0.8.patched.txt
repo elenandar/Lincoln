@@ -1402,7 +1402,10 @@ Contract:
     romance: 15,
     conflict: -10,
     betrayal: -25,
-    loyalty: 10
+    loyalty: 10,
+    public_accusation: -15,
+    public_humiliation: -20,
+    loyalty_rescue: 12
   },
   ACADEMIC_SUBJECTS: ['Математика', 'Литература', 'История', 'Химия'],
   GRADES_HISTORY_LIMIT: 10,
@@ -3829,17 +3832,14 @@ L.debugMode = toBool(L.debugMode, false);
       
       /**
        * CALIBRATION: Generates reactive goals based on dramatic events.
-       * High drama events (multiplier > 15) trigger goal generation with 75% probability.
+       * High drama events (multiplier > 15) trigger goal generation with 100% probability.
        */
       _tryGenerateReactiveGoals() {
         const L = LC.lcInit();
         const eventInfo = L.__currentEventInfo;
         
-        // Only trigger on high-drama events (lowered threshold from 15 to 10)
-        if (!eventInfo || eventInfo.dramaticMultiplier <= 10) return;
-        
-        // 100% probability for goal generation (for calibration)
-        // if (Math.random() < 0.10) return; // Skip 10% of the time
+        // TASK 3: Guarantee 100% goal generation when dramaticMultiplier > 15
+        if (!eventInfo || eventInfo.dramaticMultiplier <= 15) return;
         
         // Get participants
         if (!eventInfo.participants || eventInfo.participants.length === 0) return;
@@ -4166,8 +4166,10 @@ L.debugMode = toBool(L.debugMode, false);
           }
           
           // Convert perception affection to legacy numeric value (affection - 50 to get range -50 to +50)
-          const legacy1to2 = (char1Obj.perceptions[char2].affection || 50) - 50;
-          const legacy2to1 = (char2Obj.perceptions[char1].affection || 50) - 50;
+          const affection1to2 = char1Obj.perceptions[char2].affection;
+          const affection2to1 = char2Obj.perceptions[char1].affection;
+          const legacy1to2 = (affection1to2 !== undefined ? affection1to2 : 50) - 50;
+          const legacy2to1 = (affection2to1 !== undefined ? affection2to1 : 50) - 50;
           L.evergreen.relations[char1][char2] = { value: Math.max(-100, Math.min(100, legacy1to2)) };
           L.evergreen.relations[char2][char1] = { value: Math.max(-100, Math.min(100, legacy2to1)) };
         }
@@ -4399,9 +4401,39 @@ L.debugMode = toBool(L.debugMode, false);
                       
                       // Use interpreted update
                       this.updateRelation(char1, char2, finalModifier, { interpretedEvent: event });
+                      
+                      // TASK 2: Surgical fix for asymmetric relationship damage in public_accusation
+                      // Target (char2) should have much stronger negative reaction to actor (char1)
+                      if (type === 'public_accusation' || type === 'public_humiliation') {
+                        // Directly modify target's perception of actor (asymmetric)
+                        const char2Obj = L.characters[char2];
+                        if (char2Obj) {
+                          if (!char2Obj.perceptions) char2Obj.perceptions = {};
+                          if (!char2Obj.perceptions[char1]) {
+                            char2Obj.perceptions[char1] = { affection: 50, trust: 50, respect: 50, rivalry: 50 };
+                          }
+                          // Apply harsh penalty: -50 points to affection and trust
+                          char2Obj.perceptions[char1].affection = Math.max(0, char2Obj.perceptions[char1].affection - 50);
+                          char2Obj.perceptions[char1].trust = Math.max(0, char2Obj.perceptions[char1].trust - 50);
+                          
+                          // Update legacy relations too
+                          if (!L.evergreen.relations[char2]) L.evergreen.relations[char2] = {};
+                          const affectionValue = char2Obj.perceptions[char1].affection;
+                          const legacyValue = (affectionValue !== undefined ? affectionValue : 50) - 50;
+                          L.evergreen.relations[char2][char1] = { value: Math.max(-100, Math.min(100, legacyValue)) };
+                        }
+                      }
                     } else {
                       // Fallback to direct update for legacy/non-character entities
                       this.updateRelation(char1, char2, finalModifier);
+                      
+                      // TASK 2: Surgical fix for asymmetric relationship damage in public_accusation
+                      if (type === 'public_accusation' || type === 'public_humiliation') {
+                        // Directly update legacy relations (asymmetric)
+                        if (!L.evergreen.relations[char2]) L.evergreen.relations[char2] = {};
+                        const current = L.evergreen.relations[char2][char1]?.value || 0;
+                        L.evergreen.relations[char2][char1] = { value: Math.max(-100, current - 50) };
+                      }
                     }
                     
                     // CALIBRATION: "Effect of division" for high drama events (multiplier > 10)
@@ -4796,6 +4828,49 @@ L.debugMode = toBool(L.debugMode, false);
         if (!L.character_status) L.character_status = {};
 
         const low = toStr(text).toLowerCase();
+        
+        // TASK 1: Surgical fix for public_accusation/humiliation target
+        // Ensure target (accused) gets explicit negative mood/qualia changes
+        const eventInfo = L.__currentEventInfo;
+        if (eventInfo && eventInfo.participants && eventInfo.participants.length >= 2) {
+          const eventType = eventInfo.type;
+          if (eventType === 'public_accusation' || eventType === 'public_humiliation') {
+            // Target is second participant (index 1)
+            const target = eventInfo.participants[1];
+            const targetChar = L.characters?.[target];
+            
+            if (targetChar) {
+              // Direct mood change for target
+              const moodType = eventType === 'public_accusation' ? 'offended' : 'embarrassed';
+              const reason = eventType === 'public_accusation' ? 'being_accused' : 'being_humiliated';
+              
+              L.character_status[target] = {
+                mood: moodType,
+                reason: reason,
+                expires: (L.turn || 0) + 5
+              };
+              
+              // Direct qualia changes: valence: -0.5, tension: +0.4
+              if (LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
+                // Apply direct changes bypassing normal intensity scaling
+                if (!targetChar.qualia_state) {
+                  targetChar.qualia_state = {
+                    somatic_tension: 0.3,
+                    valence: 0.5,
+                    focus_aperture: 0.7,
+                    energy_level: 0.8
+                  };
+                }
+                
+                // Apply direct changes with strong negative impact
+                targetChar.qualia_state.valence = Math.max(0, targetChar.qualia_state.valence - 0.5);
+                targetChar.qualia_state.somatic_tension = Math.min(1, targetChar.qualia_state.somatic_tension + 0.4);
+              }
+              
+              L.stateVersion++;
+            }
+          }
+        }
         
         // Helper to extract character name from text around a match
         const findCharacterInText = (text) => {
@@ -8085,6 +8160,12 @@ L.debugMode = toBool(L.debugMode, false);
         const eventInfo = L.__currentEventInfo;
         if (eventInfo && eventInfo.dramaticMultiplier && eventInfo.dramaticMultiplier > 1) {
           score = score * eventInfo.dramaticMultiplier;
+          
+          // TASK 4: Add fixed +50 bonus for extremely dramatic events (multiplier > 20)
+          // This almost guarantees legendary status for truly explosive events
+          if (eventInfo.dramaticMultiplier > 20) {
+            score += 50;
+          }
         }
         
         return Math.max(0, score);

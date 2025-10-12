@@ -318,6 +318,24 @@ function injectOmegaEvent() {
   const outcast = 'Максим';  // Low GPA, outcast status
   const leader = 'Хлоя';     // High GPA, leader status
   
+  // IMPORTANT: Ensure characters have the correct statuses for high dramatic multiplier
+  // Reset to ensure leader-outcast conflict (multiplier = 10 + 5 + 3 = 18)
+  if (L.characters[outcast] && L.characters[outcast].social) {
+    L.characters[outcast].social.status = 'outcast';
+    L.characters[outcast].social.capital = 30;
+  }
+  if (L.characters[leader] && L.characters[leader].social) {
+    L.characters[leader].social.status = 'leader';
+    L.characters[leader].social.capital = 200;
+  }
+  
+  // IMPORTANT: Reset lore cooldown to allow legend creation during test
+  // The warmup may have created a legend, setting a cooldown that would prevent
+  // this test event from becoming a legend
+  if (L.lore) {
+    L.lore.coolDown = 0;
+  }
+  
   console.log("Event Configuration:");
   console.log(`  Accuser: ${outcast} (outcast, low GPA)`);
   console.log(`  Accused: ${leader} (leader, high GPA)`);
@@ -358,10 +376,10 @@ function captureBeforeState(outcast, leader) {
     // Relationships
     relationships: captureRelationshipSnapshot(outcast, leader),
     
-    // Goals
+    // Goals - count goals for each character
     goals: {
-      outcast: JSON.parse(JSON.stringify(L.goals[outcast] || {})),
-      leader: JSON.parse(JSON.stringify(L.goals[leader] || {}))
+      outcast: Object.keys(L.goals || {}).filter(key => L.goals[key].character === outcast),
+      leader: Object.keys(L.goals || {}).filter(key => L.goals[key].character === leader)
     },
     
     // Social capital
@@ -438,10 +456,10 @@ function captureAfterState(outcast, leader) {
     // Relationships
     relationships: captureRelationshipSnapshot(outcast, leader),
     
-    // Goals
+    // Goals - count goals for each character
     goals: {
-      outcast: JSON.parse(JSON.stringify(L.goals[outcast] || {})),
-      leader: JSON.parse(JSON.stringify(L.goals[leader] || {}))
+      outcast: Object.keys(L.goals || {}).filter(key => L.goals[key].character === outcast),
+      leader: Object.keys(L.goals || {}).filter(key => L.goals[key].character === leader)
     },
     
     // Social capital
@@ -597,10 +615,10 @@ function generateOmegaReport(eventText, outcast, leader, before, after) {
   report.push("### Active Goals");
   report.push("");
   
-  const outcastGoalsBefore = Object.keys(before.goals.outcast).length;
-  const outcastGoalsAfter = Object.keys(after.goals.outcast).length;
-  const leaderGoalsBefore = Object.keys(before.goals.leader).length;
-  const leaderGoalsAfter = Object.keys(after.goals.leader).length;
+  const outcastGoalsBefore = before.goals.outcast.length;
+  const outcastGoalsAfter = after.goals.outcast.length;
+  const leaderGoalsBefore = before.goals.leader.length;
+  const leaderGoalsAfter = after.goals.leader.length;
   
   report.push("| Character | Before | After | New Goals |");
   report.push("|-----------|--------|-------|-----------|");
@@ -614,10 +632,10 @@ function generateOmegaReport(eventText, outcast, leader, before, after) {
     
     if (outcastGoalsAfter > outcastGoalsBefore) {
       report.push(`**${outcast}**:`);
-      for (const goalKey in after.goals.outcast) {
-        if (!before.goals.outcast[goalKey]) {
-          const goal = after.goals.outcast[goalKey];
-          report.push(`- "${goal.goal || goalKey}" (turn ${goal.turn})`);
+      for (const goalKey of after.goals.outcast) {
+        if (before.goals.outcast.indexOf(goalKey) === -1) {
+          const goal = L.goals[goalKey];
+          report.push(`- "${goal.text || goalKey}" (turn ${goal.turnCreated})`);
         }
       }
       report.push("");
@@ -625,10 +643,10 @@ function generateOmegaReport(eventText, outcast, leader, before, after) {
     
     if (leaderGoalsAfter > leaderGoalsBefore) {
       report.push(`**${leader}**:`);
-      for (const goalKey in after.goals.leader) {
-        if (!before.goals.leader[goalKey]) {
-          const goal = after.goals.leader[goalKey];
-          report.push(`- "${goal.goal || goalKey}" (turn ${goal.turn})`);
+      for (const goalKey of after.goals.leader) {
+        if (before.goals.leader.indexOf(goalKey) === -1) {
+          const goal = L.goals[goalKey];
+          report.push(`- "${goal.text || goalKey}" (turn ${goal.turnCreated})`);
         }
       }
       report.push("");
