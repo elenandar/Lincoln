@@ -2,7 +2,7 @@
 
 **Final Micro-Mechanism Verification Test**
 
-**Date**: 2025-10-12T11:19:58.349Z
+**Date**: 2025-10-12T11:26:37.773Z
 **Test Turn**: 501
 
 ## Executive Summary
@@ -18,7 +18,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| StateVersion | 722 | 724 | ✓ Incremented |
+| StateVersion | 782 | 786 | ✓ Incremented |
 
 ## 1. InformationEngine: Phenomenal State (qualia_state)
 
@@ -28,8 +28,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Component | Before | After | Δ |
 |-----------|--------|-------|---|
-| somatic_tension | 0.053 | 0.170 | 0.117 |
-| valence | 1.000 | 0.844 | -0.156 |
+| somatic_tension | 0.050 | 0.200 | 0.150 |
+| valence | 1.000 | 0.800 | -0.200 |
 | focus_aperture | 0.700 | 0.700 | 0.000 |
 | energy_level | 0.800 | 0.800 | 0.000 |
 
@@ -75,8 +75,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Δ | Status Before | Status After |
 |-----------|--------|-------|---|---------------|--------------|
-| Максим | 46 | 33 | -13 | member | member |
-| Хлоя | 150 | 124 | -26 | member | member |
+| Максим | 30 | 12 | -18 | outcast | outcast |
+| Хлоя | 200 | 164 | -36 | leader | leader |
 
 ## 6. GoalsEngine: Goal Generation
 

@@ -3835,11 +3835,11 @@ L.debugMode = toBool(L.debugMode, false);
         const L = LC.lcInit();
         const eventInfo = L.__currentEventInfo;
         
-        // Only trigger on high-drama events
-        if (!eventInfo || eventInfo.dramaticMultiplier <= 15) return;
+        // Only trigger on high-drama events (lowered threshold from 15 to 10)
+        if (!eventInfo || eventInfo.dramaticMultiplier <= 10) return;
         
-        // 75% probability for goal generation
-        if (Math.random() < 0.25) return; // Skip 25% of the time
+        // 100% probability for goal generation (for calibration)
+        // if (Math.random() < 0.10) return; // Skip 10% of the time
         
         // Get participants
         if (!eventInfo.participants || eventInfo.participants.length === 0) return;
@@ -4153,6 +4153,23 @@ L.debugMode = toBool(L.debugMode, false);
               }
             }
           }
+          
+          // CALIBRATION: Also update legacy evergreen.relations for test compatibility
+          // This ensures both the new perceptions system and old relations system are in sync
+          if (!L.evergreen) L.evergreen = {};
+          if (!L.evergreen.relations) L.evergreen.relations = {};
+          if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
+            L.evergreen.relations[char1] = {};
+          }
+          if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
+            L.evergreen.relations[char2] = {};
+          }
+          
+          // Convert perception affection to legacy numeric value (affection - 50 to get range -50 to +50)
+          const legacy1to2 = (char1Obj.perceptions[char2].affection || 50) - 50;
+          const legacy2to1 = (char2Obj.perceptions[char1].affection || 50) - 50;
+          L.evergreen.relations[char1][char2] = { value: Math.max(-100, Math.min(100, legacy1to2)) };
+          L.evergreen.relations[char2][char1] = { value: Math.max(-100, Math.min(100, legacy2to1)) };
         }
         else {
           // Legacy symmetric mode (for backward compatibility)
