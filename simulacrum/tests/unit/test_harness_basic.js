@@ -37,7 +37,7 @@ if (typeof global.state === 'object' &&
 
 // Test 2: Load Library script
 console.log("TEST 2: Script Loading");
-const libraryPath = path.join(__dirname, '..', '..', 'Library v16.0.8.patched.txt');
+const libraryPath = path.join(__dirname, '..', '..', '..', 'Library v16.0.8.patched.txt');
 const loaded = harness.loadScript(libraryPath);
 console.log("  Library loaded:", loaded ? '✓' : '✗');
 
@@ -52,7 +52,7 @@ if (loaded && typeof global.LC !== 'undefined') {
 
 // Test 3: Load Input script
 console.log("TEST 3: Input Script Loading");
-const inputPath = path.join(__dirname, '..', '..', 'Input v16.0.8.patched.txt');
+const inputPath = path.join(__dirname, '..', '..', '..', 'Input v16.0.8.patched.txt');
 const inputLoaded = harness.loadScript(inputPath);
 console.log("  Input loaded:", inputLoaded ? '✓' : '✗');
 
@@ -65,7 +65,7 @@ if (inputLoaded) {
 
 // Test 4: Load Context script
 console.log("TEST 4: Context Script Loading");
-const contextPath = path.join(__dirname, '..', '..', 'Context v16.0.8.patched.txt');
+const contextPath = path.join(__dirname, '..', '..', '..', 'Context v16.0.8.patched.txt');
 const contextLoaded = harness.loadScript(contextPath);
 console.log("  Context loaded:", contextLoaded ? '✓' : '✗');
 
@@ -78,7 +78,7 @@ if (contextLoaded) {
 
 // Test 5: Load Output script
 console.log("TEST 5: Output Script Loading");
-const outputPath = path.join(__dirname, '..', '..', 'Output v16.0.8.patched.txt');
+const outputPath = path.join(__dirname, '..', '..', '..', 'Output v16.0.8.patched.txt');
 const outputLoaded = harness.loadScript(outputPath);
 console.log("  Output loaded:", outputLoaded ? '✓' : '✗');
 
