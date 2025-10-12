@@ -227,6 +227,79 @@ Contract:
 
   // ================= END: Tools ===================================
 
+  // =======================================================================
+  // == Utils: Utility Functions for System-Wide Use
+  // =======================================================================
+
+  /**
+   * Utils namespace for utility functions.
+   */
+  LC.Utils = LC.Utils || {};
+
+  /**
+   * Calculates the dramatic multiplier for an event based on its characteristics.
+   * This multiplier is used to calibrate engine sensitivity to dramatic events.
+   * 
+   * @param {object} event - The event object
+   * @param {string} event.type - Event type (e.g., 'public_accusation', 'betrayal', 'conflict')
+   * @param {Array<string>} event.participants - Characters involved in the event
+   * @param {boolean} event.isPublic - Whether the event is public
+   * @returns {number} Dramatic multiplier (default 1.0, can be much higher for dramatic events)
+   */
+  LC.Utils.getEventDramaticMultiplier = function getEventDramaticMultiplier(event) {
+    if (!event || typeof event !== 'object') return 1.0;
+    
+    const L = LC.lcInit ? LC.lcInit() : {};
+    
+    // Base multiplier
+    let multiplier = 1.0;
+    
+    // Event type multipliers
+    const eventType = event.type ? String(event.type).toLowerCase() : '';
+    
+    // High drama events (x10)
+    if (eventType === 'public_accusation' || 
+        eventType === 'betrayal' || 
+        eventType === 'academic_disgrace' ||
+        eventType === 'loyalty_rescue') {
+      multiplier = 10.0;
+    }
+    // Medium drama events (x5)
+    else if (eventType === 'conflict' || 
+             eventType === 'public_humiliation') {
+      multiplier = 5.0;
+    }
+    
+    // Status conflict bonus: +5 if polar statuses involved (leader vs outcast)
+    if (event.participants && Array.isArray(event.participants) && event.participants.length >= 2) {
+      let hasLeader = false;
+      let hasOutcast = false;
+      
+      for (let i = 0; i < event.participants.length; i++) {
+        const participantName = event.participants[i];
+        const char = L.characters?.[participantName];
+        
+        if (char && char.social && char.social.status) {
+          if (char.social.status === 'leader') hasLeader = true;
+          if (char.social.status === 'outcast') hasOutcast = true;
+        }
+      }
+      
+      if (hasLeader && hasOutcast) {
+        multiplier += 5.0;
+      }
+    }
+    
+    // Publicity bonus: +3 if event is public
+    if (event.isPublic === true) {
+      multiplier += 3.0;
+    }
+    
+    return multiplier;
+  };
+
+  // ================= END: Utils ===================================
+
   /**
    * Applies a recap draft by saving it and clearing the draft state.
    * @param {object} L - The Lincoln state object
@@ -3173,6 +3246,97 @@ L.debugMode = toBool(L.debugMode, false);
       },
       
       /**
+       * Detects dramatic events in text and calculates their dramatic multiplier.
+       * Returns event info including type, participants, isPublic flag, and dramaticMultiplier.
+       * @param {string} text - The text to analyze
+       * @returns {object|null} Event info object or null if no dramatic event detected
+       */
+      _detectDramaticEvent(text) {
+        if (!text || !LC._eventPatterns) return null;
+        
+        const L = LC.lcInit();
+        const textLower = String(text).toLowerCase();
+        
+        // Check for dramatic event types
+        const dramaticTypes = ['public_accusation', 'public_humiliation', 'academic_disgrace', 
+                               'loyalty_rescue', 'betrayal', 'conflict'];
+        
+        let detectedType = null;
+        for (const type of dramaticTypes) {
+          const patterns = LC._eventPatterns[type];
+          if (patterns) {
+            for (let i = 0; i < patterns.length; i++) {
+              if (patterns[i].test(textLower)) {
+                detectedType = type;
+                break;
+              }
+            }
+          }
+          if (detectedType) break;
+        }
+        
+        if (!detectedType) return null;
+        
+        // Extract participants from text
+        const participants = [];
+        const autoEvergreen = LC.EvergreenEngine;
+        if (autoEvergreen && typeof autoEvergreen.normalizeCharName === 'function') {
+          const normalized = LC._normUCached?.(text) ?? LC._normU(text);
+          const words = normalized.split(/\s+/);
+          
+          for (let i = 0; i < words.length; i++) {
+            // Try three-word combinations
+            if (i < words.length - 2) {
+              const candidate = words[i] + ' ' + words[i + 1] + ' ' + words[i + 2];
+              const normalizedName = autoEvergreen.normalizeCharName(candidate);
+              if (normalizedName && autoEvergreen.isImportantCharacter(normalizedName)) {
+                if (participants.indexOf(normalizedName) === -1) {
+                  participants.push(normalizedName);
+                }
+              }
+            }
+            
+            // Try two-word combinations
+            if (i < words.length - 1) {
+              const candidate = words[i] + ' ' + words[i + 1];
+              const normalizedName = autoEvergreen.normalizeCharName(candidate);
+              if (normalizedName && autoEvergreen.isImportantCharacter(normalizedName)) {
+                if (participants.indexOf(normalizedName) === -1) {
+                  participants.push(normalizedName);
+                }
+              }
+            }
+            
+            // Try single word
+            const candidate = words[i];
+            const normalizedName = autoEvergreen.normalizeCharName(candidate);
+            if (normalizedName && autoEvergreen.isImportantCharacter(normalizedName)) {
+              if (participants.indexOf(normalizedName) === -1) {
+                participants.push(normalizedName);
+              }
+            }
+          }
+        }
+        
+        // Check if event is public
+        const isPublic = /публично|на\s+глазах\s+у\s+всех|при\s+всех/i.test(text);
+        
+        // Create event object and calculate dramatic multiplier
+        const event = {
+          type: detectedType,
+          participants: participants,
+          isPublic: isPublic
+        };
+        
+        const dramaticMultiplier = LC.Utils.getEventDramaticMultiplier(event);
+        
+        return {
+          ...event,
+          dramaticMultiplier: dramaticMultiplier
+        };
+      },
+      
+      /**
        * Analyzes text using all available engines (TimeEngine, EvergreenEngine, GoalsEngine, MoodEngine).
        * Processes patterns in order of priority and delegates to appropriate engines.
        * @param {string} text - The text to analyze (input or output)
@@ -3191,6 +3355,13 @@ L.debugMode = toBool(L.debugMode, false);
         // Build patterns on first use
         if (!this.patterns) {
           this.patterns = this._buildUnifiedPatterns();
+        }
+        
+        // CALIBRATION: Detect dramatic events and calculate multiplier
+        const eventInfo = this._detectDramaticEvent(text);
+        if (eventInfo) {
+          // Store event info temporarily for engines to use
+          L.__currentEventInfo = eventInfo;
         }
         
         // Process ChronologicalKnowledgeBase patterns first
@@ -3270,11 +3441,25 @@ L.debugMode = toBool(L.debugMode, false);
           LC.lcWarn?.("UnifiedAnalyzer HierarchyEngine error: " + (e && e.message));
         }
         
+        // CALIBRATION: Apply reputation shock for high-drama events
+        if (eventInfo && eventInfo.dramaticMultiplier > 10) {
+          try {
+            LC.HierarchyEngine?.applyReputationShock?.(eventInfo.participants, eventInfo.type, eventInfo.dramaticMultiplier);
+          } catch (e) {
+            LC.lcWarn?.("UnifiedAnalyzer ReputationShock error: " + (e && e.message));
+          }
+        }
+        
         // LoreEngine: Observe and crystallize legendary events (after all other engines)
         try {
           LC.LoreEngine?.observe?.(text);
         } catch (e) {
           LC.lcWarn?.("UnifiedAnalyzer LoreEngine error: " + (e && e.message));
+        }
+        
+        // CALIBRATION: Clean up temporary event info
+        if (L.__currentEventInfo) {
+          delete L.__currentEventInfo;
         }
       }
     },
@@ -3414,6 +3599,9 @@ L.debugMode = toBool(L.debugMode, false);
         // GENESIS PHASE 2: Lore-inspired goal generation
         // Occasionally generate goals for characters inspired by existing legends
         this._tryGenerateLoreInspiredGoals();
+        
+        // CALIBRATION: Reactive goal generation for dramatic events
+        this._tryGenerateReactiveGoals();
       },
       
       /**
@@ -3640,6 +3828,101 @@ L.debugMode = toBool(L.debugMode, false);
       },
       
       /**
+       * CALIBRATION: Generates reactive goals based on dramatic events.
+       * High drama events (multiplier > 15) trigger goal generation with 75% probability.
+       */
+      _tryGenerateReactiveGoals() {
+        const L = LC.lcInit();
+        const eventInfo = L.__currentEventInfo;
+        
+        // Only trigger on high-drama events (lowered threshold from 15 to 10)
+        if (!eventInfo || eventInfo.dramaticMultiplier <= 10) return;
+        
+        // 100% probability for goal generation (for calibration)
+        // if (Math.random() < 0.10) return; // Skip 10% of the time
+        
+        // Get participants
+        if (!eventInfo.participants || eventInfo.participants.length === 0) return;
+        
+        const eventType = eventInfo.type;
+        const participants = eventInfo.participants;
+        
+        // Generate goals for participants based on event type
+        for (let i = 0; i < participants.length; i++) {
+          const charName = participants[i];
+          const char = L.characters?.[charName];
+          if (!char || char.status !== 'ACTIVE') continue;
+          
+          let goalText = null;
+          let plan = [];
+          
+          // Event-specific goal generation
+          if (eventType === 'public_accusation' || eventType === 'public_humiliation') {
+            // Victim (usually second participant) wants to restore reputation
+            if (i === 1) {
+              goalText = 'восстановить свою репутацию';
+              plan = [
+                { text: 'Доказать свою невиновность', status: 'pending' },
+                { text: 'Восстановить доверие окружающих', status: 'pending' },
+                { text: 'Вернуть своё положение', status: 'pending' }
+              ];
+            }
+            // Accuser (first participant) might want to ensure justice
+            else if (i === 0) {
+              goalText = 'добиться справедливости';
+              plan = [
+                { text: 'Собрать доказательства', status: 'pending' },
+                { text: 'Убедить других в своей правоте', status: 'pending' }
+              ];
+            }
+          } else if (eventType === 'academic_disgrace') {
+            // Failed student wants to improve
+            goalText = 'исправить академические проблемы';
+            plan = [
+              { text: 'Пересдать экзамен', status: 'pending' },
+              { text: 'Улучшить оценки', status: 'pending' },
+              { text: 'Восстановить академическую репутацию', status: 'pending' }
+            ];
+          } else if (eventType === 'betrayal') {
+            // Betrayed character wants revenge or reconciliation
+            if (i === 1) {
+              goalText = 'отомстить ' + (participants[0] || 'предателю');
+              plan = [
+                { text: 'Разработать план мести', status: 'pending' },
+                { text: 'Привести план в действие', status: 'pending' }
+              ];
+            }
+          } else if (eventType === 'loyalty_rescue') {
+            // Saved character might want to repay
+            if (i === 1) {
+              goalText = 'отплатить ' + (participants[0] || 'спасителю') + ' добром';
+              plan = [
+                { text: 'Найти способ отблагодарить', status: 'pending' },
+                { text: 'Помочь в ответ', status: 'pending' }
+              ];
+            }
+          }
+          
+          // Create goal if one was determined
+          if (goalText) {
+            const goalKey = `${charName}_reactive_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+            
+            L.goals[goalKey] = {
+              character: charName,
+              text: goalText,
+              status: "active",
+              turnCreated: L.turn,
+              plan: plan,
+              planProgress: 0,
+              reactiveToEvent: eventType // Tag as reactive goal
+            };
+            
+            L.stateVersion++;
+          }
+        }
+      },
+      
+      /**
        * PHASE 2: Generates academic goals for characters based on their GPA.
        * This should be called periodically (e.g., during off-screen cycles).
        * Low GPA characters get "improve_grades" goals, high GPA get "become_valedictorian".
@@ -3746,7 +4029,10 @@ L.debugMode = toBool(L.debugMode, false);
         romance: 15,
         conflict: -10,
         betrayal: -25,
-        loyalty: 10
+        loyalty: 10,
+        public_accusation: -15,
+        public_humiliation: -20,
+        loyalty_rescue: 12
       },
 
       /**
@@ -3867,6 +4153,23 @@ L.debugMode = toBool(L.debugMode, false);
               }
             }
           }
+          
+          // CALIBRATION: Also update legacy evergreen.relations for test compatibility
+          // This ensures both the new perceptions system and old relations system are in sync
+          if (!L.evergreen) L.evergreen = {};
+          if (!L.evergreen.relations) L.evergreen.relations = {};
+          if (typeof L.evergreen.relations[char1] !== 'object' || L.evergreen.relations[char1] === null) {
+            L.evergreen.relations[char1] = {};
+          }
+          if (typeof L.evergreen.relations[char2] !== 'object' || L.evergreen.relations[char2] === null) {
+            L.evergreen.relations[char2] = {};
+          }
+          
+          // Convert perception affection to legacy numeric value (affection - 50 to get range -50 to +50)
+          const legacy1to2 = (char1Obj.perceptions[char2].affection || 50) - 50;
+          const legacy2to1 = (char2Obj.perceptions[char1].affection || 50) - 50;
+          L.evergreen.relations[char1][char2] = { value: Math.max(-100, Math.min(100, legacy1to2)) };
+          L.evergreen.relations[char2][char1] = { value: Math.max(-100, Math.min(100, legacy2to1)) };
         }
         else {
           // Legacy symmetric mode (for backward compatibility)
@@ -4024,7 +4327,7 @@ L.debugMode = toBool(L.debugMode, false);
         const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
 
         // Check for relationship-affecting events
-        const relationshipEvents = ['romance', 'conflict', 'betrayal', 'loyalty'];
+        const relationshipEvents = ['romance', 'conflict', 'betrayal', 'loyalty', 'public_accusation', 'public_humiliation', 'loyalty_rescue'];
         for (const type of relationshipEvents) {
           if (!LC._eventPatterns || !LC._eventPatterns[type]) continue;
           const regs = LC._eventPatterns[type];
@@ -4055,6 +4358,30 @@ L.debugMode = toBool(L.debugMode, false);
                       vectorChange = { affection: -20, trust: -25, respect: -10, rivalry: 15 };
                     } else if (type === 'loyalty') {
                       vectorChange = { affection: 8, trust: 12, respect: 5, rivalry: -5 };
+                    } else if (type === 'public_accusation') {
+                      vectorChange = { affection: -12, trust: -18, respect: -8, rivalry: 10 };
+                    } else if (type === 'public_humiliation') {
+                      vectorChange = { affection: -15, trust: -12, respect: -15, rivalry: 12 };
+                    } else if (type === 'loyalty_rescue') {
+                      vectorChange = { affection: 10, trust: 15, respect: 8, rivalry: -6 };
+                    }
+                    
+                    // CALIBRATION: Apply dramatic multiplier to changes
+                    const eventInfo = L.__currentEventInfo;
+                    let finalModifier = modifier;
+                    let finalVectorChange = vectorChange;
+                    
+                    if (eventInfo && eventInfo.dramaticMultiplier && eventInfo.dramaticMultiplier > 1) {
+                      const mult = eventInfo.dramaticMultiplier;
+                      finalModifier = Math.round(modifier * mult);
+                      
+                      // Scale vector changes
+                      if (vectorChange) {
+                        finalVectorChange = {};
+                        for (const vec in vectorChange) {
+                          finalVectorChange[vec] = Math.round(vectorChange[vec] * mult);
+                        }
+                      }
                     }
                     
                     // Use InformationEngine for subjective interpretation if characters exist
@@ -4064,17 +4391,23 @@ L.debugMode = toBool(L.debugMode, false);
                         type: 'relation_event',
                         eventType: type,
                         action: type,
-                        rawModifier: modifier,
-                        vectorChange: vectorChange,
+                        rawModifier: finalModifier,
+                        vectorChange: finalVectorChange,
                         actor: char1,
                         target: char2
                       };
                       
                       // Use interpreted update
-                      this.updateRelation(char1, char2, modifier, { interpretedEvent: event });
+                      this.updateRelation(char1, char2, finalModifier, { interpretedEvent: event });
                     } else {
                       // Fallback to direct update for legacy/non-character entities
-                      this.updateRelation(char1, char2, modifier);
+                      this.updateRelation(char1, char2, finalModifier);
+                    }
+                    
+                    // CALIBRATION: "Effect of division" for high drama events (multiplier > 10)
+                    // Create camps of supporters among witnesses
+                    if (eventInfo && eventInfo.dramaticMultiplier > 10) {
+                      this._applyDivisionEffect(char1, char2, type, eventInfo);
                     }
                     
                     // Notify Crucible about significant relationship changes
@@ -4108,6 +4441,83 @@ L.debugMode = toBool(L.debugMode, false);
             }
           }
         }
+      },
+      
+      /**
+       * CALIBRATION: Applies "division effect" for high-drama events (multiplier > 10).
+       * Creates camps of supporters among witnesses, affecting their relationships.
+       * @param {string} char1 - First character in the drama
+       * @param {string} char2 - Second character in the drama
+       * @param {string} eventType - Type of event (betrayal, conflict, etc.)
+       * @param {object} eventInfo - Event info with participants and multiplier
+       */
+      _applyDivisionEffect(char1, char2, eventType, eventInfo) {
+        const L = LC.lcInit();
+        
+        // Get all active characters as potential witnesses
+        const witnesses = [];
+        for (const charName in L.characters) {
+          if (charName !== char1 && charName !== char2) {
+            const char = L.characters[charName];
+            if (char && char.status === 'ACTIVE') {
+              witnesses.push(charName);
+            }
+          }
+        }
+        
+        if (witnesses.length === 0) return;
+        
+        // Get friends of each participant (based on high affection/trust)
+        const char1Friends = [];
+        const char2Friends = [];
+        
+        for (const witness of witnesses) {
+          const rel1 = this.getRelation(witness, char1);
+          const rel2 = this.getRelation(witness, char2);
+          
+          // Check if witness is close to either participant
+          const isChar1Friend = this._isCloseRelation(rel1);
+          const isChar2Friend = this._isCloseRelation(rel2);
+          
+          if (isChar1Friend) char1Friends.push(witness);
+          if (isChar2Friend) char2Friends.push(witness);
+        }
+        
+        // Apply slight relationship changes between opposing camps
+        const divisionStrength = Math.min(5, Math.floor(eventInfo.dramaticMultiplier / 5));
+        
+        for (const friend1 of char1Friends) {
+          for (const friend2 of char2Friends) {
+            // Friends of opposing participants become slightly less friendly
+            const currentRel = this.getRelation(friend1, friend2);
+            if (currentRel !== null) {
+              // Small negative change to create subtle divisions
+              const change = { affection: -divisionStrength, trust: -divisionStrength };
+              this.updateRelation(friend1, friend2, -divisionStrength);
+            }
+          }
+        }
+      },
+      
+      /**
+       * Helper: Checks if a relationship is "close" (high affection or trust).
+       * @param {number|object} rel - Relationship value
+       * @returns {boolean} True if relationship is close
+       */
+      _isCloseRelation(rel) {
+        if (rel === null) return false;
+        
+        if (typeof rel === 'number') {
+          return rel > 20; // Positive relationship
+        }
+        
+        if (typeof rel === 'object' && rel !== null) {
+          const affection = rel.affection || 50;
+          const trust = rel.trust || 50;
+          return affection > 65 || trust > 65; // Above neutral
+        }
+        
+        return false;
       }
     },
 
@@ -4494,7 +4904,12 @@ L.debugMode = toBool(L.debugMode, false);
           { regex: /это\s+было\s+полное\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
           { regex: /испытал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
           { regex: /(?:был|была)\s+разочарован(?:а)?/i, mood: 'disappointed', reason: 'разочарование' },
-          { regex: /почувствовал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' }
+          { regex: /почувствовал(?:а)?\s+разочарование/i, mood: 'disappointed', reason: 'разочарование' },
+          
+          // CALIBRATION: Accused/Humiliated (for dramatic events)
+          { regex: /(?:публично\s+)?обвинил(?:а|и)?|обвинен(?:а|ы)?/i, mood: 'offended', reason: 'обвинение' },
+          { regex: /(?:публично\s+)?унизил(?:а|и)?|унижен(?:а|ы)?/i, mood: 'embarrassed', reason: 'унижение' },
+          { regex: /опозорил(?:а|и)?|опозорен(?:а|ы)?/i, mood: 'embarrassed', reason: 'позор' }
         ];
 
         // Check each sentence for mood markers
@@ -4540,12 +4955,20 @@ L.debugMode = toBool(L.debugMode, false);
                     
                     const eventData = moodToEventMap[mood];
                     if (eventData) {
+                      // CALIBRATION: Apply dramatic multiplier to intensity
+                      let finalIntensity = eventData.intensity;
+                      const eventInfo = L.__currentEventInfo;
+                      if (eventInfo && eventInfo.dramaticMultiplier) {
+                        // Scale intensity by dramatic multiplier, capped at reasonable values
+                        finalIntensity = Math.min(1.0, eventData.intensity * (eventInfo.dramaticMultiplier / 10));
+                      }
+                      
                       LC.QualiaEngine.resonate(char, {
                         type: eventData.type,
                         action: eventData.action,
                         actor: character,
                         target: character,
-                        intensity: eventData.intensity
+                        intensity: finalIntensity
                       });
                     }
                   }
@@ -4582,12 +5005,20 @@ L.debugMode = toBool(L.debugMode, false);
               if (character && LC.QualiaEngine && typeof LC.QualiaEngine.resonate === 'function') {
                 const char = L.characters?.[character];
                 if (char) {
+                  // CALIBRATION: Apply dramatic multiplier to intensity
+                  let finalIntensity = pattern.intensity;
+                  const eventInfo = L.__currentEventInfo;
+                  if (eventInfo && eventInfo.dramaticMultiplier) {
+                    // Scale intensity by dramatic multiplier, capped at reasonable values
+                    finalIntensity = Math.min(1.0, pattern.intensity * (eventInfo.dramaticMultiplier / 10));
+                  }
+                  
                   LC.QualiaEngine.resonate(char, {
                     type: 'social',
                     action: pattern.action,
                     actor: character,
                     target: character,
-                    intensity: pattern.intensity
+                    intensity: finalIntensity
                   });
                 }
               }
@@ -7186,6 +7617,65 @@ L.debugMode = toBool(L.debugMode, false);
       },
       
       /**
+       * CALIBRATION: Applies immediate "reputation shock" for high-drama events (multiplier > 10).
+       * Causes immediate social capital changes without waiting for periodic recalculation.
+       * @param {Array<string>} participants - Characters involved in the dramatic event
+       * @param {string} eventType - Type of event (public_accusation, betrayal, etc.)
+       * @param {number} dramaticMultiplier - The dramatic multiplier for the event
+       */
+      applyReputationShock(participants, eventType, dramaticMultiplier) {
+        if (!participants || participants.length === 0 || dramaticMultiplier <= 10) return;
+        
+        const L = LC.lcInit();
+        
+        // Calculate shock magnitude
+        const shockMagnitude = Math.floor(-20 * (dramaticMultiplier / 10));
+        
+        // Determine who loses capital based on event type
+        let victim = null;
+        let aggressor = null;
+        
+        if (eventType === 'public_accusation' || eventType === 'public_humiliation' || eventType === 'betrayal') {
+          // The accused/humiliated/betrayed loses capital (victim is second participant)
+          if (participants.length >= 2) {
+            victim = participants[1];
+            aggressor = participants[0];
+          }
+        } else if (eventType === 'academic_disgrace') {
+          // The one who failed loses capital (first participant)
+          if (participants.length >= 1) {
+            victim = participants[0];
+          }
+        }
+        
+        // Apply shock to victim
+        if (victim) {
+          const char = L.characters[victim];
+          if (char && char.social) {
+            const oldCapital = char.social.capital;
+            char.social.capital = Math.max(0, char.social.capital + shockMagnitude);
+            
+            // If capital drops below outcast threshold, trigger immediate status recalculation
+            if (char.social.capital < 40 && oldCapital >= 40) {
+              this.recalculateStatus();
+            }
+            
+            L.stateVersion++;
+          }
+        }
+        
+        // For accusations/humiliation, aggressor might gain or lose depending on outcome
+        if (aggressor && (eventType === 'public_accusation' || eventType === 'public_humiliation')) {
+          const char = L.characters[aggressor];
+          if (char && char.social) {
+            // Aggressor loses some capital too (risky move)
+            const aggressorShock = Math.floor(shockMagnitude / 2);
+            char.social.capital = Math.max(0, char.social.capital + aggressorShock);
+          }
+        }
+      },
+      
+      /**
        * Recalculates social status for all characters based on their capital.
        * PHASE 2: Now includes GPA as a factor in social capital and adds academic tags.
        * This should be called periodically (e.g., every 20 turns).
@@ -7590,6 +8080,13 @@ L.debugMode = toBool(L.debugMode, false);
           }
         }
         
+        // CALIBRATION: Apply dramatic multiplier as final coefficient
+        // This amplifies the potential of truly dramatic events
+        const eventInfo = L.__currentEventInfo;
+        if (eventInfo && eventInfo.dramaticMultiplier && eventInfo.dramaticMultiplier > 1) {
+          score = score * eventInfo.dramaticMultiplier;
+        }
+        
         return Math.max(0, score);
       },
       
@@ -7982,6 +8479,11 @@ L.debugMode = toBool(L.debugMode, false);
       timeskip:   [/прошло\s+\d+|через\s+\d+|спустя\s+\d+/i],
       betrayal:   [/предал|предала|предали|измен|обман/i],
       loyalty:    [/верност|преданност|лояльност|поддерж/i],
+      // High-drama events (for calibration)
+      public_accusation: [/публично\s+обвинил(?:а|и)?|обвинил(?:а|и)?\s+(?:публично|на\s+глазах\s+у\s+всех|при\s+всех)/i],
+      public_humiliation: [/публично\s+унизил(?:а|и)?|унизил(?:а|и)?\s+(?:публично|на\s+глазах\s+у\s+всех|при\s+всех)|опозорил(?:а|и)?\s+(?:публично|на\s+глазах\s+у\s+всех)/i],
+      academic_disgrace: [/провалил(?:а|и)?\s+экзамен|не\s+сдал(?:а|и)?\s+экзамен|исключили\s+из\s+школы|академический\s+позор/i],
+      loyalty_rescue: [/защитил(?:а|и)?|спас(?:|ла|ли)|выручил(?:а|и)?|заступил(?:ась|ся|ись)/i],
       // Social upheavals
       social_upheaval: [/поссорил(?:ся|ась|ись)|расстал(?:ся|ась|ись)|признал(?:ся|ась)\s+в\s+любви|стали\s+врагами|предал(?:а)?/i],
       // Secret revelations

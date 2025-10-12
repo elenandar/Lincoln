@@ -2,7 +2,7 @@
 
 **Final Micro-Mechanism Verification Test**
 
-**Date**: 2025-10-12T10:48:14.378Z
+**Date**: 2025-10-12T11:26:37.773Z
 **Test Turn**: 501
 
 ## Executive Summary
@@ -18,7 +18,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| StateVersion | 869 | 869 | ✗ Unchanged |
+| StateVersion | 782 | 786 | ✓ Incremented |
 
 ## 1. InformationEngine: Phenomenal State (qualia_state)
 
@@ -28,8 +28,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Component | Before | After | Δ |
 |-----------|--------|-------|---|
-| somatic_tension | 0.272 | 0.272 | 0.000 |
-| valence | 1.000 | 1.000 | 0.000 |
+| somatic_tension | 0.050 | 0.200 | 0.150 |
+| valence | 1.000 | 0.800 | -0.200 |
 | focus_aperture | 0.700 | 0.700 | 0.000 |
 | energy_level | 0.800 | 0.800 | 0.000 |
 
@@ -37,7 +37,7 @@ This report documents the detailed internal response of all system engines to a 
 
 | Component | Before | After | Δ |
 |-----------|--------|-------|---|
-| somatic_tension | 0.108 | 0.108 | 0.000 |
+| somatic_tension | 0.000 | 0.000 | 0.000 |
 | valence | 1.000 | 1.000 | 0.000 |
 | focus_aperture | 0.700 | 0.700 | 0.000 |
 | energy_level | 0.800 | 0.800 | 0.000 |
@@ -48,8 +48,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Reason |
 |-----------|--------|-------|--------|
-| Максим | disappointed | disappointed | разочарование |
-| Хлоя | disappointed | disappointed | разочарование |
+| Максим | disappointed | offended | обвинение |
+| Хлоя | happy | happy | радость |
 
 ## 3. RelationsEngine: Relationship Dynamics
 
@@ -75,8 +75,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Character | Before | After | Δ | Status Before | Status After |
 |-----------|--------|-------|---|---------------|--------------|
-| Максим | 88 | 88 | 0 | member | member |
-| Хлоя | 200 | 200 | 0 | leader | leader |
+| Максим | 30 | 12 | -18 | outcast | outcast |
+| Хлоя | 200 | 164 | -36 | leader | leader |
 
 ## 6. GoalsEngine: Goal Generation
 
@@ -93,8 +93,8 @@ This report documents the detailed internal response of all system engines to a 
 
 | Metric | Before | After | Change |
 |--------|--------|-------|--------|
-| Total Legends | 2 | 2 | 0 |
-| Last Legend Type | conflict | conflict | - |
+| Total Legends | 3 | 3 | 0 |
+| Last Legend Type | loyalty_rescue | loyalty_rescue | - |
 
 **Note**: Event did not reach legendary threshold.
 
@@ -102,11 +102,11 @@ This report documents the detailed internal response of all system engines to a 
 
 | Engine | Status | Impact Level |
 |--------|--------|--------------|
-| InformationEngine (Qualia) | → Stable | Low |
-| MoodEngine | → Stable | Low |
+| InformationEngine (Qualia) | ✓ Changed | Medium |
+| MoodEngine | ✓ Changed | High |
 | RelationsEngine | → Stable | Low |
 | AcademicsEngine | → Monitoring | Low |
-| SocialEngine | → Stable | Low |
+| SocialEngine | ✓ Changed | Medium |
 | GoalsEngine | → No Change | Low |
 | LoreEngine | → Below Threshold | Low |
 
@@ -114,8 +114,11 @@ This report documents the detailed internal response of all system engines to a 
 
 This trace demonstrates the harmonious interaction of all system engines in response to a single complex event.
 
-**Engines Activated**: 0/7
+**Engines Activated**: 3/7
 
 The system successfully:
+- ✓ Updated phenomenal states (qualia)
+- ✓ Modified character moods
+- ✓ Recalculated social capital
 
 **Status**: Omega Protocol verification **COMPLETE** ✓
