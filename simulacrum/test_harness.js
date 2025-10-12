@@ -18,6 +18,7 @@ const path = require('path');
 class TestHarness {
   constructor() {
     this.reset();
+    this.nextAIResponse = null; // For testing loop detection (stub)
   }
 
   /**
@@ -226,7 +227,11 @@ class TestHarness {
     this.lastContext = contextResult.text;
 
     // Step 3: Simulate AI response (or use provided one)
-    if (!aiResponse) {
+    // Use nextAIResponse if set (for testing), otherwise use parameter
+    if (!aiResponse && this.nextAIResponse) {
+      aiResponse = this.nextAIResponse;
+      this.nextAIResponse = null; // Clear after use
+    } else if (!aiResponse) {
       aiResponse = "[AI response would go here]";
     }
     this.lastAIResponse = aiResponse;
@@ -436,6 +441,16 @@ class TestHarness {
    */
   getLastAIResponse() {
     return this.lastAIResponse;
+  }
+
+  /**
+   * Sets the next AI response (stub for anti-cycle testing)
+   * This is a placeholder for future loop detection mechanism.
+   * 
+   * @param {string} text - The AI response text to use for next turn
+   */
+  setNextAIResponse(text) {
+    this.nextAIResponse = text;
   }
 }
 
