@@ -35,7 +35,7 @@ const mockFunctions = {
 };
 
 global.state = mockFunctions.getState();
-const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Library v16.0.8.patched.txt'), 'utf8');
+const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
 eval(libraryCode);
 
 // Initialize state
