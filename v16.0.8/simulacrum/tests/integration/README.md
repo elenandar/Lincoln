@@ -107,4 +107,4 @@ System is resilient against chaos scenarios! 🛡️
 - Main test harness: `simulacrum/test_harness.js`
 - Master test runner: `simulacrum/run_all_tests.js`
 - Unit tests: `simulacrum/tests/unit/`
-- System documentation: `SYSTEM_DOCUMENTATION.md`
+- System documentation: `../../../SYSTEM_DOCUMENTATION.md`
