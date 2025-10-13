@@ -16,10 +16,10 @@ console.log("=== Project Simulacrum - Comprehensive Demo ===\n");
 
 // Load all scripts
 console.log("Step 1: Loading game scripts...");
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Library v16.0.8.patched.txt'));
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Input v16.0.8.patched.txt'));
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Context v16.0.8.patched.txt'));
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Output v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Library v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Input v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Context v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Output v16.0.8.patched.txt'));
 console.log("✓ All scripts loaded\n");
 
 // Set up initial memory
@@ -86,10 +86,10 @@ console.log();
 // Demonstrate full turn lifecycle
 console.log("Step 9: Demonstrating full turn lifecycle...");
 harness.reset();
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Library v16.0.8.patched.txt'));
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Input v16.0.8.patched.txt'));
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Context v16.0.8.patched.txt'));
-harness.loadScript(path.join(__dirname, '..', '..', 'v16.0.8', 'Output v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Library v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Input v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Context v16.0.8.patched.txt'));
+harness.loadScript(path.join(__dirname, '..', '..', 'Output v16.0.8.patched.txt'));
 
 const fullTurn = harness.executeTurn("Начался новый день в школе.", "Максим проснулся рано утром...");
 console.log("  Turn executed:", !fullTurn.stopped ? '✓' : '✗');

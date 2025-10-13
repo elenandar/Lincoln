@@ -28,10 +28,10 @@ console.log = function(...args) {
 };
 
 // Load all script files
-const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Library v16.0.8.patched.txt'), 'utf8');
-const inputCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Input v16.0.8.patched.txt'), 'utf8');
-const outputCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Output v16.0.8.patched.txt'), 'utf8');
-const contextCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Context v16.0.8.patched.txt'), 'utf8');
+const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
+const inputCode = fs.readFileSync(path.join(__dirname, '..', 'Input v16.0.8.patched.txt'), 'utf8');
+const outputCode = fs.readFileSync(path.join(__dirname, '..', 'Output v16.0.8.patched.txt'), 'utf8');
+const contextCode = fs.readFileSync(path.join(__dirname, '..', 'Context v16.0.8.patched.txt'), 'utf8');
 const documentation = fs.readFileSync(path.join(__dirname, '..', 'SYSTEM_DOCUMENTATION.md'), 'utf8');
 
 // Initialize audit results
