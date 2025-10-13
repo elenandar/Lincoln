@@ -17,7 +17,7 @@ console.log("╚═════════════════════�
 const fs = require('fs');
 const path = require('path');
 
-const libraryPath = path.join(__dirname, '..', 'Library v16.0.8.patched.txt');
+const libraryPath = path.join(__dirname, '..', 'v16.0.8/Library v16.0.8.patched.txt');
 const libraryCode = fs.readFileSync(libraryPath, 'utf8');
 
 // Set up global state (required by Library)

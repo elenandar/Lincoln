@@ -18,8 +18,8 @@ const fs = require('fs');
 const path = require('path');
 
 // Load files
-const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
-const outputCode = fs.readFileSync(path.join(__dirname, '..', 'Output v16.0.8.patched.txt'), 'utf8');
+const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Library v16.0.8.patched.txt'), 'utf8');
+const outputCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Output v16.0.8.patched.txt'), 'utf8');
 const documentation = fs.readFileSync(path.join(__dirname, '..', 'SYSTEM_DOCUMENTATION.md'), 'utf8');
 
 // Set up global state
