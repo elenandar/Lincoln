@@ -10,7 +10,7 @@ console.log("╚═════════════════════�
 
 const fs = require('fs');
 const path = require('path');
-const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'v16.0.8/Library v16.0.8.patched.txt'), 'utf8');
+const libraryCode = fs.readFileSync(path.join(__dirname, '..', 'Library v16.0.8.patched.txt'), 'utf8');
 global.state = { lincoln: {} };
 const toNum = (x, d = 0) => (typeof x === 'number' && !isNaN(x)) ? x : (Number(x) || d);
 const toStr = (x) => String(x == null ? "" : x);

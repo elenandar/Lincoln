@@ -92,4 +92,4 @@ The turn counter behavior is controlled by:
 - Main test harness: `simulacrum/test_harness.js`
 - Master test runner: `simulacrum/run_all_tests.js`
 - Integration tests: `simulacrum/tests/integration/`
-- System documentation: `SYSTEM_DOCUMENTATION.md`
+- System documentation: `../../../SYSTEM_DOCUMENTATION.md`
