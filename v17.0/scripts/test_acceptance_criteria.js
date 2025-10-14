@@ -35,13 +35,11 @@ try {
   LC.lcSys("System is online.");
   
   // Now process through output modifier
-  const outputCode = fs.readFileSync(path.join(__dirname, 'output.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(outputCode, context);
-  
   const aiText = "You find yourself in a medieval tavern. The air is thick with smoke and the smell of ale.";
-  const result = context.modifier(aiText);
+  const outputCode = fs.readFileSync(path.join(__dirname, 'output.js'), 'utf8');
+  const text = aiText;
+  const wrappedCode = `(function() { ${outputCode} })()`;
+  const result = eval(wrappedCode);
   
   console.log("\n✅ SUCCESS: System message displayed correctly\n");
   console.log("Expected format:");
@@ -96,13 +94,11 @@ try {
   const L = LC.lcInit();
   
   // Process through output modifier
-  const outputCode = fs.readFileSync(path.join(__dirname, 'output.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(outputCode, context);
-  
   const aiText = "The dragon spreads its wings and takes flight.";
-  const result = context.modifier(aiText);
+  const outputCode = fs.readFileSync(path.join(__dirname, 'output.js'), 'utf8');
+  const text = aiText;
+  const wrappedCode = `(function() { ${outputCode} })()`;
+  const result = eval(wrappedCode);
   
   console.log("\n✅ SUCCESS: No system messages displayed\n");
   console.log("Output (should be unchanged):\n");

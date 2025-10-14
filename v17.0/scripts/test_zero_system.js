@@ -65,12 +65,12 @@ console.log("");
 console.log("Test 4: Loading input.js modifier");
 try {
   const inputCode = fs.readFileSync(path.join(__dirname, 'input.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(inputCode, context);
-  
   const testInput = "You walk into the room.";
-  const result = context.modifier(testInput);
+  
+  // Scripts now end with 'return modifier(text)', so we need to wrap them
+  const text = testInput;
+  const wrappedCode = `(function() { ${inputCode} })()`;
+  const result = eval(wrappedCode);
   
   console.log("✓ Input modifier loaded successfully");
   console.log("✓ Modifier returns object:", typeof result === 'object');
@@ -87,12 +87,12 @@ console.log("");
 console.log("Test 5: Loading context.js modifier");
 try {
   const contextCode = fs.readFileSync(path.join(__dirname, 'context.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(contextCode, context);
-  
   const testContext = "The story so far...";
-  const result = context.modifier(testContext);
+  
+  // Scripts now end with 'return modifier(text)', so we need to wrap them
+  const text = testContext;
+  const wrappedCode = `(function() { ${contextCode} })()`;
+  const result = eval(wrappedCode);
   
   console.log("✓ Context modifier loaded successfully");
   console.log("✓ Text unchanged:", result.text === testContext);
@@ -107,12 +107,12 @@ console.log("");
 console.log("Test 6: Loading output.js modifier");
 try {
   const outputCode = fs.readFileSync(path.join(__dirname, 'output.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(outputCode, context);
-  
   const testOutput = "The dragon appears before you.";
-  const result = context.modifier(testOutput);
+  
+  // Scripts now end with 'return modifier(text)', so we need to wrap them
+  const text = testOutput;
+  const wrappedCode = `(function() { ${outputCode} })()`;
+  const result = eval(wrappedCode);
   
   console.log("✓ Output modifier loaded successfully");
   console.log("✓ Text unchanged:", result.text === testOutput);
@@ -127,12 +127,19 @@ console.log("");
 console.log("Test 7: Testing failsafe (LC undefined)");
 try {
   const inputCode = fs.readFileSync(path.join(__dirname, 'input.js'), 'utf8');
-  const context = { state: global.state }; // No LC in context
-  vm.createContext(context);
-  vm.runInContext(inputCode, context);
-  
   const testInput = "Test text";
-  const result = context.modifier(testInput);
+  
+  // Temporarily remove LC from global scope
+  const savedLC = global.LC;
+  delete global.LC;
+  
+  // Scripts now end with 'return modifier(text)', so we need to wrap them
+  const text = testInput;
+  const wrappedCode = `(function() { ${inputCode} })()`;
+  const result = eval(wrappedCode);
+  
+  // Restore LC
+  global.LC = savedLC;
   
   console.log("✓ Modifier works when LC is undefined");
   console.log("✓ Text still returned:", result.text === testInput);
@@ -145,13 +152,19 @@ console.log("");
 console.log("Test 8: Testing empty string handling");
 try {
   const inputCode = fs.readFileSync(path.join(__dirname, 'input.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(inputCode, context);
   
-  const result1 = context.modifier("");
-  const result2 = context.modifier(null);
-  const result3 = context.modifier(undefined);
+  // Scripts now end with 'return modifier(text)', so we need to wrap them
+  let text = "";
+  let wrappedCode = `(function() { ${inputCode} })()`;
+  const result1 = eval(wrappedCode);
+  
+  text = null;
+  wrappedCode = `(function() { ${inputCode} })()`;
+  const result2 = eval(wrappedCode);
+  
+  text = undefined;
+  wrappedCode = `(function() { ${inputCode} })()`;
+  const result3 = eval(wrappedCode);
   
   console.log("✓ Empty string handled:", result1.text === "");
   console.log("✓ Null handled:", result2.text === "");
