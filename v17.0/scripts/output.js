@@ -1,36 +1,30 @@
 /*
  * Lincoln v17.0 - Output Modifier Script
- * Phase 1.2: System Messages - Display system messages before AI output
- * 
- * This modifier:
- * - Checks if LC is defined (library loaded)
- * - Calls LC.lcInit() to ensure state is initialized
- * - Retrieves and displays system messages before AI text
- * - Returns text with system messages prepended if any exist
- * 
- * Requirements:
- * - If LC is undefined, return text immediately (failsafe)
- * - Call lcConsumeMsgs() to get pending messages
- * - Format messages using sysBlock() and prepend to output
+ * Phase 1.2: Corrected Return Pattern
  */
 
-var modifier = (text) => {
-  // Failsafe: If LC is not defined, return text unchanged
+// Объявляем функцию modifier
+const modifier = (text) => {
+  // Failsafe: Если LC не определен, возвращаем текст без изменений
   if (typeof LC === 'undefined') {
     return { text: String(text || '') };
   }
 
-  // Initialize Lincoln state
+  // Инициализируем состояние Lincoln
   const L = LC.lcInit();
   
   let outputText = String(text || '');
 
-  // Retrieve and display system messages
+  // Извлекаем и отображаем системные сообщения
   const messages = LC.lcConsumeMsgs();
   if (messages && messages.length > 0) {
     const block = LC.sysBlock(messages);
+    // Добавляем блок сообщений ПЕРЕД текстом от ИИ
     outputText = block + "\n" + outputText;
   }
 
   return { text: outputText };
 };
+
+// Вызываем modifier и возвращаем его результат, как того требует AI Dungeon
+return modifier(text);

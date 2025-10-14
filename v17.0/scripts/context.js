@@ -1,27 +1,21 @@
 /*
  * Lincoln v17.0 - Context Modifier Script
- * Phase 1.1: Zero System - Pass-through Modifier
- * 
- * This is a pass-through modifier that:
- * - Checks if LC is defined (library loaded)
- * - Calls LC.lcInit() to ensure state is initialized
- * - Returns text unchanged (no game interference)
- * 
- * Requirements:
- * - If LC is undefined, return text immediately (failsafe)
- * - Call lcInit() even if result is not used yet
- * - Return text without any modifications
+ * Phase 1.2: Corrected Return Pattern
  */
 
-var modifier = (text) => {
-  // Failsafe: If LC is not defined, return text unchanged
+// Объявляем функцию modifier
+const modifier = (text) => {
+  // Failsafe: Если LC не определен, возвращаем текст без изменений
   if (typeof LC === 'undefined') {
     return { text: String(text || '') };
   }
 
-  // Initialize Lincoln state (even if not used yet)
+  // Инициализируем состояние Lincoln
   const L = LC.lcInit();
 
-  // Pass-through: Return text unchanged
+  // Сквозной режим: возвращаем текст без изменений
   return { text: String(text || '') };
 };
+
+// Вызываем modifier и возвращаем его результат, как того требует AI Dungeon
+return modifier(text);

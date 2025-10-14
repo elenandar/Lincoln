@@ -118,20 +118,17 @@ try {
   // Add a test message
   LC.lcSys("System is online.");
   
-  // Load and execute output.js
+  // Load and execute output.js with wrapped code
   const outputCode = fs.readFileSync(path.join(__dirname, 'output.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(outputCode, context);
-  
-  const aiText = "You push open the heavy wooden door.";
-  const result = context.modifier(aiText);
+  const text = "You push open the heavy wooden door.";
+  const wrappedCode = `(function() { ${outputCode} })()`;
+  const result = eval(wrappedCode);
   
   console.log("✓ Output modifier executed successfully");
   console.log("✓ Result contains system message block:", result.text.includes("⟦SYS⟧ System is online."));
-  console.log("✓ Result contains AI text:", result.text.includes(aiText));
+  console.log("✓ Result contains AI text:", result.text.includes(text));
   console.log("✓ System message appears before AI text:", 
-    result.text.indexOf("⟦SYS⟧") < result.text.indexOf(aiText));
+    result.text.indexOf("⟦SYS⟧") < result.text.indexOf(text));
   
   console.log("\nOutput example:");
   console.log(result.text);
@@ -149,18 +146,15 @@ try {
   
   // Don't add any messages
   
-  // Load and execute output.js
+  // Load and execute output.js with wrapped code
   const outputCode = fs.readFileSync(path.join(__dirname, 'output.js'), 'utf8');
-  const context = { LC: global.LC, state: global.state };
-  vm.createContext(context);
-  vm.runInContext(outputCode, context);
-  
-  const aiText = "The dragon roars.";
-  const result = context.modifier(aiText);
+  const text = "The dragon roars.";
+  const wrappedCode = `(function() { ${outputCode} })()`;
+  const result = eval(wrappedCode);
   
   console.log("✓ Output modifier executed successfully");
   console.log("✓ No system message block:", !result.text.includes("⟦SYS⟧"));
-  console.log("✓ Text unchanged:", result.text === aiText);
+  console.log("✓ Text unchanged:", result.text === text);
   
   console.log("\nOutput (no messages):");
   console.log(result.text);
