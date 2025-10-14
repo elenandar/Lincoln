@@ -1,6 +1,6 @@
 /*
  * Lincoln v17.0 - Input Modifier Script
- * Phase 1.2: Corrected Return Pattern
+ * Phase 1.3: CommandsRegistry and Command Parsing
  */
 
 // Объявляем функцию modifier
@@ -13,13 +13,33 @@ const modifier = (text) => {
   // Инициализируем состояние Lincoln
   const L = LC.lcInit();
 
-  // --- ВРЕМЕННЫЙ ТЕСТОВЫЙ ВЫЗОВ для Фазы 1.2 ---
-  // Добавляем сообщение в очередь при каждом вводе игрока
-  LC.lcSys(`Input received: "${text}"`);
-  // ---------------------------------------------
+  // Sanitize input
+  const cleanText = LC.sanitizeInput(text);
 
-  // Сквозной режим: возвращаем текст без изменений
-  return { text: String(text || '') };
+  // Check if input is a command (starts with /)
+  if (cleanText.startsWith('/')) {
+    // Parse command: split into tokens
+    const tokens = cleanText.split(' ');
+    const commandName = tokens[0];
+    const args = tokens.slice(1);
+
+    // Look up command in registry
+    const commandDef = L.CommandsRegistry.get(commandName);
+
+    if (commandDef && typeof commandDef.handler === 'function') {
+      // Execute command handler
+      commandDef.handler(args);
+    } else {
+      // Command not found
+      LC.lcSys(`Unknown command: "${commandName}"`);
+    }
+
+    // Stop processing - don't add command text to game history
+    return { text: "", stop: true };
+  }
+
+  // If not a command, return cleaned text (pass-through mode)
+  return { text: cleanText };
 };
 
 // Вызываем modifier и возвращаем его результат, как того требует AI Dungeon

@@ -2,6 +2,62 @@
 
 This directory contains the Lincoln v17 script files for AI Dungeon.
 
+## Phase 1.3: CommandsRegistry (✅ Complete)
+
+The CommandsRegistry phase implements a centralized system for registering and executing slash commands (`/command`). This provides the foundation for all future command-based functionality.
+
+### New Features
+
+**Library.js additions:**
+- `CommandsRegistry` Map initialization in `lcInit()`
+- `LC.registerCommand(name, definition)` - Register new slash commands
+- `LC.sanitizeInput(text)` - Clean player input (remove `> ` prefix, trim whitespace)
+- `/ping` test command - Built-in command for testing
+
+**Input.js complete rewrite:**
+- Sanitizes all player input using `LC.sanitizeInput()`
+- Detects commands starting with `/`
+- Parses command name and arguments
+- Executes registered command handlers
+- Shows error for unknown commands
+- Commands return `{text: "", stop: true}` to prevent adding to history
+- Normal input is sanitized and passed through to AI
+
+### Usage Example
+
+```javascript
+// Register a new command in library.js:
+LC.registerCommand("/help", {
+  description: "/help - Shows available commands",
+  handler: function(args) {
+    LC.lcSys("Available commands: /ping, /help");
+  }
+});
+
+// Player types: /ping
+// Result: ⟦SYS⟧ Pong!
+
+// Player types: /unknown
+// Result: ⟦SYS⟧ Unknown command: "/unknown"
+
+// Player types: > Look around
+// Result: Text "Look around" goes to AI (> prefix removed)
+```
+
+### Testing
+
+Run the test suites to verify CommandsRegistry:
+
+```bash
+cd v17.0/scripts
+node test_commands_registry.js           # Comprehensive tests
+node test_phase_1_3_acceptance.js        # Acceptance criteria validation
+```
+
+All tests should pass with ✅ marks.
+
+---
+
 ## Phase 1.2: System Messages (✅ Complete)
 
 The System Messages phase builds on the Zero System to provide a centralized mechanism for collecting and displaying system diagnostic messages. This is a critical tool for monitoring all future engines and systems.
