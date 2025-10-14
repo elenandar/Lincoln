@@ -40,6 +40,10 @@
       if (!state.shared.lincoln.sys_msgs) {
         state.shared.lincoln.sys_msgs = [];
       }
+      // Initialize CommandsRegistry if it doesn't exist
+      if (!state.shared.lincoln.CommandsRegistry) {
+        state.shared.lincoln.CommandsRegistry = new Map();
+      }
       return state.shared.lincoln;
     }
 
@@ -54,6 +58,11 @@
     // Initialize sys_msgs array
     if (!state.shared.lincoln.sys_msgs) {
       state.shared.lincoln.sys_msgs = [];
+    }
+
+    // Initialize CommandsRegistry
+    if (!state.shared.lincoln.CommandsRegistry) {
+      state.shared.lincoln.CommandsRegistry = new Map();
     }
 
     // Return the initialized state
@@ -101,5 +110,40 @@
     
     return block;
   };
+
+  /**
+   * registerCommand - Register a slash command in the CommandsRegistry
+   * 
+   * @param {string} name - Command name (e.g., "/ping")
+   * @param {Object} definition - Command definition with handler and description
+   * @param {Function} definition.handler - Function to execute when command is called
+   * @param {string} definition.description - Description of what the command does
+   */
+  LC.registerCommand = function(name, definition) {
+    const L = LC.lcInit();
+    L.CommandsRegistry.set(name, definition);
+  };
+
+  /**
+   * sanitizeInput - Clean player input by removing "> " prefix and trimming whitespace
+   * 
+   * @param {string} text - Raw input text from player
+   * @returns {string} Cleaned text
+   */
+  LC.sanitizeInput = function(text) {
+    let cleanText = String(text || '').trim();
+    if (cleanText.startsWith('> ')) {
+      cleanText = cleanText.substring(2);
+    }
+    return cleanText.trim();
+  };
+
+  // Register a test command
+  LC.registerCommand("/ping", {
+    description: "/ping — Проверяет, отвечает ли система.",
+    handler: function() {
+      LC.lcSys("Pong!");
+    }
+  });
 
 })();
