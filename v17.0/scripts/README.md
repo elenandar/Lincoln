@@ -2,6 +2,67 @@
 
 This directory contains the Lincoln v17 script files for AI Dungeon.
 
+## Phase 1.2: System Messages (✅ Complete)
+
+The System Messages phase builds on the Zero System to provide a centralized mechanism for collecting and displaying system diagnostic messages. This is a critical tool for monitoring all future engines and systems.
+
+### New Features
+
+**Library.js additions:**
+- `sys_msgs` array initialization in `lcInit()`
+- `LC.lcSys(message)` - Add a message to the system queue
+- `LC.lcConsumeMsgs()` - Retrieve and clear all messages
+- `LC.sysBlock(messages)` - Format messages with ⟦SYS⟧ prefix
+
+**Output.js enhancement:**
+- Automatically displays system messages before AI text
+- Messages appear in a formatted block with separators
+- Empty queue results in no output (backward compatible)
+
+### Usage Example
+
+```javascript
+// In any script, add a system message:
+LC.lcSys("Character initialized");
+LC.lcSys("Turn counter: 5");
+
+// Output.js will automatically display:
+// ========================================
+// ⟦SYS⟧ Character initialized
+// ⟦SYS⟧ Turn counter: 5
+// ========================================
+// 
+// [AI generated text follows...]
+```
+
+### Testing
+
+Run the test suites to verify System Messages:
+
+```bash
+cd v17.0/scripts
+node test_system_messages.js       # Comprehensive tests
+node test_acceptance_criteria.js   # Acceptance criteria validation
+node demo_system_messages.js       # Interactive demo
+```
+
+All tests should pass with ✅ marks.
+
+### Status
+
+**Phase 1.2 Status**: ✅ **COMPLETE**
+
+All acceptance criteria met:
+- ✅ `sys_msgs` array initialized in `lcInit()`
+- ✅ `LC.lcSys()`, `LC.lcConsumeMsgs()`, `LC.sysBlock()` implemented
+- ✅ Output.js displays messages before AI text
+- ✅ Backward compatible (no output when queue empty)
+- ✅ All tests passing
+
+Ready to proceed to Phase 1.3 (CommandsRegistry).
+
+---
+
 ## Phase 1.1: Zero System (✅ Complete)
 
 The Zero System is the foundation of Project Lincoln v17. It consists of four scripts that form a stable, non-interfering base for all future development.
@@ -57,12 +118,14 @@ All tests should pass with green checkmarks (✓).
 
 ### Next Phase
 
-With the Zero System complete, we're ready for Phase 1.2:
-- System Messages
-- CommandsRegistry
-- currentAction
-- LC.Tools, LC.Utils, LC.Flags
-- LC.Drafts, LC.Turns
+With the Zero System complete, Phase 1.2 (System Messages) has been implemented.
+
+Remaining Phase 1 tasks:
+- Phase 1.3: CommandsRegistry (#24)
+- Phase 1.4: currentAction
+- Phase 1.5: LC.Tools, LC.Utils
+- Phase 1.6: LC.Flags
+- Phase 1.7: LC.Drafts, LC.Turns
 
 See `MASTER_PLAN_v17.md` for the full development roadmap.
 

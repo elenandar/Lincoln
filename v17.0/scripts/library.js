@@ -36,6 +36,10 @@
   LC.lcInit = function() {
     // Check if state.shared.lincoln already exists
     if (state && state.shared && state.shared.lincoln) {
+      // Initialize sys_msgs array if it doesn't exist
+      if (!state.shared.lincoln.sys_msgs) {
+        state.shared.lincoln.sys_msgs = [];
+      }
       return state.shared.lincoln;
     }
 
@@ -47,8 +51,55 @@
     // Initialize state.shared.lincoln
     state.shared.lincoln = {};
 
+    // Initialize sys_msgs array
+    if (!state.shared.lincoln.sys_msgs) {
+      state.shared.lincoln.sys_msgs = [];
+    }
+
     // Return the initialized state
     return state.shared.lincoln;
+  };
+
+  /**
+   * lcSys - Add a system message to the queue
+   * 
+   * @param {string} message - The message to add to the system message queue
+   */
+  LC.lcSys = function(message) {
+    const L = LC.lcInit();
+    L.sys_msgs.push(message);
+  };
+
+  /**
+   * lcConsumeMsgs - Retrieve and clear all system messages
+   * 
+   * @returns {Array} Array of system messages
+   */
+  LC.lcConsumeMsgs = function() {
+    const L = LC.lcInit();
+    const messages = L.sys_msgs.slice(); // Copy the array
+    L.sys_msgs = []; // Clear the queue
+    return messages;
+  };
+
+  /**
+   * sysBlock - Format system messages into a display block
+   * 
+   * @param {Array} messages - Array of message strings
+   * @returns {string} Formatted block with messages, or empty string if no messages
+   */
+  LC.sysBlock = function(messages) {
+    if (!messages || messages.length === 0) {
+      return '';
+    }
+
+    let block = '========================================\n';
+    for (let i = 0; i < messages.length; i++) {
+      block += '⟦SYS⟧ ' + messages[i] + '\n';
+    }
+    block += '========================================\n';
+    
+    return block;
   };
 
 })();

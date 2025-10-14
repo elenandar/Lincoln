@@ -1,16 +1,17 @@
 /*
  * Lincoln v17.0 - Output Modifier Script
- * Phase 1.1: Zero System - Pass-through Modifier
+ * Phase 1.2: System Messages - Display system messages before AI output
  * 
- * This is a pass-through modifier that:
+ * This modifier:
  * - Checks if LC is defined (library loaded)
  * - Calls LC.lcInit() to ensure state is initialized
- * - Returns text unchanged (no game interference)
+ * - Retrieves and displays system messages before AI text
+ * - Returns text with system messages prepended if any exist
  * 
  * Requirements:
  * - If LC is undefined, return text immediately (failsafe)
- * - Call lcInit() even if result is not used yet
- * - Return text without any modifications
+ * - Call lcConsumeMsgs() to get pending messages
+ * - Format messages using sysBlock() and prepend to output
  */
 
 var modifier = (text) => {
@@ -19,9 +20,17 @@ var modifier = (text) => {
     return { text: String(text || '') };
   }
 
-  // Initialize Lincoln state (even if not used yet)
+  // Initialize Lincoln state
   const L = LC.lcInit();
+  
+  let outputText = String(text || '');
 
-  // Pass-through: Return text unchanged
-  return { text: String(text || '') };
+  // Retrieve and display system messages
+  const messages = LC.lcConsumeMsgs();
+  if (messages && messages.length > 0) {
+    const block = LC.sysBlock(messages);
+    outputText = block + "\n" + outputText;
+  }
+
+  return { text: outputText };
 };
