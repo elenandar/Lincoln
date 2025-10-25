@@ -1,10 +1,10 @@
 // === PROJECT LINCOLN v17 - INPUT ===
-// Version: 17.0.4 (Phase 1 Final Hotfix)
+// Version: 17.0.5 (Stability Hotfix)
 
 const modifier = (text) => {
   const LC = state.shared.LC;
   if (typeof LC === 'undefined') {
-    return { text };
+    return;
   }
 
   const L = LC.lcInit('Input');
@@ -15,14 +15,14 @@ const modifier = (text) => {
     const commandName = rawText.split(' ')[0].toLowerCase();
     
     if (LC.CommandsRegistry.has(commandName)) {
-      return LC.CommandsRegistry.get(commandName).handler(rawText);
+      LC.CommandsRegistry.get(commandName).handler(rawText);
     } else {
-      return LC.replyStop(`Неизвестная команда: ${commandName}`);
+      LC.replyStop(`Неизвестная команда: ${commandName}`);
     }
+    // Для команд мы очищаем ввод, чтобы он не шел к ИИ
+    text = "";
   }
-
-  return { text };
 };
 
-// ВЫЗЫВАЕМ ФУНКЦИЮ И ВОЗВРАЩАЕМ ЕЕ РЕЗУЛЬТАТ
-return modifier(text);
+// Вызываем функцию, как указано в документации lincoln-dev
+modifier(text);
