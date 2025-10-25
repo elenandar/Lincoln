@@ -1,0 +1,41 @@
+// === PROJECT LINCOLN v17 - LIBRARY ===
+// Version: 17.0.0 (Phase 0)
+
+// Инициализируем глобальный объект Lincoln Core (LC), если он еще не существует.
+// Это делается один раз при первой загрузке любого из скриптов.
+if (typeof LC === 'undefined') {
+  const state = (typeof globalThis.state !== 'undefined') ? globalThis.state : {};
+  state.shared = state.shared || {};
+
+  /**
+   * Главный объект системы Lincoln.
+   * Содержит все движки, утилиты и функции инициализации.
+   */
+  globalThis.LC = {
+    /**
+     * Центральная функция инициализации. Вызывается в начале каждого
+     * скрипта (Input, Output, Context). Гарантирует, что state.lincoln
+     * и другие базовые структуры существуют.
+     * @param {string} scriptName - Имя вызывающего скрипта (для отладки).
+     * @returns {object} - Ссылка на state.lincoln.
+     */
+    lcInit: function(scriptName = 'Unknown') {
+      // Инициализируем основное хранилище, если его нет
+      state.lincoln = state.lincoln || {};
+
+      // Устанавливаем базовые значения при первой инициализации
+      if (!state.lincoln.version) {
+        state.lincoln.version = '17.0.0';
+        state.lincoln.turn = 0;
+        state.lincoln.currentAction = { type: 'story' };
+        
+        // Заглушки для будущих данных движков
+        state.lincoln.characters = {};
+        state.lincoln.relations = {};
+        state.lincoln.hierarchy = {};
+      }
+      
+      return state.lincoln;
+    }
+  };
+}
