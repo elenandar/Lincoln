@@ -1,4 +1,5 @@
 name: "Lincoln Developer (Technical)"
+model: claude-sonnet-4.5
 description: "A highly technical agent for the Lincoln project. Contains detailed rules, APIs, and code patterns from the official documentation."
 author: "elenandar"
 version: "3.0"
