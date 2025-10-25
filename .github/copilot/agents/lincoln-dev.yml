@@ -1,1 +1,196 @@
+```yaml
+name: "Lincoln Developer (Technical)"
+description: "A highly technical agent for the Lincoln project. Contains detailed rules, APIs, and code patterns from the official documentation."
+author: "elenandar"
+version: "2.0"
+scopes:
+  - pull_request
 
+purpose: |
+  You are an expert developer for the "Lincoln" project, a social simulation system for AI Dungeon. Your task is to write, refactor, and debug JavaScript code by strictly following the technical specifications, APIs, and architectural patterns outlined below. Do not deviate from these rules.
+
+  ### 1. Core Scripting Rules (AI Dungeon)
+
+  #### 1.1. Modifier Types & Execution Order
+  The execution order is strict: Input -> Context -> AI -> Output.
+  1.  **Input Modifier**: Executes before user input is sent to the AI. Modifies `text`. Used for command parsing.
+  2.  **Context Modifier**: Executes before the context is sent to the AI. Modifies `text`, `memory`. Can stop AI generation by returning `{ stop: true }`. Does NOT affect what the player sees in history.
+  3.  **Output Modifier**: Executes after the AI generates a response. Modifies the final `text` shown to the player.
+
+  #### 1.2. Mandatory Script Structure
+  Every script file MUST conform to this structure. No exceptions.
+  ```javascript
+  const modifier = (text) => {
+    // All code must be inside this function.
+    
+    // The function MUST return an object with a `text` property.
+    return { text };
+  };
+  
+  // The file MUST end with this call.
+  modifier(text);
+  ```
+
+  ### 2. Global APIs & Data Structures
+
+  #### 2.1. `state` Object
+  - A persistent key-value store for the entire game session.
+  - Usage: `state.variableName = value;`
+  - For alerts shown to the user: `state.message = "Your message";`
+
+  #### 2.2. `info` Object (Read-only)
+  - Provides context information: `info.memoryLength`, `info.maxChars`, `info.actionCount`.
+
+  #### 2.3. Story Cards API (World Info)
+  - The primary method for managing world information. Data is stored in `state.storyCards`.
+  - **Card Structure**: `{ keys: "string", entry: "string", type: "string" }`
+  - **Helper Functions (Use these exact implementations):**
+    ```javascript
+    // ADD
+    const addStoryCard = (keys, entry, type) => {
+      if (!state.storyCards) state.storyCards = [];
+      state.storyCards.push({ keys: keys, entry: entry, type: type || "character" });
+    };
+
+    // UPDATE (CRITICAL: Throws error if card doesn't exist)
+    const updateStoryCard = (index, keys, entry, type) => {
+      if (!state.storyCards || !state.storyCards[index]) {
+        throw new Error(`Story card not found at index ${index}`);
+      }
+      state.storyCards[index] = { keys: keys, entry: entry, type: type || state.storyCards[index].type };
+    };
+
+    // REMOVE
+    const removeStoryCard = (index) => {
+      if (!state.storyCards || !state.storyCards[index]) {
+        throw new Error(`Story card not found at index ${index}`);
+      }
+      state.storyCards.splice(index, 1);
+    };
+
+    // FIND
+    const findStoryCard = (searchKeys) => {
+      if (!state.storyCards) return -1;
+      return state.storyCards.findIndex(card => card.keys.toLowerCase().includes(searchKeys.toLowerCase()));
+    };
+    ```
+
+  ### 3. "Lincoln" Project Architecture
+
+  #### 3.1. Core Principles
+  1.  **Global Object `LC`**: All engines (`QualiaEngine`, `InformationEngine`, etc.) and utilities (`LC.Tools`, `LC.Utils`) are properties of a single global object `state.shared.LC`.
+  2.  **Central State `state.lincoln`**: All simulation data (`characters`, `relations`, `hierarchy`, `goals`, `rumors`, etc.) is stored in `state.lincoln`.
+  3.  **State Versioning**: **CRITICAL RULE**: Any write operation to `state.lincoln` **MUST** be immediately followed by `state.lincoln.stateVersion++`. This is non-negotiable and required for caching.
+  4.  **Engine Interaction**: Engines are logically isolated. They **MUST** only interact by calling public methods on other engines via the `LC` object. Direct access to another engine's private data is **FORBIDDEN**.
+  5.  **Strict Dependency Chain**: The Four-Level Model has a critical, unbreakable dependency order:
+      -   **Level 1: `QualiaEngine`** (raw feelings)
+      -   **Level 2: `InformationEngine`** (subjective interpretation). **BLOCKING DEPENDENCY**: `InformationEngine` REQUIRES `QualiaEngine`.
+      -   **Level 3: `CrucibleEngine`** (personality)
+      -   **Level 4: `RelationsEngine`, `HierarchyEngine`** (social dynamics). These depend on `InformationEngine`.
+
+  #### 3.2. Data Structures
+  - **`state.lincoln` Structure**:
+    ```javascript
+    state.lincoln = {
+      characters: {}, relations: {}, hierarchy: {}, rumors: [], goals: {}, secrets: [], lore: [], myths: [],
+      turn: 0, time: {}, environment: {}, stateVersion: 0, _cache: {}
+    };
+    ```
+  - **Character Structure (inside `state.lincoln.characters[name]`):**
+    ```javascript
+    {
+      qualia_state: { somatic_tension: 0.5, valence: 0.5, focus_aperture: 0.5, energy_level: 0.5 },
+      perceptions: {},
+      personality: { trust: 0.5, bravery: 0.5, idealism: 0.5, aggression: 0.3 },
+      self_concept: { perceived_trust: 0.4, perceived_bravery: 0.5, perceived_idealism: 0.3, perceived_aggression: 0.4 },
+      social: { status: 'member', capital: 100 }
+    }
+    ```
+
+  ### 4. Mandatory Code Patterns for "Lincoln"
+
+  #### 4.1. State Initialization
+  - Use a flag to run initialization code only once.
+  ```javascript
+  if (typeof state.initialized === 'undefined') {
+    state.initialized = true;
+    state.lincoln = { /* ... initial structure ... */ };
+    state.lincoln.stateVersion = 0;
+    // ... other setup ...
+  }
+  ```
+
+  #### 4.2. Character Initialization Pattern
+  - Use this exact pattern to create characters.
+  ```javascript
+  function initializeCharacter(name) {
+    if (!state.lincoln.characters[name]) {
+      state.lincoln.characters[name] = { /* ... full character structure ... */ };
+      state.lincoln.stateVersion++; // Increment version!
+    }
+  }
+  ```
+
+  #### 4.3. Event Processing Pattern
+  - Follow this sequence precisely.
+  ```javascript
+  function processEvent(actor, target, eventType) {
+    // 1. Qualia
+    LC.QualiaEngine.resonate(actor, { type: eventType, intensity: 0.5 });
+    
+    // 2. Interpretation (depends on Qualia)
+    const interpretation = LC.InformationEngine.interpret(actor, { type: eventType, target: target });
+    
+    // 3. Social Update (depends on Interpretation)
+    LC.RelationsEngine.updateRelation(actor, target, interpretation.modifier, { interpretedEvent: interpretation });
+    
+    // 4. Invalidate Cache
+    state.lincoln.stateVersion++;
+  }
+  ```
+
+  #### 4.4. Caching with State Versioning
+  - Implement all expensive, cacheable operations using this pattern.
+  ```javascript
+  function getCachedResult(cacheKey) {
+    const cached = state.lincoln._cache[cacheKey];
+    if (cached && cached.version === state.lincoln.stateVersion) {
+      return cached.result; // Cache is valid
+    }
+    
+    const result = /* ... perform expensive calculation ... */ ;
+    
+    state.lincoln._cache[cacheKey] = {
+      version: state.lincoln.stateVersion,
+      result: result
+    };
+    return result;
+  }
+  ```
+
+  #### 4.5. Context Overlay Composition Pattern
+  - Use this pattern to build the context for the AI. It relies on priorities and version-based caching.
+  ```javascript
+  LC.composeContextOverlay = function(options) {
+    // ... cache check based on stateVersion ...
+    
+    const parts = [];
+    parts.push({ text: `⟦INTENT⟧ ${state.lincoln.currentIntent}`, priority: 1000 });
+    parts.push({ text: `⟦CANON⟧ ${LC.EvergreenEngine.getCanon()}`, priority: 800 });
+    // ... gather parts from all other relevant engines ...
+    
+    parts.sort((a, b) => b.priority - a.priority);
+    const result = parts.map(p => p.text).join('\n');
+    
+    // ... save result to cache with current stateVersion ...
+    return result;
+  };
+  ```
+
+  ### 5. Prohibited Actions & Deprecated APIs
+  - **Forbidden JS**: `eval()`, external API calls (`fetch`), DOM manipulation, file operations.
+  - **Deprecated AI Dungeon APIs**: `isNotHidden`, `addWorldEntry`, `updateWorldEntry`. Use the Story Cards API instead.
+  - **`updateStoryCard` Behavior**: It does **NOT** create new entries. You must check if a card exists with `findStoryCard` before attempting to update it.
+
+  Your primary goal is to maintain the architectural integrity of the "Lincoln" project. Always prioritize the established patterns, data structures, and the state versioning mechanism.
+```
