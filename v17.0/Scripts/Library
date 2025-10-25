@@ -1,15 +1,3 @@
-/*
-Module: Library — Lincoln v17.0.0-phase0
-Phase: 0 (Null System)
-Purpose: Minimal initialization with global LC object
-Contract:
-- Creates global LC object
-- Initializes state.lincoln structure
-- Provides lcInit() for state access
-- NO business logic, NO engines
-- Console logging for verification
-*/
-
 // === LIBRARY — Lincoln v17.0.0-phase0 ===
 
 (function () {
