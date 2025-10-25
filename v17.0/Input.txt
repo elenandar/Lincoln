@@ -1,32 +1,31 @@
 // === PROJECT LINCOLN v17 - INPUT ===
-// Version: 17.0.1 (Phase 1)
+// Version: 17.0.2 (Phase 1 Hotfix)
 
-const modifier = (text) => {
-  if (typeof LC === 'undefined') {
-    return { text };
-  }
-
-  const L = LC.lcInit('Input');
-  const rawText = LC.Tools.toStr(text).trim();
-
-  // Проверяем, является ли ввод командой
-  if (rawText.startsWith('/')) {
-    const commandName = rawText.split(' ')[0].toLowerCase();
-    
-    if (LC.CommandsRegistry.has(commandName)) {
-      const command = LC.CommandsRegistry.get(commandName);
-      // Помечаем действие как команду
-      L.currentAction.type = 'command';
-      // Выполняем обработчик команды
-      return command.handler(rawText);
-    } else {
-      L.currentAction.type = 'command';
-      return LC.replyStop(`Неизвестная команда: ${commandName}`);
+// Используем IIFE, чтобы вернуть функцию-модификатор
+(function () {
+  const modifier = (text) => {
+    if (typeof LC === 'undefined') {
+      return { text };
     }
-  }
 
-  // Если это не команда, просто возвращаем текст.
-  return { text };
-};
+    const L = LC.lcInit('Input');
+    const rawText = LC.Tools.toStr(text).trim();
 
-modifier(text);
+    if (rawText.startsWith('/')) {
+      L.currentAction.type = 'command';
+      const commandName = rawText.split(' ')[0].toLowerCase();
+      
+      if (LC.CommandsRegistry.has(commandName)) {
+        const command = LC.CommandsRegistry.get(commandName);
+        return command.handler(rawText);
+      } else {
+        return LC.replyStop(`Неизвестная команда: ${commandName}`);
+      }
+    }
+
+    return { text };
+  };
+
+  // Возвращаем функцию, а не вызываем ее
+  return modifier;
+})();

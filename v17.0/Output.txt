@@ -1,28 +1,26 @@
 // === PROJECT LINCOLN v17 - OUTPUT ===
-// Version: 17.0.1 (Phase 1)
+// Version: 17.0.2 (Phase 1 Hotfix)
 
-const modifier = (text) => {
-  if (typeof LC === 'undefined') {
-    return { text };
-  }
+(function () {
+  const modifier = (text) => {
+    if (typeof LC === 'undefined') {
+      return { text };
+    }
 
-  const L = LC.lcInit('Output');
-  let outputText = LC.Tools.toStr(text);
+    const L = LC.lcInit('Output');
+    let outputText = LC.Tools.toStr(text);
 
-  // Инкремент хода только для успешных игровых действий
-  if (L.currentAction.type === 'story') {
-    LC.Turns.inc();
-  }
+    if (L.currentAction.type === 'story') {
+      LC.Turns.inc();
+    }
 
-  // Получаем и форматируем все системные сообщения из очереди
-  const messages = LC.consumeMsgs();
-  if (messages.length > 0) {
-    const sysBlock = messages.map(m => m.text).join('\n');
-    // Добавляем блок системных сообщений перед основным выводом
-    outputText = sysBlock + '\n\n' + outputText;
-  }
+    const messages = LC.consumeMsgs();
+    if (messages.length > 0) {
+      const sysBlock = messages.map(m => m.text).join('\n');
+      outputText = sysBlock + '\n\n' + outputText;
+    }
 
-  return { text: outputText };
-};
-
-modifier(text);
+    return { text: outputText };
+  };
+  return modifier;
+})();
