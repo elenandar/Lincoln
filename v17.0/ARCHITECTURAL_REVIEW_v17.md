@@ -1,7 +1,7 @@
 # PROJECT LINCOLN v17: ARCHITECTURAL REVIEW & ENHANCED SPECIFICATIONS
 
 **Review Version:** 1.0  
-**Review Date:** 25 октября 2025  
+**Review Date:** October 25, 2025  
 **Reviewer:** Lincoln Architect  
 **Target Document:** PROJECT_LINCOLN_v17_MASTER_PLAN.md v1.0
 
@@ -166,10 +166,10 @@ Phase 8: Оптимизация
 
 **Issue 1: CommandsRegistry Uses Map**
 
-*Location:* Master Plan, ФАЗА 1, line 242
+*Location:* Master Plan, PHASE 1, line 242
 
 ```javascript
-| **CommandsRegistry** (#24) | Реестр команд | Map для хранения команд |
+| **CommandsRegistry** (#24) | Command Registry | Map for storing commands |
 ```
 
 **Problem:** Map is ES6+, not available in ES5.
@@ -180,11 +180,16 @@ Phase 8: Оптимизация
 const commandsRegistry = new Map();
 commandsRegistry.set('ping', handler);
 
-// CORRECT (ES5)
+// CORRECT (ES5) - Use plain object
 const commandsRegistry = {};
 commandsRegistry['ping'] = handler;
-// or
+// or using dot notation
 commandsRegistry.ping = handler;
+
+// Access:
+const handler = commandsRegistry['ping'];
+// or
+const handler = commandsRegistry.ping;
 ```
 
 **Impact:** CRITICAL - Will cause runtime error in AI Dungeon.
@@ -609,11 +614,11 @@ LC.InformationEngine.interpret = function(character, event) {
   var valence = LC.QualiaEngine.getValence(character); // ← Reads qualia
   
   if (valence > 0.7) {
-    return { interpretation: "искренне", multiplier: 1.5 };
+    return { interpretation: "sincere", multiplier: 1.5 };
   } else if (valence < 0.3) {
-    return { interpretation: "саркастично", multiplier: 0.4 };
+    return { interpretation: "sarcastic", multiplier: 0.4 };
   }
-  return { interpretation: "нейтрально", multiplier: 1.0 };
+  return { interpretation: "neutral", multiplier: 1.0 };
 };
 ```
 
@@ -1067,14 +1072,20 @@ LC.RelationsEngine.updateRelation = function(from, to, baseChange, event) {
 LC.HierarchyEngine.calculateReputation = function(character) {
   var witnesses = getAllCharacters();
   var totalRespect = 0;
+  var count = 0;
   
   for (var i = 0; i < witnesses.length; i++) {
     var witness = witnesses[i];
+    
+    // Skip self-perception
+    if (witness === character) continue;
+    
     var perception = LC.InformationEngine.getPerception(witness, character);
     totalRespect += perception.respect; // ← Subjective perception
+    count++;
   }
   
-  return totalRespect / witnesses.length;
+  return count > 0 ? totalRespect / count : 0.5; // Default to neutral if no witnesses
 };
 ```
 
@@ -1594,15 +1605,18 @@ LC.HierarchyEngine.calculateStatus = function(character) {
 LC.HierarchyEngine._getAverageWitnessRespect = function(character) {
   var witnesses = getAllCharacters();
   var total = 0;
+  var count = 0;
   
   for (var i = 0; i < witnesses.length; i++) {
+    // Skip self-perception
     if (witnesses[i] === character) continue;
     
     var perception = LC.InformationEngine.getPerception(witnesses[i], character);
     total += perception.respect; // ← SUBJECTIVE perception
+    count++;
   }
   
-  return total / (witnesses.length - 1);
+  return count > 0 ? total / count : 0.5; // Default to neutral if no witnesses
 };
 ```
 
@@ -2236,7 +2250,7 @@ if grep -r "new Map\|new Set\|new WeakMap\|new WeakSet" *.txt 2>/dev/null; then
   ERRORS=$((ERRORS+1))
 fi
 
-if grep -r "\.includes(" *.txt 2>/dev/null | grep -v "// ES5"; then
+if grep -r "\.includes(" *.txt 2>/dev/null | grep -v "// ES5" | grep -v "^[[:space:]]*\/\/" | grep -v "^[[:space:]]*\*"; then
   echo "❌ ERROR: Array.includes() found (use indexOf() !== -1)"
   ERRORS=$((ERRORS+1))
 fi
@@ -2716,9 +2730,11 @@ function verifyBackwardCompatibility() {
 - No major blockers
 - Testing included in estimates
 
-**Optimistic:** 172 hours = 21.5 days (~4.5 weeks)  
-**Realistic:** 220 hours = 27.5 days (~5.5 weeks)  
-**Pessimistic:** 268 hours = 33.5 days (~7 weeks)
+**Optimistic:** 172 hours = 21.5 work days (~4.5 calendar weeks assuming 5-day work week)  
+**Realistic:** 220 hours = 27.5 work days (~5.5 calendar weeks assuming 5-day work week)  
+**Pessimistic:** 268 hours = 33.5 work days (~7 calendar weeks assuming 5-day work week)
+
+**Note:** Estimates assume 8-hour work days, Monday-Friday schedule. Calendar duration will be ~40% longer due to weekends.
 
 ---
 
