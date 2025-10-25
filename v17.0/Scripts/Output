@@ -1,15 +1,3 @@
-/*
-Module: Output — Lincoln v17.0.0-phase0
-Phase: 0 (Null System)
-Purpose: Passthrough output with turn increment
-Contract:
-- Accepts AI output
-- Increments turn counter
-- Logs to console for verification
-- Returns output unchanged
-- NO text processing
-*/
-
 // === OUTPUT MODIFIER v17.0.0-phase0 ===
 
 const modifier = function (text) {
