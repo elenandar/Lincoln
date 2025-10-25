@@ -1,23 +1,36 @@
-// === OUTPUT MODIFIER v17.0.0-phase0 ===
+// === OUTPUT MODIFIER v17.0.0-phase1 ===
 
 const modifier = function (text) {
   const __SCRIPT_SLOT__ = "Output";
-  const __VERSION__ = "17.0.0-phase0";
+  const __VERSION__ = "17.0.0-phase1";
 
   // Check if LC is available
-  if (typeof LC !== "undefined" && typeof LC.lcInit === "function") {
-    const L = LC.lcInit();
-    
-    // Increment turn counter
-    L.turn = (L.turn || 0) + 1;
-    
-    console.log("[OUTPUT] Turn: " + L.turn + " | Output length: " + (text ? text.length : 0));
-  } else {
+  if (typeof LC === "undefined" || typeof LC.lcInit !== "function") {
     console.log("[OUTPUT] LC not available (unexpected!)");
+    return { text: String(text || "") };
   }
 
-  // Passthrough: return output unchanged
-  return { text: String(text || "") };
+  const L = LC.lcInit();
+  const outputText = String(text || "");
+  
+  // Increment turn counter
+  LC.Turns.increment();
+  
+  // Check for queued draft messages
+  const drafts = LC.Drafts.flush();
+  
+  // Combine drafts with output
+  var finalText = outputText;
+  
+  if (drafts) {
+    // Prepend drafts to output (system messages first)
+    finalText = drafts + (outputText ? "\n\n" + outputText : "");
+    console.log("[OUTPUT] Added " + drafts.split("\n\n").length + " draft message(s)");
+  }
+  
+  console.log("[OUTPUT] Turn: " + L.turn + " | Output length: " + finalText.length);
+  
+  return { text: finalText };
 };
 
 return modifier(text);
