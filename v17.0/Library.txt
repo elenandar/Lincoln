@@ -1,5 +1,5 @@
 // === PROJECT LINCOLN v17 - LIBRARY ===
-// Version: 17.0.4 (Phase 1 Final Hotfix)
+// Version: 17.0.5 (Stability Hotfix)
 
 (function () {
   // Гарантируем однократное выполнение
@@ -22,17 +22,18 @@
     },
     replyStop: function(msg) {
       this.sysMsg(`⟦SYS⟧ ${msg}`);
-      return { text: '', stop: true };
+      state.message = `⟦SYS⟧ ${msg}`;
     },
     CommandsRegistry: new Map(),
     lcInit: function(scriptName = 'Unknown') {
       state.lincoln = state.lincoln || {};
       if (!state.lincoln.version) {
-        state.lincoln.version = '17.0.4';
+        state.lincoln.version = '17.0.5';
         state.lincoln.turn = 0;
         state.lincoln.characters = {};
         state.lincoln.relations = {};
         state.lincoln.hierarchy = {};
+        state.lincoln.stateVersion = 0;
       }
       const action = (typeof globalThis.action !== 'undefined') ? globalThis.action : {};
       state.lincoln.currentAction = {
@@ -43,31 +44,33 @@
     },
     Turns: {
       get: () => state.lincoln.turn || 0,
-      inc: () => { state.lincoln.turn = (state.lincoln.turn || 0) + 1; },
-      set: (n) => { state.lincoln.turn = Math.max(0, state.shared.LC.Tools.toNum(n)); }
+      inc: () => { 
+        state.lincoln.turn = (state.lincoln.turn || 0) + 1;
+        state.lincoln.stateVersion++; // Версионирование!
+      },
+      set: (n) => { 
+        state.lincoln.turn = Math.max(0, state.shared.LC.Tools.toNum(n));
+        state.lincoln.stateVersion++; // Версионирование!
+      }
     }
   };
 
   // Регистрация команд
   const { CommandsRegistry: REG, replyStop, Turns } = state.shared.LC;
   REG.set('/ping', {
-    description: '/ping — Проверяет, работает ли система.',
     handler: () => replyStop('Pong!')
   });
   REG.set('/turn', {
-    description: '/turn — Показывает текущий ход.',
     handler: () => replyStop(`Текущий ход: ${Turns.get()}`)
   });
   REG.set('/debug', {
-    description: '/debug — Показывает текущее состояние state.lincoln.',
     handler: () => {
       try {
         const debugString = JSON.stringify(state.lincoln, null, 2);
-        state.shared.LC.sysMsg('== DEBUG: state.lincoln ==\n' + debugString);
+        replyStop('== DEBUG: state.lincoln ==\n' + debugString);
       } catch (e) {
-        state.shared.LC.sysMsg('Ошибка при сериализации state.lincoln: ' + e.message);
+        replyStop('Ошибка при сериализации state.lincoln: ' + e.message);
       }
-      return { text: '', stop: true };
     }
   });
 })();
