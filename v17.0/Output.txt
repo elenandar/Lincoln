@@ -1,26 +1,26 @@
 // === PROJECT LINCOLN v17 - OUTPUT ===
-// Version: 17.0.2 (Phase 1 Hotfix)
+// Version: 17.0.4 (Phase 1 Final Hotfix)
 
-(function () {
-  const modifier = (text) => {
-    if (typeof LC === 'undefined') {
-      return { text };
-    }
+const modifier = (text) => {
+  const LC = state.shared.LC;
+  if (typeof LC === 'undefined') {
+    return { text };
+  }
 
-    const L = LC.lcInit('Output');
-    let outputText = LC.Tools.toStr(text);
+  const L = LC.lcInit('Output');
+  let outputText = LC.Tools.toStr(text);
 
-    if (L.currentAction.type === 'story') {
-      LC.Turns.inc();
-    }
+  if (L.currentAction.type === 'story') {
+    LC.Turns.inc();
+  }
 
-    const messages = LC.consumeMsgs();
-    if (messages.length > 0) {
-      const sysBlock = messages.map(m => m.text).join('\n');
-      outputText = sysBlock + '\n\n' + outputText;
-    }
+  const messages = LC.consumeMsgs();
+  if (messages.length > 0) {
+    const sysBlock = messages.map(m => m.text).join('\n');
+    outputText = sysBlock + '\n\n' + outputText;
+  }
 
-    return { text: outputText };
-  };
-  return modifier;
-})();
+  return { text: outputText };
+};
+
+return modifier(text);
