@@ -1,15 +1,3 @@
-/*
-Module: Context — Lincoln v17.0.0-phase0
-Phase: 0 (Null System)
-Purpose: Passthrough context with minimal logging
-Contract:
-- Accepts context text
-- Logs to console for verification
-- Returns context unchanged
-- NO context assembly
-- NO overlay generation
-*/
-
 // === CONTEXT MODIFIER v17.0.0-phase0 ===
 
 const modifier = function (text) {
