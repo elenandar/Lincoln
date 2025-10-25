@@ -135,8 +135,9 @@ Contract:
   // === 1.4: LC.Tools (#19) ===
   LC.Tools = {
     // Safe regex matching with timeout (stub for Phase 1)
+    // TODO: Timeout enforcement will be implemented in Phase 8 (Optimization)
     safeRegexMatch: function (text, regex, timeout) {
-      timeout = timeout || 100; // Default 100ms (not enforced yet)
+      timeout = timeout || 100; // Default 100ms (not enforced in Phase 1)
       try {
         return text.match(regex);
       } catch (e) {
