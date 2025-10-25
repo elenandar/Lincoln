@@ -1,9 +1,11 @@
 /*
-Module: Library — Lincoln v17.0.0-alpha.1
+Module: Library — Lincoln v17.0.0-alpha.2
 Phase 1: Infrastructure
+Phase 2: Physical World
 Contract:
 - Provides core state management and utilities
 - Implements command registry and system messaging
+- Phase 2: TimeEngine, EnvironmentEngine, ChronologicalKnowledgeBase
 - No v16 code copied - built from scratch based on MASTER_PLAN_v17.md
 */
 
@@ -31,7 +33,7 @@ Contract:
     // Initialize lincoln state if not present
     if (!shared.lincoln) {
       shared.lincoln = {
-        version: "17.0.0-alpha.1",
+        version: "17.0.0-alpha.2",
         turn: 0,
         stateVersion: 0,
         sysShow: true,           // UI messages enabled by default
@@ -48,15 +50,25 @@ Contract:
         recapDraft: null,
         epochDraft: null,
         
+        // Phase 2: Physical World
+        time: {
+          turn: 0,
+          day: 1,
+          timeOfDay: 'Morning',    // Morning, Day, Evening, Night
+          dayOfWeek: 'Monday'      // Monday through Sunday
+        },
+        environment: {
+          location: 'Unknown',
+          weather: 'Clear'
+        },
+        chronologicalKnowledge: [],
+        
         // Future structures (placeholders for later phases)
-        time: {},
-        environment: {},
         characters: {},
         relations: {},
         goals: {},
         secrets: {},
         evergreen: {},
-        chronologicalKnowledge: [],
         rumors: [],
         society: { norms: {} },
         myths: [],
@@ -226,12 +238,140 @@ Contract:
     }
   };
 
+  // === PHASE 2: PHYSICAL WORLD ===
+
+  // === 2.1: TimeEngine (#7) ===
+  LC.TimeEngine = {
+    // Time of day progression: Morning -> Day -> Evening -> Night -> Morning
+    timesOfDay: ['Morning', 'Day', 'Evening', 'Night'],
+    
+    // Days of the week
+    daysOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    
+    // Advance time based on current turn
+    advance: function (L) {
+      if (!L || !L.time) return;
+      
+      // Sync turn counter
+      L.time.turn = L.turn;
+      
+      // Calculate time progression (1 turn = 1 time period)
+      const totalPeriods = L.turn;
+      const periodsPerDay = 4; // Morning, Day, Evening, Night
+      
+      // Calculate day
+      L.time.day = Math.floor(totalPeriods / periodsPerDay) + 1;
+      
+      // Calculate time of day
+      const periodIndex = totalPeriods % periodsPerDay;
+      L.time.timeOfDay = this.timesOfDay[periodIndex];
+      
+      // Calculate day of week
+      const daysSinceStart = Math.floor(totalPeriods / periodsPerDay);
+      const dayOfWeekIndex = daysSinceStart % 7;
+      L.time.dayOfWeek = this.daysOfWeek[dayOfWeekIndex];
+    },
+    
+    // Get formatted time string
+    getTimeString: function (L) {
+      if (!L || !L.time) return 'Time unknown';
+      return `Day ${L.time.day}, ${L.time.dayOfWeek}, ${L.time.timeOfDay} (Turn ${L.time.turn})`;
+    }
+  };
+
+  // Register /time command
+  LC.CommandsRegistry.set('/time', function (L, args) {
+    if (args.length === 0) {
+      // Display current time
+      LC.lcSys(LC.TimeEngine.getTimeString(L));
+    } else {
+      LC.lcSys("Usage: /time (to display current time)");
+    }
+  });
+
+  // === 2.2: EnvironmentEngine (#8) ===
+  LC.EnvironmentEngine = {
+    // Log an event to the Chronological Knowledge Base
+    log: function (L, text) {
+      if (!L || !L.chronologicalKnowledge) return;
+      
+      const entry = {
+        turn: L.turn,
+        day: L.time.day,
+        timeOfDay: L.time.timeOfDay,
+        dayOfWeek: L.time.dayOfWeek,
+        location: L.environment.location,
+        weather: L.environment.weather,
+        text: text,
+        timestamp: Date.now()
+      };
+      
+      L.chronologicalKnowledge.push(entry);
+      L.stateVersion++;
+    },
+    
+    // Change weather
+    changeWeather: function (L, newWeather) {
+      if (!L || !L.environment) return;
+      L.environment.weather = newWeather;
+      L.stateVersion++;
+    },
+    
+    // Change location
+    changeLocation: function (L, newLocation) {
+      if (!L || !L.environment) return;
+      L.environment.location = newLocation;
+      L.stateVersion++;
+    }
+  };
+
+  // Register /env command
+  LC.CommandsRegistry.set('/env', function (L, args) {
+    if (args.length === 0) {
+      // Display current environment
+      LC.lcSys(`Location: ${L.environment.location}`);
+      LC.lcSys(`Weather: ${L.environment.weather}`);
+    } else if (args[0] === 'set' && args.length >= 3) {
+      const key = args[1];
+      const value = args.slice(2).join(' ');
+      
+      if (key === 'location') {
+        LC.EnvironmentEngine.changeLocation(L, value);
+        LC.lcSys(`Location set to: ${value}`);
+      } else if (key === 'weather') {
+        LC.EnvironmentEngine.changeWeather(L, value);
+        LC.lcSys(`Weather set to: ${value}`);
+      } else {
+        LC.lcSys("Unknown environment key. Use: location or weather");
+      }
+    } else {
+      LC.lcSys("Usage: /env or /env set <location|weather> <value>");
+    }
+  });
+
+  // === 2.3: ChronologicalKnowledgeBase (CKB, #18) ===
+  // Register /ckb command
+  LC.CommandsRegistry.set('/ckb', function (L, args) {
+    const limit = args[0] ? parseInt(args[0]) : 5;
+    const entries = L.chronologicalKnowledge.slice(-limit);
+    
+    if (entries.length === 0) {
+      LC.lcSys("Chronological Knowledge Base is empty.");
+    } else {
+      LC.lcSys(`Recent ${entries.length} entries from CKB:`);
+      entries.forEach((entry, idx) => {
+        const timeStr = `Day ${entry.day}, ${entry.timeOfDay}`;
+        LC.lcSys(`[${idx + 1}] ${timeStr} - ${entry.text.substring(0, 60)}...`);
+      });
+    }
+  });
+
   // Export to global scope
   _globalScope.LC = LC;
 
   // Log initialization
   if (typeof console !== 'undefined') {
-    console.log('[Lincoln v17.0.0-alpha.1] Library initialized');
+    console.log('[Lincoln v17.0.0-alpha.2] Library initialized (Phase 2)');
   }
 
 })();
