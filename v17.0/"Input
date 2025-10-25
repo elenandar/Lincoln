@@ -1,0 +1,31 @@
+/*
+Module: Input — Lincoln v17.0.0-phase0
+Phase: 0 (Null System)
+Purpose: Passthrough input with minimal logging
+Contract:
+- Accepts user input
+- Logs to console for verification
+- Returns input unchanged
+- NO command processing
+- NO text modification
+*/
+
+// === INPUT MODIFIER v17.0.0-phase0 ===
+
+const modifier = function (text) {
+  const __SCRIPT_SLOT__ = "Input";
+  const __VERSION__ = "17.0.0-phase0";
+
+  // Check if LC is available
+  if (typeof LC !== "undefined" && typeof LC.lcInit === "function") {
+    const L = LC.lcInit();
+    console.log("[INPUT] Turn: " + L.turn + " | Input length: " + (text ? text.length : 0));
+  } else {
+    console.log("[INPUT] LC not available (expected on first load)");
+  }
+
+  // Passthrough: return input unchanged
+  return { text: String(text || "") };
+};
+
+return modifier(text);

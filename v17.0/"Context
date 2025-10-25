@@ -1,0 +1,31 @@
+/*
+Module: Context — Lincoln v17.0.0-phase0
+Phase: 0 (Null System)
+Purpose: Passthrough context with minimal logging
+Contract:
+- Accepts context text
+- Logs to console for verification
+- Returns context unchanged
+- NO context assembly
+- NO overlay generation
+*/
+
+// === CONTEXT MODIFIER v17.0.0-phase0 ===
+
+const modifier = function (text) {
+  const __SCRIPT_SLOT__ = "Context";
+  const __VERSION__ = "17.0.0-phase0";
+
+  // Check if LC is available
+  if (typeof LC !== "undefined" && typeof LC.lcInit === "function") {
+    const L = LC.lcInit();
+    console.log("[CONTEXT] Turn: " + L.turn + " | Context length: " + (text ? text.length : 0));
+  } else {
+    console.log("[CONTEXT] LC not available (expected on first load)");
+  }
+
+  // Passthrough: return context unchanged
+  return { text: String(text || "") };
+};
+
+return modifier(text);

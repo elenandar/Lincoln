@@ -1,0 +1,55 @@
+/*
+Module: Library — Lincoln v17.0.0-phase0
+Phase: 0 (Null System)
+Purpose: Minimal initialization with global LC object
+Contract:
+- Creates global LC object
+- Initializes state.lincoln structure
+- Provides lcInit() for state access
+- NO business logic, NO engines
+- Console logging for verification
+*/
+
+// === LIBRARY — Lincoln v17.0.0-phase0 ===
+
+(function () {
+  const __SCRIPT_SLOT__ = "Library";
+  const __VERSION__ = "17.0.0-phase0";
+
+  // Create or reuse global LC object
+  const LC = (typeof globalThis !== "undefined" ? (globalThis.LC ||= {}) : (window.LC ||= {}));
+
+  // Version tracking
+  LC.DATA_VERSION = __VERSION__;
+
+  /**
+   * Initialize state.lincoln structure
+   * Creates minimal state object with version and turn counter
+   * @returns {object} state.lincoln object
+   */
+  LC.lcInit = function () {
+    const s = typeof state !== "undefined" ? state : {};
+    
+    if (!s.shared) {
+      s.shared = {};
+    }
+    
+    if (!s.shared.lincoln) {
+      s.shared.lincoln = {
+        version: __VERSION__,
+        turn: 0,
+        initialized: true,
+        timestamp: Date.now()
+      };
+      
+      console.log("[LIBRARY] Initialized state.lincoln v" + __VERSION__);
+    }
+    
+    return s.shared.lincoln;
+  };
+
+  // Initialize on load
+  LC.lcInit();
+
+  console.log("[LIBRARY] Loaded Lincoln v" + __VERSION__);
+})();

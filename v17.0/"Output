@@ -1,0 +1,35 @@
+/*
+Module: Output — Lincoln v17.0.0-phase0
+Phase: 0 (Null System)
+Purpose: Passthrough output with turn increment
+Contract:
+- Accepts AI output
+- Increments turn counter
+- Logs to console for verification
+- Returns output unchanged
+- NO text processing
+*/
+
+// === OUTPUT MODIFIER v17.0.0-phase0 ===
+
+const modifier = function (text) {
+  const __SCRIPT_SLOT__ = "Output";
+  const __VERSION__ = "17.0.0-phase0";
+
+  // Check if LC is available
+  if (typeof LC !== "undefined" && typeof LC.lcInit === "function") {
+    const L = LC.lcInit();
+    
+    // Increment turn counter
+    L.turn = (L.turn || 0) + 1;
+    
+    console.log("[OUTPUT] Turn: " + L.turn + " | Output length: " + (text ? text.length : 0));
+  } else {
+    console.log("[OUTPUT] LC not available (unexpected!)");
+  }
+
+  // Passthrough: return output unchanged
+  return { text: String(text || "") };
+};
+
+return modifier(text);
