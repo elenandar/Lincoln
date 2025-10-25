@@ -1,15 +1,3 @@
-/*
-Module: Input — Lincoln v17.0.0-phase0
-Phase: 0 (Null System)
-Purpose: Passthrough input with minimal logging
-Contract:
-- Accepts user input
-- Logs to console for verification
-- Returns input unchanged
-- NO command processing
-- NO text modification
-*/
-
 // === INPUT MODIFIER v17.0.0-phase0 ===
 
 const modifier = function (text) {
