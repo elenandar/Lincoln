@@ -1,18 +1,28 @@
 // === PROJECT LINCOLN v17 - OUTPUT ===
-// Version: 17.0.0 (Phase 0)
+// Version: 17.0.1 (Phase 1)
 
 const modifier = (text) => {
-  // Если LC не загружен, ничего не делаем.
   if (typeof LC === 'undefined') {
     return { text };
   }
 
-  // Инициализируем систему.
   const L = LC.lcInit('Output');
+  let outputText = LC.Tools.toStr(text);
 
-  // На данный момент просто возвращаем текст без изменений.
-  return { text };
+  // Инкремент хода только для успешных игровых действий
+  if (L.currentAction.type === 'story') {
+    LC.Turns.inc();
+  }
+
+  // Получаем и форматируем все системные сообщения из очереди
+  const messages = LC.consumeMsgs();
+  if (messages.length > 0) {
+    const sysBlock = messages.map(m => m.text).join('\n');
+    // Добавляем блок системных сообщений перед основным выводом
+    outputText = sysBlock + '\n\n' + outputText;
+  }
+
+  return { text: outputText };
 };
 
-// Не забудьте вернуть результат вызова функции
 modifier(text);
