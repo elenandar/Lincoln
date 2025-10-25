@@ -1,18 +1,32 @@
 // === PROJECT LINCOLN v17 - INPUT ===
-// Version: 17.0.0 (Phase 0)
+// Version: 17.0.1 (Phase 1)
 
 const modifier = (text) => {
-  // Если LC не загружен (например, в редакторе), ничего не делаем.
   if (typeof LC === 'undefined') {
     return { text };
   }
 
-  // Инициализируем систему и получаем доступ к нашему хранилищу.
   const L = LC.lcInit('Input');
+  const rawText = LC.Tools.toStr(text).trim();
 
-  // На данный момент просто возвращаем текст без изменений.
+  // Проверяем, является ли ввод командой
+  if (rawText.startsWith('/')) {
+    const commandName = rawText.split(' ')[0].toLowerCase();
+    
+    if (LC.CommandsRegistry.has(commandName)) {
+      const command = LC.CommandsRegistry.get(commandName);
+      // Помечаем действие как команду
+      L.currentAction.type = 'command';
+      // Выполняем обработчик команды
+      return command.handler(rawText);
+    } else {
+      L.currentAction.type = 'command';
+      return LC.replyStop(`Неизвестная команда: ${commandName}`);
+    }
+  }
+
+  // Если это не команда, просто возвращаем текст.
   return { text };
 };
 
-// Не забудьте вернуть результат вызова функции
 modifier(text);

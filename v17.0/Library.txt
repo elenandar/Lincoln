@@ -1,41 +1,106 @@
 // === PROJECT LINCOLN v17 - LIBRARY ===
-// Version: 17.0.0 (Phase 0)
+// Version: 17.0.1 (Phase 1)
 
-// Инициализируем глобальный объект Lincoln Core (LC), если он еще не существует.
-// Это делается один раз при первой загрузке любого из скриптов.
 if (typeof LC === 'undefined') {
   const state = (typeof globalThis.state !== 'undefined') ? globalThis.state : {};
   state.shared = state.shared || {};
 
-  /**
-   * Главный объект системы Lincoln.
-   * Содержит все движки, утилиты и функции инициализации.
-   */
   globalThis.LC = {
+    // --- СИСТЕМНЫЕ УТИЛИТЫ ---
+    Tools: {
+      toNum: (x, d = 0) => (typeof x === 'number' && !isNaN(x)) ? x : (Number(x) || d),
+      toStr: (x) => String(x == null ? "" : x),
+      toBool: (x, d = false) => (x == null ? d : !!x),
+    },
+
+    // --- СИСТЕМА СООБЩЕНИЙ ---
+    _msgs: [],
+    sysMsg: function(text) {
+      if (text) LC._msgs.push({ text });
+    },
+    consumeMsgs: function() {
+      return LC._msgs.splice(0);
+    },
+    
     /**
-     * Центральная функция инициализации. Вызывается в начале каждого
-     * скрипта (Input, Output, Context). Гарантирует, что state.lincoln
-     * и другие базовые структуры существуют.
-     * @param {string} scriptName - Имя вызывающего скрипта (для отладки).
+     * Формирует стандартный ответ для команд: останавливает выполнение
+     * и добавляет системное сообщение в очередь для вывода.
+     * @param {string} msg - Текст сообщения.
+     * @returns {{text: string, stop: boolean}}
+     */
+    replyStop: function(msg) {
+      LC.sysMsg(`⟦SYS⟧ ${msg}`);
+      return { text: '', stop: true };
+    },
+
+    // --- РЕЕСТР КОМАНД ---
+    CommandsRegistry: new Map(),
+
+    /**
+     * Центральная функция инициализации.
+     * @param {string} scriptName - Имя вызывающего скрипта.
      * @returns {object} - Ссылка на state.lincoln.
      */
     lcInit: function(scriptName = 'Unknown') {
-      // Инициализируем основное хранилище, если его нет
       state.lincoln = state.lincoln || {};
 
-      // Устанавливаем базовые значения при первой инициализации
       if (!state.lincoln.version) {
-        state.lincoln.version = '17.0.0';
+        state.lincoln.version = '17.0.1';
         state.lincoln.turn = 0;
-        state.lincoln.currentAction = { type: 'story' };
         
-        // Заглушки для будущих данных движков
+        // Заглушки для будущих данных
         state.lincoln.characters = {};
         state.lincoln.relations = {};
         state.lincoln.hierarchy = {};
       }
       
+      // Определяем тип текущего действия
+      const action = (typeof globalThis.action !== 'undefined') ? globalThis.action : {};
+      state.lincoln.currentAction = {
+        type: action.type || 'story', // 'story', 'retry', 'continue', 'command'
+        input: action.input || ''
+      };
+      
       return state.lincoln;
+    },
+
+    // --- УПРАВЛЕНИЕ ХОДАМИ ---
+    Turns: {
+      get: () => (state.lincoln.turn || 0),
+      inc: () => { state.lincoln.turn = (state.lincoln.turn || 0) + 1; },
+      set: (n) => { state.lincoln.turn = Math.max(0, LC.Tools.toNum(n)); }
     }
   };
+
+  // --- РЕГИСТРАЦИЯ БАЗОВЫХ КОМАНД ---
+  const REG = LC.CommandsRegistry;
+
+  REG.set('/ping', {
+    description: '/ping — Проверяет, работает ли система.',
+    handler: () => LC.replyStop('Pong!')
+  });
+
+  REG.set('/turn', {
+    description: '/turn — Показывает текущий ход.',
+    handler: () => LC.replyStop(`Текущий ход: ${LC.Turns.get()}`)
+  });
+
+  REG.set('/debug', {
+    description: '/debug — Показывает текущее состояние state.lincoln.',
+    handler: () => {
+      try {
+        // Выводим красивый JSON, обрезая слишком длинные поля
+        const debugString = JSON.stringify(state.lincoln, (key, value) => {
+          if (typeof value === 'string' && value.length > 150) {
+            return value.substring(0, 150) + '...';
+          }
+          return value;
+        }, 2);
+        LC.sysMsg('== DEBUG: state.lincoln ==\n' + debugString);
+      } catch (e) {
+        LC.sysMsg('Ошибка при сериализации state.lincoln: ' + e.message);
+      }
+      return { text: '', stop: true };
+    }
+  });
 }
