@@ -1,9 +1,11 @@
 /*
-Module: Output — Lincoln v17.0.0-alpha.1
+Module: Output — Lincoln v17.0.0-alpha.2
 Phase 1: Infrastructure
+Phase 2: Physical World
 Contract:
 - Increments turn counter for non-command actions
 - Displays system messages when sysShow is enabled
+- Phase 2: Advances time and logs events to CKB
 - No v16 code copied - built from scratch based on MASTER_PLAN_v17.md
 */
 
@@ -23,6 +25,19 @@ Contract:
 
   // Increment turn counter if needed
   LC.Turns.incIfNeeded(L);
+
+  // Phase 2: Advance time after turn increment
+  if (LC.TimeEngine && LC.TimeEngine.advance) {
+    LC.TimeEngine.advance(L);
+  }
+
+  // Phase 2: Log the AI's output to Chronological Knowledge Base
+  if (LC.EnvironmentEngine && LC.EnvironmentEngine.log) {
+    const outputText = (typeof text !== 'undefined') ? text : '';
+    if (outputText && L.currentAction?.type !== 'command') {
+      LC.EnvironmentEngine.log(L, outputText);
+    }
+  }
 
   // Consume any system messages
   const sysMsgs = LC.lcConsumeMsgs();

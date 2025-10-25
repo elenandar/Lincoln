@@ -60,11 +60,11 @@ class V17TestHarness {
   simulateInput(inputText) {
     this.reset();
     
-    // Load scripts in order
-    this.loadScript(path.join(__dirname, 'Library.js'));
+    // Load scripts in order from scripts/ folder
+    this.loadScript(path.join(__dirname, 'scripts/Library.js'));
     
     global.text = inputText;
-    this.loadScript(path.join(__dirname, 'Input.js'));
+    this.loadScript(path.join(__dirname, 'scripts/Input.js'));
     
     return {
       message: global.state.message,
@@ -77,17 +77,17 @@ class V17TestHarness {
     this.reset();
     
     // Load Library
-    this.loadScript(path.join(__dirname, 'Library.js'));
+    this.loadScript(path.join(__dirname, 'scripts/Library.js'));
     
     // Run Input
     global.text = inputText;
-    this.loadScript(path.join(__dirname, 'Input.js'));
+    this.loadScript(path.join(__dirname, 'scripts/Input.js'));
     
     // If not stopped, continue with Context and Output
     if (!this.stopped) {
       global.text = aiResponse || 'The story continues...';
-      this.loadScript(path.join(__dirname, 'Context.js'));
-      this.loadScript(path.join(__dirname, 'Output.js'));
+      this.loadScript(path.join(__dirname, 'scripts/Context.js'));
+      this.loadScript(path.join(__dirname, 'scripts/Output.js'));
     }
     
     return {
@@ -122,19 +122,19 @@ function runTests() {
   // Test 1: Loading without errors
   test('Scripts load without errors', () => {
     harness.reset();
-    harness.loadScript(path.join(__dirname, 'Library.js'));
-    harness.loadScript(path.join(__dirname, 'Input.js'));
-    harness.loadScript(path.join(__dirname, 'Context.js'));
-    harness.loadScript(path.join(__dirname, 'Output.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Library.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Input.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Context.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Output.js'));
   });
 
   // Test 2: State initialization
   test('State initializes correctly', () => {
     harness.reset();
-    harness.loadScript(path.join(__dirname, 'Library.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Library.js'));
     const L = global.LC.lcInit('test');
     
-    if (L.version !== "17.0.0-alpha.1") throw new Error("Wrong version");
+    if (L.version !== "17.0.0-alpha.2") throw new Error("Wrong version");
     if (L.turn !== 0) throw new Error("Turn should start at 0");
     if (L.sysShow !== true) throw new Error("sysShow should be true");
     if (L.debugMode !== false) throw new Error("debugMode should be false");
@@ -193,14 +193,14 @@ function runTests() {
   // Test 9: System messages display
   test('System messages are displayed in output', () => {
     harness.reset();
-    harness.loadScript(path.join(__dirname, 'Library.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Library.js'));
     
     // Manually add system message
     global.LC.lcSys("Test message");
     
     // Run output
     global.text = 'Story text';
-    harness.loadScript(path.join(__dirname, 'Output.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Output.js'));
     
     if (!global.text.includes('⟦SYS⟧ Test message')) {
       throw new Error("System message should be in output");
@@ -224,7 +224,7 @@ function runTests() {
   // Test 11: LC.Utils type conversion functions
   test('LC.Utils type conversion works correctly', () => {
     harness.reset();
-    harness.loadScript(path.join(__dirname, 'Library.js'));
+    harness.loadScript(path.join(__dirname, 'scripts/Library.js'));
     
     const Utils = global.LC.Utils;
     

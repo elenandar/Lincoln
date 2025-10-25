@@ -37,10 +37,10 @@ function simulateCommand(command) {
   console.log('---');
   
   setupEnvironment();
-  loadScript(path.join(__dirname, 'Library.js'));
+  loadScript(path.join(__dirname, 'scripts/Library.js'));
   
   global.text = command;
-  loadScript(path.join(__dirname, 'Input.js'));
+  loadScript(path.join(__dirname, 'scripts/Input.js'));
   
   console.log('AI Response:');
   console.log(global.state.message || '(no response)');
@@ -58,18 +58,18 @@ function simulateStory(userInput, aiResponse) {
   console.log('---');
   
   setupEnvironment();
-  loadScript(path.join(__dirname, 'Library.js'));
+  loadScript(path.join(__dirname, 'scripts/Library.js'));
   
   // Input phase
   global.text = userInput;
-  loadScript(path.join(__dirname, 'Input.js'));
+  loadScript(path.join(__dirname, 'scripts/Input.js'));
   
   // Context phase
   global.text = aiResponse;
-  loadScript(path.join(__dirname, 'Context.js'));
+  loadScript(path.join(__dirname, 'scripts/Context.js'));
   
   // Output phase
-  loadScript(path.join(__dirname, 'Output.js'));
+  loadScript(path.join(__dirname, 'scripts/Output.js'));
   
   console.log('AI Response:');
   console.log(global.text);
@@ -111,14 +111,14 @@ L = simulateStory('I walk to the window.',
 
 console.log('\nThird story action (with system message):');
 setupEnvironment();
-loadScript(path.join(__dirname, 'Library.js'));
+loadScript(path.join(__dirname, 'scripts/Library.js'));
 
 // Add a system message
 global.LC.lcSys('Character Alice has entered the scene');
 
 // Simulate output
 global.text = 'Alice walks into the classroom with a smile.';
-loadScript(path.join(__dirname, 'Output.js'));
+loadScript(path.join(__dirname, 'scripts/Output.js'));
 
 console.log('\nAI Response with System Message:');
 console.log(global.text);
@@ -129,7 +129,7 @@ console.log(`State: turn=${L.turn}`);
 
 console.log('\n=== DEMONSTRATION 5: State Structure ===');
 setupEnvironment();
-loadScript(path.join(__dirname, 'Library.js'));
+loadScript(path.join(__dirname, 'scripts/Library.js'));
 L = global.LC.lcInit('demo');
 
 console.log('\nInitialized state structure:');
