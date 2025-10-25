@@ -1,13 +1,13 @@
 // === PROJECT LINCOLN v17 - CONTEXT ===
-// Version: 17.0.2 (Phase 1 Hotfix)
+// Version: 17.0.4 (Phase 1 Final Hotfix)
 
-(function () {
-  const modifier = (text) => {
-    if (typeof LC === 'undefined') {
-      return { text };
-    }
-    const L = LC.lcInit('Context');
+const modifier = (text) => {
+  const LC = state.shared.LC;
+  if (typeof LC === 'undefined') {
     return { text };
-  };
-  return modifier;
-})();
+  }
+  LC.lcInit('Context');
+  return { text };
+};
+
+return modifier(text);

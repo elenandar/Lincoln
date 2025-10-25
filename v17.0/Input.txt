@@ -1,31 +1,28 @@
 // === PROJECT LINCOLN v17 - INPUT ===
-// Version: 17.0.2 (Phase 1 Hotfix)
+// Version: 17.0.4 (Phase 1 Final Hotfix)
 
-// Используем IIFE, чтобы вернуть функцию-модификатор
-(function () {
-  const modifier = (text) => {
-    if (typeof LC === 'undefined') {
-      return { text };
-    }
-
-    const L = LC.lcInit('Input');
-    const rawText = LC.Tools.toStr(text).trim();
-
-    if (rawText.startsWith('/')) {
-      L.currentAction.type = 'command';
-      const commandName = rawText.split(' ')[0].toLowerCase();
-      
-      if (LC.CommandsRegistry.has(commandName)) {
-        const command = LC.CommandsRegistry.get(commandName);
-        return command.handler(rawText);
-      } else {
-        return LC.replyStop(`Неизвестная команда: ${commandName}`);
-      }
-    }
-
+const modifier = (text) => {
+  const LC = state.shared.LC;
+  if (typeof LC === 'undefined') {
     return { text };
-  };
+  }
 
-  // Возвращаем функцию, а не вызываем ее
-  return modifier;
-})();
+  const L = LC.lcInit('Input');
+  const rawText = LC.Tools.toStr(text).trim();
+
+  if (rawText.startsWith('/')) {
+    L.currentAction.type = 'command';
+    const commandName = rawText.split(' ')[0].toLowerCase();
+    
+    if (LC.CommandsRegistry.has(commandName)) {
+      return LC.CommandsRegistry.get(commandName).handler(rawText);
+    } else {
+      return LC.replyStop(`Неизвестная команда: ${commandName}`);
+    }
+  }
+
+  return { text };
+};
+
+// ВЫЗЫВАЕМ ФУНКЦИЮ И ВОЗВРАЩАЕМ ЕЕ РЕЗУЛЬТАТ
+return modifier(text);
