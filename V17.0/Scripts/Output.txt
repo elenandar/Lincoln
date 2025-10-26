@@ -1,12 +1,27 @@
-// Lincoln v17 - Output Script (Phase 0: Null System)
+// Lincoln v17 - Output Script (Phase 1: Infrastructure)
 // Processes AI output after generation
 // Library.txt has already executed, LC is available
 
 const modifier = (text) => {
-    // Phase 0: Pass through without modification
-    // Future phases will add event extraction and state updates
-    
-    // IMPORTANT: Never return empty string - causes script failure
-    return { text: text || " " };
+    try {
+        // Increment turn counter on each AI output
+        // Only increment if this is not a command (commands set stop: true in Input)
+        var currentAction = LC.Flags.getCurrentAction();
+        if (currentAction !== LC.Constants.ACTION_TYPES.COMMAND) {
+            LC.Turns.increment();
+        }
+        
+        // Extract characters mentioned in output
+        var characters = LC.CharacterTracker.extract(text);
+        for (var i = 0; i < characters.length; i++) {
+            LC.CharacterTracker.ensure(characters[i]);
+        }
+        
+        // IMPORTANT: Never return empty string - causes script failure
+        return { text: text || " " };
+    } catch (e) {
+        console.log("Output modifier error:", e);
+        return { text: text || " " };
+    }
 };
 modifier(text);

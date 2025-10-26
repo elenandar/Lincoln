@@ -1,11 +1,35 @@
-// Lincoln v17 - Input Script (Phase 0: Null System)
+// Lincoln v17 - Input Script (Phase 1: Infrastructure)
 // Processes player input before it goes to the AI
 // Library.txt has already executed, LC is available
 
 const modifier = (text) => {
-    // Phase 0: Pass through without modification
-    // Future phases will add command processing and input analysis
-    
-    return { text: text };
+    try {
+        // Normalize input
+        var analysis = LC.InputProcessor.analyze(text);
+        
+        // Track current action type
+        if (analysis.isCommand) {
+            LC.Flags.setCurrentAction(LC.Constants.ACTION_TYPES.COMMAND);
+        } else if (analysis.isEmpty) {
+            LC.Flags.setCurrentAction(LC.Constants.ACTION_TYPES.EMPTY);
+        } else {
+            LC.Flags.setCurrentAction(LC.Constants.ACTION_TYPES.ACTION);
+        }
+        
+        // Process commands
+        if (analysis.isCommand) {
+            var result = LC.CommandsRegistry.process(analysis.normalized);
+            if (result.handled) {
+                // Return command output, prevent AI processing
+                return { text: result.output || " ", stop: true };
+            }
+        }
+        
+        // Pass through non-command input
+        return { text: text };
+    } catch (e) {
+        console.log("Input modifier error:", e);
+        return { text: text };
+    }
 };
 modifier(text);
