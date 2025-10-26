@@ -1,0 +1,116 @@
+/*
+Module: Debug Command - Enhanced Diagnostics
+This is an optional enhanced debug command that can be added to Library.txt
+to help diagnose input preprocessing in AI Dungeon.
+
+To use:
+1. Add this code to the end of Library.txt (before the closing comment)
+2. Use /debug-input <test input> to see preprocessing in action
+
+Example:
+  /debug-input > You /ping.
+  
+Output:
+  ⟦SYS⟧ INPUT PREPROCESSING DEBUG
+  Raw: "> You /ping."
+  After prefix removal: "/ping."
+  After cleanup: "/ping"
+  Command detected: YES
+  Command name: "ping"
+*/
+
+// /debug-input - Debug input preprocessing
+LC.Commands.set("debug-input", {
+  name: "debug-input",
+  description: "Debug input preprocessing - shows step-by-step transformation",
+  usage: "/debug-input <test input>",
+  handler: function(args) {
+    if (!args || args.length === 0) {
+      return "⟦SYS⟧ Usage: /debug-input <test input>\nExample: /debug-input > You /ping.";
+    }
+    
+    // Reconstruct the test input from arguments
+    var testInput = args.join(' ');
+    
+    var result = "⟦SYS⟧ INPUT PREPROCESSING DEBUG\n";
+    result += "────────────────────────────────\n";
+    result += "Raw input: \"" + testInput + "\"\n";
+    result += "Length: " + testInput.length + "\n";
+    result += "First char: [" + testInput.charAt(0) + "]\n\n";
+    
+    // Step 1: Remove prefixes
+    var step1 = testInput
+      .replace(/^>\s*/i, '')
+      .replace(/^you\s+say\s+["']?/i, '')
+      .replace(/^you\s+/i, '')
+      .trim();
+    
+    result += "Step 1 (Remove prefixes):\n";
+    result += "  \"" + step1 + "\"\n";
+    result += "  First char: [" + step1.charAt(0) + "]\n\n";
+    
+    // Step 2: Remove trailing punctuation
+    var step2 = step1.replace(/[.!?;,]+$/, '').replace(/["']+$/, '').trim();
+    
+    result += "Step 2 (Remove punctuation):\n";
+    result += "  \"" + step2 + "\"\n";
+    result += "  First char: [" + step2.charAt(0) + "]\n\n";
+    
+    // Step 3: Check if command
+    if (step2.charAt(0) === "/") {
+      var parts = step2.slice(1).split(/\s+/);
+      var cmdName = parts[0].toLowerCase();
+      cmdName = cmdName.replace(/[.!?;,:"']+$/, '');
+      var cmdArgs = parts.slice(1);
+      
+      result += "Step 3 (Extract command):\n";
+      result += "  IS COMMAND: YES ✓\n";
+      result += "  Command name: \"" + cmdName + "\"\n";
+      result += "  Arguments: " + (cmdArgs.length > 0 ? "[" + cmdArgs.join(", ") + "]" : "(none)") + "\n";
+      result += "  Exists in registry: " + (LC.Commands.has(cmdName) ? "YES ✓" : "NO ✗") + "\n";
+    } else {
+      result += "Step 3 (Extract command):\n";
+      result += "  IS COMMAND: NO ✗\n";
+      result += "  (Does not start with /)\n";
+    }
+    
+    result += "\n────────────────────────────────";
+    
+    return result;
+  }
+});
+
+// /test-modes - Test command detection in all three modes
+LC.Commands.set("test-modes", {
+  name: "test-modes",
+  description: "Test command detection across Do, Say, Story modes",
+  usage: "/test-modes",
+  handler: function(args) {
+    var result = "⟦SYS⟧ CROSS-MODE COMMAND DETECTION TEST\n";
+    result += "════════════════════════════════════════\n\n";
+    
+    result += "Try these inputs in AI Dungeon:\n\n";
+    
+    result += "STORY MODE:\n";
+    result += "  Type: /ping\n";
+    result += "  Expected: SYS message appears\n\n";
+    
+    result += "DO MODE:\n";
+    result += "  Type: /ping\n";
+    result += "  AI Dungeon will send: \"You /ping.\"\n";
+    result += "  Expected: SYS message appears\n\n";
+    
+    result += "SAY MODE:\n";
+    result += "  Type: /ping\n";
+    result += "  AI Dungeon will send: \"You say \\\"/ping\\\"\"\n";
+    result += "  Expected: SYS message appears\n\n";
+    
+    result += "ALL THREE MODES SHOULD PRODUCE:\n";
+    result += "  ⟦SYS⟧ Pong! Lincoln v17.0.0-phase1 is active.\n\n";
+    
+    result += "If any mode fails, use /debug-input to diagnose.\n";
+    result += "Example: /debug-input You say \\\"/ping\\\"";
+    
+    return result;
+  }
+});
