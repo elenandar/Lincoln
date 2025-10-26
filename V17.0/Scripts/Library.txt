@@ -1,0 +1,48 @@
+// Lincoln v17 - Library Script (Phase 0: Null System)
+// This script executes BEFORE each hook (Input/Context/Output) - 3x per turn
+// Version: 17.0.0-phase0
+
+// Initialize state.lincoln if not exists or version mismatch
+if (!state.lincoln || state.lincoln.version !== "17.0.0") {
+    state.lincoln = {
+        version: "17.0.0",
+        initialized: true,
+        turn: 0,
+        characters: {},
+        relations: {},
+        hierarchy: {},
+        rumors: [],
+        lore: [],
+        myths: [],
+        time: {},
+        environment: {},
+        evergreen: [],
+        secrets: []
+    };
+}
+
+// Lincoln Core (LC) - recreated on each Library execution
+const LC = (function() {
+    return {
+        // Tools - Basic utilities
+        Tools: {
+            safeRegexMatch: function(text, pattern) {
+                try {
+                    return text.match(pattern) || [];
+                } catch (e) {
+                    console.log("Regex error:", e);
+                    return [];
+                }
+            }
+        },
+        
+        // Utils - General utilities
+        Utils: {
+            clamp: function(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            }
+        }
+    };
+})();
+
+// LC is now available in this scope for Input/Context/Output scripts
