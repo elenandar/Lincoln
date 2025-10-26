@@ -1,0 +1,73 @@
+/*
+Module: Library — Lincoln v17.0.0-phase0
+Contract:
+- Phase 0: Null System Foundation
+- Provides basic LC object structure
+- Implements /ping command for health check
+- No actual functionality yet - structural scaffolding only
+*/
+
+// === LIBRARY v17.0.0-phase0 ===
+
+// Initialize global LC object if it doesn't exist
+if (typeof LC === "undefined") {
+  var LC = {};
+}
+
+// Version tracking
+LC.DATA_VERSION = "17.0.0-phase0";
+
+// Basic initialization function (null implementation for Phase 0)
+LC.lcInit = function(scriptSlot) {
+  var slot = String(scriptSlot || "unknown");
+  
+  // Return minimal state object
+  return {
+    turn: 0,
+    slot: slot,
+    openingCaptured: false
+  };
+};
+
+// Commands registry (plain object, ES5-compatible)
+if (typeof LC.Commands === "undefined") {
+  LC.Commands = {
+    _registry: {},
+    
+    set: function(cmdName, definition) {
+      this._registry[cmdName] = definition;
+    },
+    
+    get: function(cmdName) {
+      return this._registry[cmdName];
+    },
+    
+    has: function(cmdName) {
+      return this._registry.hasOwnProperty(cmdName);
+    },
+    
+    execute: function(cmdName, args) {
+      var cmd = this.get(cmdName);
+      if (!cmd || typeof cmd.handler !== "function") {
+        return "⟦SYS⟧ Unknown command: " + cmdName;
+      }
+      try {
+        return cmd.handler(args);
+      } catch (e) {
+        return "⟦SYS⟧ Command error: " + String(e && e.message || e || "Unknown error");
+      }
+    }
+  };
+}
+
+// Register /ping command for health check
+LC.Commands.set("ping", {
+  name: "ping",
+  description: "Health check - verifies Lincoln v17 is running",
+  handler: function(args) {
+    return "⟦SYS⟧ Pong! Lincoln v17.0.0-phase0 is active.";
+  }
+});
+
+// No modifier needed for Library.txt - it executes directly
+// Library runs 3x per turn: before Input, Context, and Output hooks
