@@ -1,0 +1,32 @@
+/*
+Module: Context — Lincoln v17.0.0-phase0
+Contract:
+- Phase 0: Null System Foundation
+- Minimal modifier pattern
+- No actual context processing yet
+- Pass through for all text
+*/
+
+// === CONTEXT MODIFIER v17.0.0-phase0 ===
+const __SCRIPT_SLOT__ = "Context";
+
+const modifier = function(text) {
+  // Safe text handling
+  var raw = String(text || "");
+  
+  // Check if LC is available
+  if (typeof LC === "undefined") {
+    return { text: raw };
+  }
+  
+  // Initialize for this slot
+  var L = LC.lcInit(__SCRIPT_SLOT__);
+  
+  // Pass through for Phase 0 (no processing)
+  // In future phases, this will handle context overlay,
+  // character information injection, and world state
+  return { text: raw };
+};
+
+// Execute modifier and return result
+return modifier(text);

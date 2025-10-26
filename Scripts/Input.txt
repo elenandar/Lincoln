@@ -1,0 +1,45 @@
+/*
+Module: Input — Lincoln v17.0.0-phase0
+Contract:
+- Phase 0: Null System Foundation
+- Minimal modifier pattern
+- Handles command parsing and /ping execution
+- No actual input processing yet
+*/
+
+// === INPUT MODIFIER v17.0.0-phase0 ===
+const __SCRIPT_SLOT__ = "Input";
+
+const modifier = function(text) {
+  // Safe text handling
+  var raw = String(text || "");
+  var userText = raw.trim();
+  
+  // Check if LC is available
+  if (typeof LC === "undefined") {
+    return { text: raw };
+  }
+  
+  // Initialize for this slot
+  var L = LC.lcInit(__SCRIPT_SLOT__);
+  
+  // Command detection (slash commands)
+  if (userText.charAt(0) === "/") {
+    var parts = userText.slice(1).split(/\s+/);
+    var cmdName = parts[0].toLowerCase();
+    var args = parts.slice(1);
+    
+    // Check if command exists
+    if (LC.Commands && LC.Commands.has(cmdName)) {
+      // Execute command and return system message
+      var result = LC.Commands.execute(cmdName, args);
+      return { text: result };
+    }
+  }
+  
+  // Pass through for Phase 0 (no processing)
+  return { text: raw };
+};
+
+// Execute modifier and return result
+return modifier(text);
