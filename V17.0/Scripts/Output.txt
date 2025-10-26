@@ -8,6 +8,14 @@ const modifier = (text) => {
         if (state.lincoln && state.lincoln.commandOutput) {
             text = state.lincoln.commandOutput;
             delete state.lincoln.commandOutput;
+            
+            // Add [SYS] prefix to command output
+            // Check if output already has [SYS] or ⟦SYS⟧ prefix to avoid duplication
+            // (Library.txt error handlers use Unicode ⟦SYS⟧ format)
+            if (text.indexOf('[SYS]') !== 0 && text.indexOf('\u27E6SYS\u27E7') !== 0) {
+                text = '[SYS] ' + text;
+            }
+            
             return { text: text };
         }
         
