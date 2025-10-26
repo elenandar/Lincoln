@@ -43,11 +43,15 @@ Phase 1 establishes the complete infrastructure foundation for Lincoln v17 with 
 - ✅ `/test-phase1` - Run infrastructure tests (8 tests)
 
 **Command System Features:**
-- ✅ Commands use LC.Drafts queue for output (Issue #266 fix)
-- ✅ Commands return `{ text: " ", stop: true }` to prevent AI generation
-- ✅ Output.txt automatically prepends queued command results
-- ✅ Commands work without freezing in all action modes (Do/Say/Story)
+- ✅ Commands use Context Hook pattern for universal compatibility (Issue #267 fix)
+- ✅ Input.txt sets `_commandExecuted` flag (stop:true not honored there)
+- ✅ Context.txt checks flag and returns `stop:true` to halt AI (honored there)
+- ✅ Output.txt automatically prepends queued command results from LC.Drafts
+- ✅ Commands work reliably in all action modes (Do/Say/Story)
 - ✅ No AI prose generated after command execution
+- ✅ No scenario hangs or ignored commands
+
+**📖 See [COMMAND_FLOW_FIX.md](COMMAND_FLOW_FIX.md) for detailed explanation**
 
 #### Quality Features
 - ✅ ES5 compliance strictly enforced (no Map/Set/async)
@@ -86,14 +90,16 @@ Phase 1 establishes the complete infrastructure foundation for Lincoln v17 with 
 Run the comprehensive Phase 1 verification test suites:
 
 ```bash
-node Scripts/test-phase1.js                  # Infrastructure tests
-node Scripts/test-commands-integration.js    # Command integration tests
+node Scripts/test-phase1.js                  # Infrastructure tests (117 tests)
+node Scripts/test-command-flow.js            # Command flow integration test
+node Scripts/test-commands-integration.js    # Command integration tests (35 tests)
 ```
 
 **Test Results:**
-- ✅ 106/106 infrastructure tests passing (100% success rate)
+- ✅ 117/117 infrastructure tests passing (100% success rate)
+- ✅ 3/3 command flow integration scenarios passing
 - ✅ 35/35 command integration tests passing (100% success rate)
-- ✅ **Total: 141/141 tests passing**
+- ✅ **Total: 152+ tests passing**
 
 **Test Coverage:**
 
