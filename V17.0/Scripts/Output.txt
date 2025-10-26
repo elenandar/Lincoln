@@ -4,12 +4,15 @@
 
 const modifier = (text) => {
     try {
-        // Increment turn counter on each AI output
-        // Only increment if this is not a command (commands set stop: true in Input)
-        var currentAction = LC.Flags.getCurrentAction();
-        if (currentAction !== LC.Constants.ACTION_TYPES.COMMAND) {
-            LC.Turns.increment();
+        // Check for command output to relay
+        if (state.lincoln.commandOutput) {
+            text = state.lincoln.commandOutput;
+            delete state.lincoln.commandOutput;
+            return { text: text };
         }
+        
+        // Increment turn counter on normal AI output
+        LC.Turns.increment();
         
         // Extract characters mentioned in output
         var characters = LC.CharacterTracker.extract(text);

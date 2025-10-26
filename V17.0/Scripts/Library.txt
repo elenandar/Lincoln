@@ -187,6 +187,7 @@ const LC = (function() {
         // CommandsRegistry - Command processing system (#24)
         CommandsRegistry: {
             commands: {}, // Plain ES5 object, NOT Map
+            prefix: '/',
             
             register: function(name, handler) {
                 try {
@@ -196,25 +197,38 @@ const LC = (function() {
                 }
             },
             
-            process: function(text) {
-                if (!text || typeof text !== 'string' || text.charAt(0) !== COMMAND_PREFIX) {
-                    return { handled: false };
-                }
-                
-                try {
-                    var parts = text.slice(1).split(' ');
-                    var command = parts[0];
-                    var args = parts.slice(1);
-                    
-                    if (this.commands[command]) {
-                        var output = this.commands[command](args);
-                        return { handled: true, output: output || " " };
+            detect: function(text) {
+                if (!text || typeof text !== 'string') return null;
+                for (var cmd in this.commands) {
+                    var pattern = this.prefix + cmd;
+                    if (text.indexOf(pattern) !== -1) {
+                        return cmd;
                     }
-                    
-                    return { handled: false };
+                }
+                return null;
+            },
+            
+            parse: function(text, command) {
+                var pattern = this.prefix + command;
+                var index = text.indexOf(pattern);
+                if (index === -1) return [];
+                var afterCommand = text.substring(index + pattern.length);
+                var argsMatch = afterCommand.match(/^[ \t]+([\w\s]+?)(?:[".\n]|$)/);
+                if (argsMatch && argsMatch[1]) {
+                    return argsMatch[1].replace(/^\s+|\s+$/g, '').split(/\s+/);
+                }
+                return [];
+            },
+            
+            execute: function(command, args) {
+                try {
+                    if (this.commands[command]) {
+                        return this.commands[command](args);
+                    }
+                    return null;
                 } catch (e) {
-                    console.log("CommandsRegistry.process error:", e);
-                    return { handled: false, error: e };
+                    console.log("CommandsRegistry.execute error:", e);
+                    return "\u27E6SYS\u27E7 \u26A0\uFE0F Command error: " + e.message;
                 }
             }
         },
@@ -349,28 +363,56 @@ const LC = (function() {
 
 // Register built-in commands
 LC.CommandsRegistry.register('ping', function(args) {
-    return LC.SysOutput.formatLine("pong");
+    return "pong";
 });
 
 LC.CommandsRegistry.register('debug', function(args) {
     try {
-        var msg = "Lincoln v17 | Turn: " + state.lincoln.turn + 
-                  " | Version: " + state.lincoln.version +
-                  " | State: " + state.lincoln.stateVersion;
-        return LC.SysOutput.formatLine(msg);
+        var L = state.lincoln;
+        return "=== Lincoln v17 Debug ===\n" +
+               "Version: " + L.version + "\n" +
+               "Turn: " + L.turn + "\n" +
+               "State Version: " + L.stateVersion + "\n" +
+               "Action Count: " + (L.actionCount || 0) + "\n" +
+               "Characters: " + Object.keys(L.characters).length;
     } catch (e) {
         console.log("Debug command error:", e);
-        return LC.SysOutput.formatLine("Debug error");
+        return "\u27E6SYS\u27E7 Debug error: " + e.message;
     }
 });
 
 LC.CommandsRegistry.register('turn', function(args) {
+    return "Current turn: " + state.lincoln.turn;
+});
+
+LC.CommandsRegistry.register('characters', function(args) {
     try {
-        var msg = "Current turn: " + state.lincoln.turn;
-        return LC.SysOutput.formatLine(msg);
+        var chars = Object.keys(state.lincoln.characters);
+        if (chars.length === 0) {
+            return "No characters tracked yet.";
+        }
+        var output = "Tracked characters (" + chars.length + "):\n";
+        for (var i = 0; i < chars.length; i++) {
+            output += "- " + chars[i] + "\n";
+        }
+        return output;
     } catch (e) {
-        console.log("Turn command error:", e);
-        return LC.SysOutput.formatLine("Turn error");
+        console.log("Characters command error:", e);
+        return "\u27E6SYS\u27E7 Characters error: " + e.message;
+    }
+});
+
+LC.CommandsRegistry.register('help', function(args) {
+    try {
+        var cmds = Object.keys(LC.CommandsRegistry.commands);
+        var output = "=== Lincoln v17 Commands ===\nAvailable commands:\n";
+        for (var i = 0; i < cmds.length; i++) {
+            output += "- /" + cmds[i] + "\n";
+        }
+        return output;
+    } catch (e) {
+        console.log("Help command error:", e);
+        return "\u27E6SYS\u27E7 Help error: " + e.message;
     }
 });
 
