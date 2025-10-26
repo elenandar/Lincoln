@@ -349,10 +349,28 @@ try {
   passed += test('Input detects action type', currentActionType === 'say',
     currentActionType);
   
+  // Test that normal input does NOT set stop flag
+  passed += test('Normal input does not set stop flag', 
+    inputResult.stop === undefined || inputResult.stop === false,
+    'stop=' + inputResult.stop);
+  
   // Test command execution through Input
   const cmdResult = executeModifier(inputCode, '/ping');
   passed += test('Input executes commands', cmdResult.text && cmdResult.text.indexOf('Pong') !== -1,
     LC.Tools.truncate(cmdResult.text, 40));
+  
+  // Test that commands set stop flag to prevent further AI generation
+  passed += test('Commands set stop:true flag', cmdResult.stop === true,
+    'stop=' + cmdResult.stop);
+  
+  // Test stop flag across different command types
+  const helpResult = executeModifier(inputCode, '/help');
+  passed += test('/help sets stop:true', helpResult.stop === true,
+    'stop=' + helpResult.stop);
+  
+  const debugResult = executeModifier(inputCode, '/debug');
+  passed += test('/debug sets stop:true', debugResult.stop === true,
+    'stop=' + debugResult.stop);
   
   // ===== Test 15: Output.txt Integration =====
   section('Test 15: Output.txt - Phase 1 Integration');
