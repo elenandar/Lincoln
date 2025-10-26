@@ -1,0 +1,268 @@
+// ============================================================================
+// PROJECT LINCOLN v17.0 - PHASE 0: NULL SYSTEM
+// Library.txt - Shared Library (AI Dungeon Modifier)
+// ============================================================================
+// 
+// CRITICAL: ES5 JAVASCRIPT ONLY!
+// - NO arrow functions, template literals, destructuring, spread operators
+// - NO Array.includes(), Array.find(), Object.assign()
+// - NO Map, Set, Promise, async/await
+// - NO for...of loops
+//
+// This script initializes the Lincoln v17 system with empty but functional
+// structures. All engines are empty placeholders for Phase 0.
+//
+// ============================================================================
+
+var modifier = function(text) {
+  // ========================================================================
+  // ONE-TIME INITIALIZATION
+  // ========================================================================
+  
+  if (!state.initialized) {
+    state.initialized = true;
+    
+    // Create shared namespace if it doesn't exist
+    if (!state.shared) {
+      state.shared = {};
+    }
+    
+    // ======================================================================
+    // CREATE LC GLOBAL OBJECT
+    // ======================================================================
+    
+    state.shared.LC = {
+      // Version information
+      VERSION: '17.0.0-phase0',
+      
+      // ====================================================================
+      // CORE INITIALIZATION FUNCTION
+      // ====================================================================
+      
+      lcInit: function() {
+        // Initialize state.lincoln if it doesn't exist
+        if (!state.lincoln) {
+          state.lincoln = {
+            // ================================================================
+            // METADATA
+            // ================================================================
+            version: '17.0.0',
+            stateVersion: 0,  // Increment after EVERY write!
+            turn: 0,
+            
+            // ================================================================
+            // CHARACTER DATA
+            // ================================================================
+            characters: {},
+            
+            // ================================================================
+            // SOCIAL STRUCTURES
+            // ================================================================
+            relations: {},
+            hierarchy: {},
+            rumors: [],
+            
+            // ================================================================
+            // WORLD STATE
+            // ================================================================
+            time: {
+              currentDay: 1,
+              dayName: 'Monday',
+              timeOfDay: 'morning',
+              turnsPerToD: 5,
+              turnsInCurrentToD: 0,
+              scheduledEvents: []
+            },
+            
+            environment: {
+              weather: 'clear',
+              location: '',
+              ambiance: ''
+            },
+            
+            // ================================================================
+            // DATA STORES
+            // ================================================================
+            evergreen: [],
+            goals: {},
+            secrets: [],
+            
+            // ================================================================
+            // CULTURAL MEMORY
+            // ================================================================
+            myths: [],
+            lore: [],
+            
+            // ================================================================
+            // INTERNAL CACHE
+            // ================================================================
+            _cache: {}
+          };
+        }
+        
+        return state.lincoln;
+      },
+      
+      // ====================================================================
+      // COMMAND REGISTRY (Plain object, NOT Map!)
+      // ====================================================================
+      CommandsRegistry: {},
+      
+      // ====================================================================
+      // UTILITIES (Empty for Phase 0)
+      // ====================================================================
+      Tools: {},
+      Utils: {},
+      
+      // ====================================================================
+      // ENGINES (Empty for Phase 0)
+      // ====================================================================
+      QualiaEngine: {},
+      InformationEngine: {},
+      RelationsEngine: {},
+      HierarchyEngine: {},
+      MoodEngine: {},
+      CrucibleEngine: {},
+      GossipEngine: {},
+      SocialEngine: {},
+      MemoryEngine: {},
+      LoreEngine: {},
+      TimeEngine: {},
+      EnvironmentEngine: {},
+      EvergreenEngine: {},
+      GoalsEngine: {},
+      KnowledgeEngine: {},
+      AcademicsEngine: {},
+      DemographicPressure: {},
+      ChronologicalKB: {},
+      UnifiedAnalyzer: {}
+    };
+    
+    // Get reference to LC
+    var LC = state.shared.LC;
+    
+    // ======================================================================
+    // REGISTER COMMANDS
+    // ======================================================================
+    
+    // /ping command - Simple system health check
+    LC.CommandsRegistry['/ping'] = function() {
+      return {text: '⟦SYS⟧ Pong! Lincoln v17.0.0-phase0 operational.'};
+    };
+    
+    // /debug command - Display system state information
+    LC.CommandsRegistry['/debug'] = function() {
+      var L = LC.lcInit();
+      var lines = [
+        '⟦SYS⟧ === DEBUG INFO ===',
+        'Version: ' + L.version,
+        'Turn: ' + L.turn,
+        'State version: ' + L.stateVersion,
+        'Characters: ' + Object.keys(L.characters).length,
+        'Time: Day ' + L.time.currentDay + ' (' + L.time.dayName + '), ' + L.time.timeOfDay
+      ];
+      return {text: lines.join('\n')};
+    };
+    
+    // /test-phase0 command - Automated verification
+    LC.CommandsRegistry['/test-phase0'] = function() {
+      var errors = [];
+      
+      // Test 1: LC exists
+      if (!state.shared.LC) {
+        errors.push('state.shared.LC not created');
+      }
+      
+      // Test 2: state.lincoln exists
+      var L = LC.lcInit();
+      if (!L) {
+        errors.push('state.lincoln not initialized');
+      }
+      
+      // Test 3: Structure check - characters
+      if (!L.characters || typeof L.characters !== 'object') {
+        errors.push('characters not initialized');
+      }
+      
+      // Test 4: Structure check - time
+      if (!L.time || !L.time.currentDay) {
+        errors.push('time not initialized');
+      }
+      
+      // Test 5: Structure check - time fields
+      if (!L.time.dayName || !L.time.timeOfDay) {
+        errors.push('time fields incomplete');
+      }
+      
+      // Test 6: Structure check - environment
+      if (!L.environment || typeof L.environment !== 'object') {
+        errors.push('environment not initialized');
+      }
+      
+      // Test 7: Structure check - arrays
+      if (!L.evergreen || !L.rumors || !L.secrets || !L.myths || !L.lore) {
+        errors.push('data arrays not initialized');
+      }
+      
+      // Test 8: Structure check - objects
+      if (!L.relations || !L.hierarchy || !L.goals) {
+        errors.push('data objects not initialized');
+      }
+      
+      // Test 9: Commands registered - /ping
+      if (!LC.CommandsRegistry['/ping']) {
+        errors.push('/ping not registered');
+      }
+      
+      // Test 10: Commands registered - /debug
+      if (!LC.CommandsRegistry['/debug']) {
+        errors.push('/debug not registered');
+      }
+      
+      // Test 11: Version check
+      if (LC.VERSION !== '17.0.0-phase0') {
+        errors.push('incorrect version: ' + LC.VERSION);
+      }
+      
+      // Test 12: Metadata check
+      if (typeof L.stateVersion !== 'number') {
+        errors.push('stateVersion not a number');
+      }
+      
+      if (typeof L.turn !== 'number') {
+        errors.push('turn not a number');
+      }
+      
+      // Return results
+      if (errors.length === 0) {
+        return {text: '⟦SYS⟧ ✅ Phase 0 verification PASSED\nAll 12 tests successful!'};
+      } else {
+        return {text: '⟦SYS⟧ ❌ Phase 0 verification FAILED:\n' + errors.join('\n')};
+      }
+    };
+    
+    // /help command - Show available commands
+    LC.CommandsRegistry['/help'] = function() {
+      var lines = [
+        '⟦SYS⟧ === AVAILABLE COMMANDS ===',
+        '/ping - Check system status',
+        '/debug - Show state information',
+        '/test-phase0 - Run Phase 0 verification tests',
+        '/help - Show this help message'
+      ];
+      return {text: lines.join('\n')};
+    };
+    
+    // Initialize state.lincoln on first load
+    LC.lcInit();
+  }
+  
+  // ========================================================================
+  // RETURN (pass through text unchanged)
+  // ========================================================================
+  
+  return {text: text};
+};
+
+// CRITICAL: Must call modifier function!
+modifier(text);
