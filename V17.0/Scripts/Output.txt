@@ -1,0 +1,12 @@
+// Lincoln v17 - Output Script (Phase 0: Null System)
+// Processes AI output after generation
+// Library.txt has already executed, LC is available
+
+const modifier = (text) => {
+    // Phase 0: Pass through without modification
+    // Future phases will add event extraction and state updates
+    
+    // IMPORTANT: Never return empty string - causes script failure
+    return { text: text || " " };
+};
+modifier(text);

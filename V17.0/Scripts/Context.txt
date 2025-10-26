@@ -1,0 +1,20 @@
+// Lincoln v17 - Context Script (Phase 0: Null System)
+// Modifies context sent to AI (info.maxChars, info.memoryLength available here)
+// Library.txt has already executed, LC is available
+
+const modifier = (text) => {
+    // Phase 0: Capture context parameters for future use
+    if (state.lincoln && typeof info !== 'undefined') {
+        try {
+            state.lincoln.maxChars = info.maxChars;
+            state.lincoln.memoryLength = info.memoryLength;
+            state.lincoln.actionCount = info.actionCount;
+        } catch (e) {
+            console.log("Context info capture error:", e);
+        }
+    }
+    
+    // Pass through context without modification
+    return { text: text };
+};
+modifier(text);

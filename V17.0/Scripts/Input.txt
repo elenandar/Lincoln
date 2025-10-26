@@ -1,0 +1,11 @@
+// Lincoln v17 - Input Script (Phase 0: Null System)
+// Processes player input before it goes to the AI
+// Library.txt has already executed, LC is available
+
+const modifier = (text) => {
+    // Phase 0: Pass through without modification
+    // Future phases will add command processing and input analysis
+    
+    return { text: text };
+};
+modifier(text);
