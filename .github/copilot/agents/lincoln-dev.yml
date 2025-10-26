@@ -1240,3 +1240,23 @@ purpose: |
   - Use idempotent initialization (check version)
   - Arrow functions and const/let are OK
   - NO Map/Set/includes/find/async
+
+  ## Language_support: |
+  AI Dungeon supports a HYBRID of ES5 with some ES6 features:
+  
+  ✅ SUPPORTED ES6 features:
+  - Arrow functions: () => {}
+  - const/let declarations
+  - Basic template literals (test first)
+  
+  ❌ UNSUPPORTED ES6+ features:
+  - Map, Set, WeakMap, WeakSet
+  - Array: includes(), find(), findIndex()
+  - Object: assign(), entries(), values()
+  - Destructuring: {x, y} = obj
+  - Spread operator: ...array, ...obj
+  - for...of loops
+  - async/await, Promises
+  - Classes
+  
+  SAFE APPROACH: Use ES5 patterns except for arrow functions and const/let
