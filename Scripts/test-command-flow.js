@@ -46,6 +46,8 @@ function step(num, description) {
 global.state = { lincoln: null };
 
 // Helper function to execute modifiers
+// Note: Using eval() to simulate AI Dungeon's script execution environment
+// This is safe in the test context as we're evaluating our own code files
 function executeModifier(modifierCode, inputText) {
   var text = inputText;
   return eval('(function() { ' + modifierCode + ' })()');
@@ -65,7 +67,8 @@ try {
   const contextCode = fs.readFileSync(contextPath, 'utf8');
   const outputCode = fs.readFileSync(outputPath, 'utf8');
   
-  // Initialize library
+  // Initialize library (using eval to simulate AI Dungeon's script loading)
+  // This is safe as we're evaluating our own trusted code files
   eval(libraryCode);
   LC.lcInit('Test');
   
@@ -122,7 +125,8 @@ try {
   step(3, 'Output Script Processing');
   const outputResult2 = executeModifier(outputCode, '');
   
-  const helpPreview = outputResult2.text.substring(0, 60).replace(/\n/g, ' ');
+  const MAX_PREVIEW_LENGTH = 60;
+  const helpPreview = outputResult2.text.substring(0, MAX_PREVIEW_LENGTH).replace(/\n/g, ' ');
   log(colors.green, `    ✓ Output text: "${helpPreview}..."`);
   log(colors.green, `    ✓ Drafts queue flushed: ${LC.Drafts.getAll().length} messages remaining`);
   log(colors.green, `    ✓ Command list displayed to user`);
