@@ -5,7 +5,7 @@
 const modifier = (text) => {
     try {
         // Check for command output to relay
-        if (state.lincoln.commandOutput) {
+        if (state.lincoln && state.lincoln.commandOutput) {
             text = state.lincoln.commandOutput;
             delete state.lincoln.commandOutput;
             return { text: text };
