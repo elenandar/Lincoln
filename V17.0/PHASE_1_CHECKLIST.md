@@ -68,6 +68,12 @@ Phase 1 establishes the core infrastructure for Lincoln v17, building upon the P
 - [x] `analyze(text)` - Full input analysis
 - [x] Returns analysis object with original, normalized, isCommand, isEmpty
 
+#### SysOutput (#35)
+- [x] `formatLine(msg)` - Format system messages with ⟦SYS⟧ prefix
+- [x] Ensures command output visible in AI Dungeon
+- [x] Uses Unicode characters for system message markers
+- [x] Comprehensive error handling
+
 ### State Management
 
 - [x] `state.lincoln.stateVersion` field added
@@ -188,14 +194,20 @@ Phase 1 establishes the core infrastructure for Lincoln v17, building upon the P
 ### Command Testing
 ```
 Input: /ping
-Expected: "pong"
+Expected: "⟦SYS⟧ pong"
 
 Input: /debug
-Expected: "Lincoln v17 | Turn: 0 | Version: 17.0.0 | State: 0"
+Expected: "⟦SYS⟧ Lincoln v17 | Turn: 0 | Version: 17.0.0 | State: 0"
 
 Input: /turn
-Expected: "Current turn: 0"
+Expected: "⟦SYS⟧ Current turn: 0"
 ```
+
+### Automated Testing
+- [x] test_command_processing.js - 7 tests covering command processing
+- [x] All tests passing (verified output format, stop flag, newlines)
+- [x] Tests verify system message formatting (⟦SYS⟧ prefix)
+- [x] Tests verify AI processing blocked (stop: true)
 
 ## Next Steps - Roadmap to Phase 2
 
@@ -225,11 +237,14 @@ All acceptance criteria met:
 - CommandsRegistry with command processing
 - CharacterTracker with character extraction
 - InputProcessor with input normalization
+- SysOutput with system message formatting
 
 ✅ **Commands Working:**
-- /ping returns "pong"
-- /debug returns system status
-- /turn returns current turn number
+- /ping returns "⟦SYS⟧ pong" (with proper system formatting)
+- /debug returns "⟦SYS⟧ Lincoln v17 | Turn: X | Version: Y | State: Z"
+- /turn returns "⟦SYS⟧ Current turn: X"
+- All commands block AI generation (stop: true)
+- All commands visible in all AI Dungeon modes (Do/Say/Story)
 
 ✅ **State Management:**
 - state.lincoln.stateVersion tracking
