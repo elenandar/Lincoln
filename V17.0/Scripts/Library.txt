@@ -1,13 +1,16 @@
-// Lincoln v17 - Library Script (Phase 0: Null System)
+// Lincoln v17 - Library Script (Phase 1: Infrastructure)
 // This script executes BEFORE each hook (Input/Context/Output) - 3x per turn
-// Version: 17.0.0-phase0
+// Version: 17.0.0-phase1
 
 // Initialize state.lincoln if not exists or version mismatch
 if (!state.lincoln || state.lincoln.version !== "17.0.0") {
     state.lincoln = {
         version: "17.0.0",
+        stateVersion: 0,
         initialized: true,
         turn: 0,
+        currentAction: "",
+        drafts: [],
         characters: {},
         relations: {},
         hierarchy: {},
@@ -24,7 +27,7 @@ if (!state.lincoln || state.lincoln.version !== "17.0.0") {
 // Lincoln Core (LC) - recreated on each Library execution
 const LC = (function() {
     return {
-        // Tools - Basic utilities
+        // Tools - Safety utilities (#19)
         Tools: {
             safeRegexMatch: function(text, pattern) {
                 try {
@@ -33,16 +36,300 @@ const LC = (function() {
                     console.log("Regex error:", e);
                     return [];
                 }
+            },
+            
+            escapeRegex: function(str) {
+                try {
+                    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                } catch (e) {
+                    console.log("Escape regex error:", e);
+                    return str;
+                }
             }
         },
         
-        // Utils - General utilities
+        // Utils - Type conversion and helper methods (#20)
         Utils: {
+            toNum: function(value, defaultVal) {
+                try {
+                    var num = parseFloat(value);
+                    return isNaN(num) ? (defaultVal !== undefined ? defaultVal : 0) : num;
+                } catch (e) {
+                    return defaultVal !== undefined ? defaultVal : 0;
+                }
+            },
+            
+            toStr: function(value, defaultVal) {
+                try {
+                    if (value === null || value === undefined) {
+                        return defaultVal !== undefined ? defaultVal : "";
+                    }
+                    return String(value);
+                } catch (e) {
+                    return defaultVal !== undefined ? defaultVal : "";
+                }
+            },
+            
+            toBool: function(value, defaultVal) {
+                try {
+                    if (value === null || value === undefined) {
+                        return defaultVal !== undefined ? defaultVal : false;
+                    }
+                    return Boolean(value);
+                } catch (e) {
+                    return defaultVal !== undefined ? defaultVal : false;
+                }
+            },
+            
             clamp: function(value, min, max) {
                 return Math.max(min, Math.min(max, value));
+            }
+        },
+        
+        // Flags - Debugging flags and currentAction facade (#21)
+        Flags: {
+            setCurrentAction: function(actionType) {
+                try {
+                    state.lincoln.currentAction = actionType;
+                    state.lincoln.stateVersion++;
+                } catch (e) {
+                    console.log("Flags.setCurrentAction error:", e);
+                }
+            },
+            
+            getCurrentAction: function() {
+                try {
+                    return state.lincoln.currentAction || "";
+                } catch (e) {
+                    console.log("Flags.getCurrentAction error:", e);
+                    return "";
+                }
+            }
+        },
+        
+        // Drafts - Message queue for output hooks (#22)
+        Drafts: {
+            add: function(message) {
+                try {
+                    if (!state.lincoln.drafts) {
+                        state.lincoln.drafts = [];
+                    }
+                    state.lincoln.drafts.push(message);
+                    state.lincoln.stateVersion++;
+                } catch (e) {
+                    console.log("Drafts.add error:", e);
+                }
+            },
+            
+            get: function() {
+                try {
+                    return state.lincoln.drafts || [];
+                } catch (e) {
+                    console.log("Drafts.get error:", e);
+                    return [];
+                }
+            },
+            
+            clear: function() {
+                try {
+                    state.lincoln.drafts = [];
+                    state.lincoln.stateVersion++;
+                } catch (e) {
+                    console.log("Drafts.clear error:", e);
+                }
+            }
+        },
+        
+        // Turns - Turn counter management (#23)
+        Turns: {
+            increment: function() {
+                try {
+                    state.lincoln.turn++;
+                    state.lincoln.stateVersion++;
+                } catch (e) {
+                    console.log("Turns.increment error:", e);
+                }
+            },
+            
+            get: function() {
+                try {
+                    return state.lincoln.turn || 0;
+                } catch (e) {
+                    console.log("Turns.get error:", e);
+                    return 0;
+                }
+            },
+            
+            set: function(value) {
+                try {
+                    state.lincoln.turn = LC.Utils.toNum(value, 0);
+                    state.lincoln.stateVersion++;
+                } catch (e) {
+                    console.log("Turns.set error:", e);
+                }
+            }
+        },
+        
+        // CommandsRegistry - Command processing system (#24)
+        CommandsRegistry: {
+            commands: {}, // Plain ES5 object, NOT Map
+            
+            register: function(name, handler) {
+                try {
+                    this.commands[name] = handler;
+                } catch (e) {
+                    console.log("CommandsRegistry.register error:", e);
+                }
+            },
+            
+            process: function(text) {
+                if (!text || typeof text !== 'string' || text.charAt(0) !== '/') {
+                    return { handled: false };
+                }
+                
+                try {
+                    var parts = text.slice(1).split(' ');
+                    var command = parts[0];
+                    var args = parts.slice(1);
+                    
+                    if (this.commands[command]) {
+                        var output = this.commands[command](args);
+                        return { handled: true, output: output || " " };
+                    }
+                    
+                    return { handled: false };
+                } catch (e) {
+                    console.log("CommandsRegistry.process error:", e);
+                    return { handled: false, error: e };
+                }
+            }
+        },
+        
+        // CharacterTracker - Extract and track character states (#33)
+        CharacterTracker: {
+            extract: function(text) {
+                try {
+                    // Simple character extraction - looks for capitalized names
+                    var matches = LC.Tools.safeRegexMatch(text, /\b[A-Z][a-z]+\b/g);
+                    var characters = [];
+                    
+                    for (var i = 0; i < matches.length; i++) {
+                        var name = matches[i];
+                        // ES5: Use indexOf instead of includes
+                        if (characters.indexOf(name) === -1) {
+                            characters.push(name);
+                        }
+                    }
+                    
+                    return characters;
+                } catch (e) {
+                    console.log("CharacterTracker.extract error:", e);
+                    return [];
+                }
+            },
+            
+            ensure: function(name) {
+                try {
+                    if (!state.lincoln.characters[name]) {
+                        state.lincoln.characters[name] = {
+                            name: name,
+                            created: state.lincoln.turn
+                        };
+                        state.lincoln.stateVersion++;
+                    }
+                } catch (e) {
+                    console.log("CharacterTracker.ensure error:", e);
+                }
+            },
+            
+            exists: function(name) {
+                try {
+                    return state.lincoln.characters[name] !== undefined;
+                } catch (e) {
+                    console.log("CharacterTracker.exists error:", e);
+                    return false;
+                }
+            }
+        },
+        
+        // InputProcessor - Normalize and analyze player input (#34)
+        InputProcessor: {
+            normalize: function(text) {
+                try {
+                    if (!text || typeof text !== 'string') {
+                        return "";
+                    }
+                    
+                    // Trim whitespace
+                    var normalized = text.replace(/^\s+|\s+$/g, '');
+                    
+                    // Collapse multiple spaces
+                    normalized = normalized.replace(/\s+/g, ' ');
+                    
+                    return normalized;
+                } catch (e) {
+                    console.log("InputProcessor.normalize error:", e);
+                    return text;
+                }
+            },
+            
+            isCommand: function(text) {
+                try {
+                    return text && typeof text === 'string' && text.charAt(0) === '/';
+                } catch (e) {
+                    console.log("InputProcessor.isCommand error:", e);
+                    return false;
+                }
+            },
+            
+            analyze: function(text) {
+                try {
+                    var normalized = this.normalize(text);
+                    var isCommand = this.isCommand(normalized);
+                    
+                    return {
+                        original: text,
+                        normalized: normalized,
+                        isCommand: isCommand,
+                        isEmpty: normalized.length === 0
+                    };
+                } catch (e) {
+                    console.log("InputProcessor.analyze error:", e);
+                    return {
+                        original: text,
+                        normalized: text,
+                        isCommand: false,
+                        isEmpty: true
+                    };
+                }
             }
         }
     };
 })();
+
+// Register built-in commands
+LC.CommandsRegistry.register('ping', function(args) {
+    return "pong";
+});
+
+LC.CommandsRegistry.register('debug', function(args) {
+    try {
+        return "Lincoln v17 | Turn: " + state.lincoln.turn + 
+               " | Version: " + state.lincoln.version +
+               " | State: " + state.lincoln.stateVersion;
+    } catch (e) {
+        console.log("Debug command error:", e);
+        return "Debug error";
+    }
+});
+
+LC.CommandsRegistry.register('turn', function(args) {
+    try {
+        return "Current turn: " + state.lincoln.turn;
+    } catch (e) {
+        console.log("Turn command error:", e);
+        return "Turn error";
+    }
+});
 
 // LC is now available in this scope for Input/Context/Output scripts
