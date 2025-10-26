@@ -42,9 +42,13 @@ const modifier = function(text) {
     
     // Check if command exists
     if (LC.Commands && LC.Commands.has(cmdName)) {
-      // Execute command and return system message
+      // Execute command and add result to Drafts queue
       var result = LC.Commands.execute(cmdName, args);
-      return { text: result, stop: true };
+      if (LC.Drafts && result) {
+        LC.Drafts.add(result);
+      }
+      // Return space with stop:true to prevent AI generation
+      return { text: " ", stop: true };
     }
   }
   
