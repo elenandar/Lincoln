@@ -47,8 +47,14 @@ const modifier = function(text) {
       if (LC.Drafts && result) {
         LC.Drafts.add(result);
       }
-      // Return space with stop:true to prevent AI generation
-      return { text: " ", stop: true };
+      // Set flag for Context Hook to halt generation
+      // (stop:true in Input is not honored by AI Dungeon)
+      if (state.lincoln) {
+        state.lincoln._commandExecuted = true;
+        state.lincoln.stateVersion++;
+      }
+      // Return minimal input (no stop:true!)
+      return { text: " " };
     }
   }
   
