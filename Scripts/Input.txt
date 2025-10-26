@@ -44,7 +44,7 @@ const modifier = function(text) {
     if (LC.Commands && LC.Commands.has(cmdName)) {
       // Execute command and return system message
       var result = LC.Commands.execute(cmdName, args);
-      return { text: result };
+      return { text: result, stop: true };
     }
   }
   
