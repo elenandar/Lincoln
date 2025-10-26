@@ -83,35 +83,77 @@
 
 ## 2. АРХИТЕКТУРНЫЕ ПРИНЦИПЫ (UPDATED)
 
-### 2.1 Принцип 1: Library.txt и Глобальный Объект LC
+### 2.1 Принцип 1: Library.txt и Модель Выполнения AI Dungeon
 
-**Решение:** Весь код инициализации будет находиться в скрипте `Library.txt`, который выполняется при загрузке игры.
+**КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ:** Library.txt выполняется **НЕ при загрузке игры**, а **ПЕРЕД КАЖДЫМ хуком** (Input/Context/Output).
 
+**Модель выполнения для КАЖДОГО хода игрока:**
 ```javascript
-// Library.txt
-const LC = {
-  // Утилиты
-  Tools: { /* safeRegexMatch, etc */ },
-  Utils: { /* общие функции */ },
-  
-  // Движки (логически изолированные объекты)
-  QualiaEngine: { /* методы и внутреннее состояние */ },
-  InformationEngine: { /* методы и внутреннее состояние */ },
-  RelationsEngine: { /* методы и внутреннее состояние */ },
-  HierarchyEngine: { /* методы и внутреннее состояние */ },
-  // ... и так далее
-  
-  // Инициализация
-  lcInit: function() {
-    // Создание структуры state.lincoln
-  }
-};
-
-// Делаем LC доступным глобально
-state.shared.LC = LC;
+// 1. Input Hook: Library.txt → Input Script
+// 2. Context Hook: Library.txt → Context Script  
+// 3. Output Hook: Library.txt → Output Script
+// Library.txt выполняется 3 РАЗА за один ход игрока!
 ```
 
-**Ключевая идея:** LC — это единый глобальный объект, содержащий все движки как **логически изолированные компоненты**. Каждый движок — это независимый объект со своими методами и (опционально) приватными переменными.
+**Следствие для архитектуры Lincoln:**
+
+```javascript
+// Library.txt - выполняется КАЖДЫЙ РАЗ перед Input/Context/Output
+
+// ОБЯЗАТЕЛЬНАЯ проверка инициализации
+if (!state.lincoln || state.lincoln.version !== "17.0.0") {
+    // Инициализация только если не существует или устарела версия
+    state.lincoln = {
+        version: "17.0.0",
+        initialized: true,
+        turn: 0,
+        characters: {},
+        relations: {},
+        hierarchy: {},
+        rumors: [],
+        lore: [],
+        myths: [],
+        time: {},
+        environment: {},
+        evergreen: [],
+        secrets: []
+    };
+}
+
+// Движки Lincoln - создаются каждый раз
+const LC = (() => {
+    return {
+        // Утилиты
+        Tools: { 
+            safeRegexMatch: function(text, pattern) {
+                try {
+                    return text.match(pattern) || [];
+                } catch (e) {
+                    console.log("Regex error:", e);
+                    return [];
+                }
+            }
+        },
+        Utils: { /* общие функции */ },
+        
+        // Движки (логически изолированные объекты)
+        QualiaEngine: { /* методы */ },
+        InformationEngine: { /* методы */ },
+        RelationsEngine: { /* методы */ },
+        HierarchyEngine: { /* методы */ },
+        // ... все 40 систем
+    };
+})();
+
+// LC доступен в scope Library и в Input/Context/Output через замыкание
+// НЕ нужно сохранять в state - он пересоздается каждый раз
+```
+
+**Ключевая идея:** 
+- LC пересоздается 3 раза за ход (перед каждым хуком)
+- state.lincoln персистентен и проверяется при каждом выполнении
+- Движки не хранят состояние в себе - только в state.lincoln
+- Проверка версии предотвращает повторную инициализацию
 
 ### 2.2 Принцип 2: ES5 Compliance - MANDATORY
 
@@ -150,6 +192,87 @@ const handler = commandsRegistry.ping;
 ```
 
 **Impact:** CRITICAL - Will cause runtime error in AI Dungeon.
+
+**Полная реализация CommandsRegistry (ES5):**
+```javascript
+// В Library.txt
+LC.CommandsRegistry = {
+    commands: {}, // Plain object, НЕ Map!
+    
+    register: function(name, handler) {
+        this.commands[name] = handler;
+    },
+    
+    process: function(text) {
+        if (!text || typeof text !== 'string' || !text.startsWith('/')) {
+            return { handled: false };
+        }
+        
+        try {
+            var parts = text.slice(1).split(' ');
+            var command = parts[0];
+            var args = parts.slice(1);
+            
+            if (this.commands[command]) {
+                var output = this.commands[command](args);
+                return { handled: true, output: output || " " };
+            }
+            
+            return { handled: false };
+        } catch (e) {
+            console.log("CommandsRegistry error:", e);
+            return { handled: false, error: e };
+        }
+    }
+};
+
+// Регистрация команд
+LC.CommandsRegistry.register('ping', function(args) {
+    return "pong";
+});
+
+LC.CommandsRegistry.register('debug', function(args) {
+    return "Lincoln v17 | Turn: " + state.lincoln.turn + 
+           " | Version: " + state.lincoln.stateVersion;
+});
+
+LC.CommandsRegistry.register('qualia', function(args) {
+    // args: ['get', 'Alice'] или ['set', 'Alice', 'valence', '0.8']
+    var action = args[0];
+    var character = args[1];
+    
+    if (action === 'get') {
+        var valence = LC.QualiaEngine.getValence(character);
+        return character + " valence: " + valence.toFixed(2);
+    } else if (action === 'set' && args.length >= 4) {
+        var param = args[2];
+        var value = parseFloat(args[3]);
+        LC.QualiaEngine.resonate(character, {
+            type: 'custom',
+            delta: { valence: value - 0.5 }  // корректировка от нейтрали
+        });
+        return "Set " + character + " " + param + " to " + value;
+    }
+    
+    return "Usage: /qualia get <name> OR /qualia set <name> <param> <value>";
+});
+```
+
+**Использование в Input Script:**
+```javascript
+// Input.txt
+const modifier = (text) => {
+    if (text.startsWith('/')) {
+        var result = LC.CommandsRegistry.process(text);
+        if (result.handled) {
+            return { text: result.output || " ", stop: true };
+        }
+    }
+    
+    return { text: text };
+};
+modifier(text);
+```
 
 ---
 
@@ -338,6 +461,241 @@ HierarchyEngine._getAverageWitnessRespect = function(character) {
 3. **Проверка стабильности** — отсутствие ошибок в консоли, корректное сохранение состояния
 
 **Критерий успеха:** Игра стабильно работает, новый компонент выполняет свою функцию, данные корректно сохраняются в `state.lincoln`.
+
+### 2.7 Критические Ограничения AI Dungeon
+
+**⚠️ ОБЯЗАТЕЛЬНО К ИЗУЧЕНИЮ - Нарушение этих правил вызывает runtime errors**
+
+#### 2.7.1 Глобальные Переменные
+
+**Доступны во всех скриптах (Library, Input, Context, Output):**
+```javascript
+text        // string - обрабатываемый текст в текущем хуке
+state       // object - персистентное хранилище (НЕ state.shared!)
+history     // array - история действий игрока
+storyCards  // array - глобальный массив Memory Bank (может быть недоступен!)
+```
+
+**Доступны ТОЛЬКО в Context Hook:**
+```javascript
+info.maxChars      // number - максимум символов контекста
+info.memoryLength  // number - размер памяти
+info.actionCount   // number - номер текущего хода
+info.characters    // object - данные о персонажах (если есть)
+```
+
+**⚠️ ОШИБКА:** `state.shared` НЕ СУЩЕСТВУЕТ в AI Dungeon!
+```javascript
+// НЕПРАВИЛЬНО:
+state.shared.LC = LC;  // ❌ Runtime Error!
+
+// ПРАВИЛЬНО - LC существует в scope Library:
+const LC = { /* ... */ };  // ✅ Доступен в Input/Context/Output через замыкание
+```
+
+#### 2.7.2 Работа со Story Cards (Memory Bank)
+
+**⚠️ ВАЖНО:** Story Cards - это **глобальная переменная**, не в state!
+
+```javascript
+// НЕПРАВИЛЬНО:
+state.storyCards.push(entry);  // ❌ storyCards НЕ в state!
+
+// ПРАВИЛЬНО:
+// 1. Проверить доступность (Memory Bank может быть выключен)
+function canUseStoryCards() {
+    try {
+        if (typeof storyCards === 'undefined') return false;
+        if (!Array.isArray(storyCards)) return false;
+        var test = storyCards.length; // тест чтения
+        return true;
+    } catch (e) {
+        console.log("Story Cards unavailable:", e);
+        return false;
+    }
+}
+
+// 2. Безопасное использование
+if (canUseStoryCards()) {
+    addStoryCard(["key1", "key2"], "entry text", "lore");
+} else {
+    // Fallback: сохранить в state.lincoln
+    if (!state.lincoln.fallbackCards) state.lincoln.fallbackCards = [];
+    state.lincoln.fallbackCards.push({
+        keys: ["key1", "key2"], 
+        entry: "entry text", 
+        type: "lore"
+    });
+}
+```
+
+**Функции для работы с Story Cards:**
+```javascript
+addStoryCard(keys, entry, type)              // returns number (index) или false
+updateStoryCard(index, keys, entry, type)    // returns void
+removeStoryCard(index)                        // returns void
+```
+
+#### 2.7.3 Обязательная Структура modifier
+
+**Каждый скрипт (Input/Context/Output) ДОЛЖЕН заканчиваться на:**
+```javascript
+const modifier = (text) => {
+    // обработка текста
+    return { text: processedText };
+};
+modifier(text);  // ОБЯЗАТЕЛЬНЫЙ вызов!
+```
+
+**Input Script - полная структура:**
+```javascript
+// Library.txt уже выполнился, LC доступен
+
+const modifier = (text) => {
+    // Обработка команд Lincoln
+    if (text.startsWith('/')) {
+        var result = LC.CommandsRegistry.process(text);
+        if (result.handled) {
+            // ВАЖНО: НЕ возвращать пустую строку!
+            return { text: result.output || " ", stop: true };
+        }
+    }
+    
+    // Обычная обработка ввода
+    var processed = LC.InputProcessor.process(text);
+    return { text: processed };
+};
+modifier(text);
+```
+
+**Context Script - сохранение критических параметров:**
+```javascript
+const modifier = (text) => {
+    // info.maxChars доступен ТОЛЬКО здесь!
+    if (state.lincoln) {
+        state.lincoln.maxChars = info.maxChars;
+        state.lincoln.memoryLength = info.memoryLength;
+        state.lincoln.actionCount = info.actionCount;
+    }
+    
+    // Модификация контекста если нужно
+    var modified = LC.ContextProcessor.process(text);
+    return { text: modified };
+};
+modifier(text);
+```
+
+**Output Script - анализ и обновление:**
+```javascript
+const modifier = (text) => {
+    try {
+        // Анализ ответа AI
+        LC.UnifiedAnalyzer.analyzeOutput(text);
+        
+        // Обновление состояний персонажей
+        LC.CharacterTracker.updateFromText(text);
+        
+        // НЕ возвращать пустую строку!
+        return { text: text || " " };
+    } catch (e) {
+        console.log("Output processing error:", e);
+        return { text: text || " " };  // Fallback
+    }
+};
+modifier(text);
+```
+
+#### 2.7.4 Обработка Пустых Строк и stop Флага
+
+**КРИТИЧНО: Правила возврата значений**
+
+**Input Script:**
+```javascript
+return { text: "" };              // ❌ ОШИБКА "Unable to run scenario scripts"
+return { text: " " };              // ✅ OK, минимальный ввод
+return { text: " ", stop: true };  // ✅ OK, останавливает обработку
+return { text: "msg", stop: true }; // ✅ показывает сообщение и останавливает
+```
+
+**Context Script:**
+```javascript
+return { text: "" };          // ✅ OK, контекст не изменяется
+return { text: newContext };  // ✅ заменяет контекст
+return { text: "", stop: true }; // ⚠️  вызывает "AI is stumped"
+```
+
+**Output Script:**
+```javascript
+return { text: "" };          // ❌ ОШИБКА "A custom script running on this scenario failed"
+return { text: " " };         // ✅ OK, минимальный вывод
+return { text: text };        // ✅ OK, нормальный вывод
+// НИКОГДА не использовать stop: true в Output!
+```
+
+#### 2.7.5 Паттерны Безопасного Кода
+
+**Обязательная обработка ошибок везде:**
+```javascript
+LC.QualiaEngine = {
+    resonate: function(character, event) {
+        try {
+            // Проверка существования
+            if (!state.lincoln.characters[character]) {
+                state.lincoln.characters[character] = this.createDefault();
+            }
+            
+            // Основная логика
+            var qualia = state.lincoln.characters[character].qualia_state;
+            qualia.valence += event.emotionalImpact;
+            
+        } catch (error) {
+            console.log("QualiaEngine.resonate error:", error);
+            // Система продолжает работать даже при ошибке
+        }
+    },
+    
+    getValence: function(character) {
+        try {
+            var char = state.lincoln.characters[character];
+            return (char && char.qualia_state) ? char.qualia_state.valence : 0.5;
+        } catch (error) {
+            console.log("QualiaEngine.getValence error:", error);
+            return 0.5; // безопасное значение по умолчанию
+        }
+    },
+    
+    createDefault: function() {
+        return {
+            qualia_state: {
+                somatic_tension: 0.5,
+                valence: 0.5,
+                focus_aperture: 0.5,
+                energy_level: 0.5
+            }
+        };
+    }
+};
+```
+
+**Безопасная работа с undefined:**
+```javascript
+// НЕПРАВИЛЬНО:
+var value = state.lincoln.characters[char].qualia_state.valence;  // ❌ Может быть undefined
+
+// ПРАВИЛЬНО:
+var value = 0.5;  // значение по умолчанию
+if (state.lincoln.characters[char] && 
+    state.lincoln.characters[char].qualia_state) {
+    value = state.lincoln.characters[char].qualia_state.valence;
+}
+```
+
+**Логирование (console.log особенности):**
+```javascript
+console.log("Debug:", value);  // ✅ работает
+console.log("Obj:", obj);      // ⚠️  undefined выводится как null
+log("Message");                // ✅ алиас для console.log
+```
 
 ---
 
@@ -2998,7 +3356,7 @@ This section outlines the complete development roadmap for Lincoln v17, organize
 |-----------|-----------|-----------|
 | **lcInit** (#33) | Централизованная инициализация | Функция `LC.lcInit()` создает структуру `state.lincoln` |
 | **currentAction** (#34) | Отслеживание типа действия | Объект `state.lincoln.currentAction` с полем `type` |
-| **CommandsRegistry** (#24) | Реестр команд | Map для хранения команд. `Input.txt` парсит `/команда` |
+| **CommandsRegistry** (#24) | Реестр команд | Plain object {} для хранения команд. `Input.txt` парсит `/команда` |
 | **LC.Tools** (#19) | Утилиты безопасности | `safeRegexMatch()`, `escapeRegex()` |
 | **LC.Utils** (#20) | Общие утилиты | `toNum()`, `toStr()`, `toBool()` |
 | **LC.Flags** (#21) | Фасад совместимости | Обертка над `currentAction` |
@@ -3231,11 +3589,78 @@ This section outlines the complete development roadmap for Lincoln v17, organize
 
 ### 4.9 Timeline Summary (NEW)
 
+**Реалистичная оценка с учётом всех 40 систем Lincoln v16:**
 
+| Фаза | Системы | Срок | Часы | Примечание |
+|------|---------|------|------|------------|
+| **Phase 0** | Инфраструктура | 1 день | 8 ч | Базовые скрипты |
+| **Phase 1** | Команды, утилиты (#19-24, #33-34) | 2-3 дня | 16-24 ч | Отладочные инструменты |
+| **Phase 2** | Время, окружение (#7, #8, #18) | 1-2 дня | 8-16 ч | Физический мир |
+| **Phase 3** | Факты, цели (#1, #2) | 2-3 дня | 16-24 ч | Базовые данные |
+| **Phase 4** | **Сознание (#5, #15)** | **2-3 недели** | **80-120 ч** | **КРИТИЧЕСКАЯ ФАЗА** |
+| **Phase 5** | Социальная динамика (#3, #4, #16, #6) | 3-4 недели | 120-160 ч | Персонажи, отношения |
+| **Phase 6** | Иерархия и слухи (#10, #11, #9) | 2-3 недели | 80-120 ч | Социальные структуры |
+| **Phase 7** | Культурная память (#12, #13, #14, #17) | 2 недели | 80 ч | Мифы и легенды |
+| **Phase 8** | Интеграция и оптимизация (#29-32) | 1-2 недели | 40-80 ч | Финальная сборка |
+| **ИТОГО** | **40 систем** | **10-14 недель** | **448-632 часа** | Полная реализация |
+
+**Ключевые факторы времени:**
+- QualiaEngine + InformationEngine - самый сложный этап (2-3 недели)
+- Каждая система требует тщательного тестирования в игре
+- Обработка ошибок и edge cases занимает 30-40% времени
+- Интеграция между системами требует итеративной отладки
+
+**Checkpoint после каждой фазы:**
+- ✅ Все системы фазы работают в игре без ошибок
+- ✅ Команды для отладки функционируют
+- ✅ State персистентен (save/load работает)
+- ✅ Зависимости между движками работают корректно
 
 ---
 
 ### 4.10 Milestones & Checkpoints (NEW)
+
+**Milestone 1: Infrastructure Complete (Week 1)**
+- [ ] Library.txt с проверкой инициализации работает
+- [ ] CommandsRegistry обрабатывает команды
+- [ ] Базовые утилиты (Tools, Utils) функционируют
+- [ ] `/ping`, `/debug` команды работают
+- **Критерий:** Можно писать и тестировать новые движки
+
+**Milestone 2: World Foundation (Week 2)**
+- [ ] TimeEngine отслеживает ходы
+- [ ] EnvironmentEngine управляет локациями
+- [ ] EvergreenEngine хранит факты
+- [ ] GoalsEngine отслеживает цели
+- **Критерий:** Физический мир и базовые данные работают
+
+**Milestone 3: Consciousness Core (Week 4-5)** ⭐ **КРИТИЧЕСКИЙ**
+- [ ] QualiaEngine полностью реализован и протестирован
+- [ ] InformationEngine зависит от QualiaEngine корректно
+- [ ] Субъективная интерпретация событий работает
+- [ ] Все edge cases обработаны (try-catch везде)
+- **Критерий:** Два персонажа интерпретируют одно событие по-разному
+
+**Milestone 4: Social Systems (Week 8-9)**
+- [ ] RelationsEngine с субъективностью работает
+- [ ] HierarchyEngine использует perceptions
+- [ ] MoodEngine, CrucibleEngine интегрированы
+- [ ] GossipEngine распространяет слухи
+- **Критерий:** Социальная динамика реагирует на события
+
+**Milestone 5: Cultural Memory (Week 11)**
+- [ ] MemoryEngine кристаллизует мифы
+- [ ] LoreEngine создаёт легенды
+- [ ] AcademicsEngine работает
+- [ ] DemographicPressure настраивает новых персонажей
+- **Критерий:** Культурная память накапливается и влияет на мир
+
+**Milestone 6: Full Integration (Week 13-14)**
+- [ ] UnifiedAnalyzer координирует все 40 систем
+- [ ] Оптимизация производительности завершена
+- [ ] 1000-turn стресс-тест пройден
+- [ ] Все системы работают как единый организм
+- **Критерий:** Lincoln v17 готов к продакшену
 
 
 
