@@ -28,10 +28,30 @@ const modifier = function(text) {
     LC.Turns.increment();
   }
   
-  // Command detection (slash commands)
-  if (userText.charAt(0) === "/") {
-    var parts = userText.slice(1).split(/\s+/);
+  // ===== ROBUST COMMAND EXTRACTION =====
+  // AI Dungeon preprocesses input differently per mode:
+  // - Do mode:    "> You /ping." or "You /ping."
+  // - Say mode:   "> You say \"/ping\"" or "You say \"/ping\""
+  // - Story mode: "/ping" (raw) or "  /ping"
+  
+  // Step 1: Remove AI Dungeon prefixes (>, You, You say, etc.)
+  var cleanText = userText
+    .replace(/^>\s*/i, '')                    // Remove "> " prefix
+    .replace(/^you\s+say\s+["']?/i, '')       // Remove "You say \"" or "You say '"
+    .replace(/^you\s+/i, '')                  // Remove "You " prefix
+    .trim();
+  
+  // Step 2: Remove trailing punctuation and quotes
+  cleanText = cleanText.replace(/[.!?;,]+$/, '').replace(/["']+$/, '').trim();
+  
+  // Step 3: Check if it's a command (starts with /)
+  if (cleanText.charAt(0) === "/") {
+    // Extract command and arguments
+    var parts = cleanText.slice(1).split(/\s+/);
     var cmdName = parts[0].toLowerCase();
+    
+    // Remove any trailing punctuation from command name
+    cmdName = cmdName.replace(/[.!?;,:"']+$/, '');
     
     // Skip if command name is empty (just "/" typed)
     if (!cmdName) {
