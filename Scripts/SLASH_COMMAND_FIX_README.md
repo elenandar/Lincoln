@@ -185,8 +185,8 @@ See `SLASH_COMMAND_FIX.md` for complete technical deep dive.
 
 ## Credits
 
-- **Issue Reported By**: @elenandar
-- **Fix Implemented By**: GitHub Copilot (@copilot)
+- **Issue Reported By**: Lincoln project maintainers
+- **Fix Implemented By**: Automated code analysis and testing
 - **Testing**: Comprehensive test suites (167 tests total)
 - **Review**: CodeQL security scan passed (0 alerts)
 
