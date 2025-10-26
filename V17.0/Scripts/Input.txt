@@ -20,8 +20,13 @@ const modifier = (text) => {
         if (analysis.isCommand) {
             var result = LC.CommandsRegistry.process(analysis.normalized);
             if (result.handled) {
-                // Return command output, prevent AI processing
-                return { text: result.output || " ", stop: true };
+                // Return command output with newline, prevent AI processing
+                var output = result.output || " ";
+                // Ensure output ends with newline for proper display
+                if (output && output.charAt(output.length - 1) !== '\n') {
+                    output = output + "\n";
+                }
+                return { text: output, stop: true };
             }
         }
         

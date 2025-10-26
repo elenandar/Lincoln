@@ -330,32 +330,47 @@ const LC = (function() {
                     };
                 }
             }
+        },
+        
+        // SysOutput - Format system messages for AI Dungeon visibility (#35)
+        SysOutput: {
+            formatLine: function(msg) {
+                try {
+                    var s = LC.Utils.toStr(msg, "").replace(/^\s+|\s+$/g, '');
+                    return s ? "\u27E6SYS\u27E7 " + s : "";
+                } catch (e) {
+                    console.log("SysOutput.formatLine error:", e);
+                    return "";
+                }
+            }
         }
     };
 })();
 
 // Register built-in commands
 LC.CommandsRegistry.register('ping', function(args) {
-    return "pong";
+    return LC.SysOutput.formatLine("pong");
 });
 
 LC.CommandsRegistry.register('debug', function(args) {
     try {
-        return "Lincoln v17 | Turn: " + state.lincoln.turn + 
-               " | Version: " + state.lincoln.version +
-               " | State: " + state.lincoln.stateVersion;
+        var msg = "Lincoln v17 | Turn: " + state.lincoln.turn + 
+                  " | Version: " + state.lincoln.version +
+                  " | State: " + state.lincoln.stateVersion;
+        return LC.SysOutput.formatLine(msg);
     } catch (e) {
         console.log("Debug command error:", e);
-        return "Debug error";
+        return LC.SysOutput.formatLine("Debug error");
     }
 });
 
 LC.CommandsRegistry.register('turn', function(args) {
     try {
-        return "Current turn: " + state.lincoln.turn;
+        var msg = "Current turn: " + state.lincoln.turn;
+        return LC.SysOutput.formatLine(msg);
     } catch (e) {
         console.log("Turn command error:", e);
-        return "Turn error";
+        return LC.SysOutput.formatLine("Turn error");
     }
 });
 
