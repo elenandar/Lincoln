@@ -9,11 +9,11 @@ const modifier = (text) => {
         
         // Track current action type
         if (analysis.isCommand) {
-            LC.Flags.setCurrentAction("command");
+            LC.Flags.setCurrentAction(LC.Constants.ACTION_TYPES.COMMAND);
         } else if (analysis.isEmpty) {
-            LC.Flags.setCurrentAction("empty");
+            LC.Flags.setCurrentAction(LC.Constants.ACTION_TYPES.EMPTY);
         } else {
-            LC.Flags.setCurrentAction("action");
+            LC.Flags.setCurrentAction(LC.Constants.ACTION_TYPES.ACTION);
         }
         
         // Process commands

@@ -26,7 +26,21 @@ if (!state.lincoln || state.lincoln.version !== "17.0.0") {
 
 // Lincoln Core (LC) - recreated on each Library execution
 const LC = (function() {
+    // Constants
+    var COMMAND_PREFIX = '/';
+    var ACTION_TYPES = {
+        COMMAND: 'command',
+        ACTION: 'action',
+        EMPTY: 'empty'
+    };
+    
     return {
+        // Constants exposed
+        Constants: {
+            COMMAND_PREFIX: COMMAND_PREFIX,
+            ACTION_TYPES: ACTION_TYPES
+        },
+        
         // Tools - Safety utilities (#19)
         Tools: {
             safeRegexMatch: function(text, pattern) {
@@ -183,7 +197,7 @@ const LC = (function() {
             },
             
             process: function(text) {
-                if (!text || typeof text !== 'string' || text.charAt(0) !== '/') {
+                if (!text || typeof text !== 'string' || text.charAt(0) !== COMMAND_PREFIX) {
                     return { handled: false };
                 }
                 
@@ -207,6 +221,17 @@ const LC = (function() {
         
         // CharacterTracker - Extract and track character states (#33)
         CharacterTracker: {
+            // Common words to exclude from character extraction
+            _commonWords: [
+                'The', 'You', 'Your', 'They', 'Their', 'This', 'That', 'These', 'Those',
+                'What', 'When', 'Where', 'Which', 'Who', 'Why', 'How',
+                'But', 'And', 'Or', 'Not', 'So', 'As', 'At', 'By', 'For', 'From',
+                'In', 'Of', 'On', 'To', 'Up', 'With', 'After', 'Before', 'During',
+                'Since', 'Until', 'While', 'About', 'Against', 'Between', 'Into',
+                'Through', 'Under', 'Over', 'Above', 'Below', 'Can', 'Could',
+                'May', 'Might', 'Must', 'Should', 'Would', 'Will', 'Shall'
+            ],
+            
             extract: function(text) {
                 try {
                     // Simple character extraction - looks for capitalized names
@@ -216,7 +241,9 @@ const LC = (function() {
                     for (var i = 0; i < matches.length; i++) {
                         var name = matches[i];
                         // ES5: Use indexOf instead of includes
-                        if (characters.indexOf(name) === -1) {
+                        // Filter out common words
+                        if (this._commonWords.indexOf(name) === -1 && 
+                            characters.indexOf(name) === -1) {
                             characters.push(name);
                         }
                     }
@@ -275,7 +302,7 @@ const LC = (function() {
             
             isCommand: function(text) {
                 try {
-                    return text && typeof text === 'string' && text.charAt(0) === '/';
+                    return text && typeof text === 'string' && text.charAt(0) === COMMAND_PREFIX;
                 } catch (e) {
                     console.log("InputProcessor.isCommand error:", e);
                     return false;

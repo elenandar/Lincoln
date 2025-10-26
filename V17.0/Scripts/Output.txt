@@ -7,7 +7,7 @@ const modifier = (text) => {
         // Increment turn counter on each AI output
         // Only increment if this is not a command (commands set stop: true in Input)
         var currentAction = LC.Flags.getCurrentAction();
-        if (currentAction !== "command") {
+        if (currentAction !== LC.Constants.ACTION_TYPES.COMMAND) {
             LC.Turns.increment();
         }
         
