@@ -11,7 +11,7 @@ const modifier = (text) => {
             var output = LC.CommandsRegistry.execute(command, args);
             if (output) {
                 state.lincoln.commandOutput = output;
-                text = " ";
+                // Keep command visible in adventure log - don't replace with space
             }
         }
         
