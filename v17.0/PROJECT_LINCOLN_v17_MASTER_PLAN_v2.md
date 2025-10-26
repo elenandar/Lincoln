@@ -1,9 +1,18 @@
-# PROJECT LINCOLN v17: MASTER PLAN v2.0
+# PROJECT LINCOLN v17: MASTER PLAN v2.0 (CORRECTED)
 
-**Версия:** 2.0  
-**Дата:** 25 October 2025  
-**Статус:** Канонический план разработки (UPDATED)  
-**Основан на:** Архитектурном review от 25 октября 2025
+**Версия:** 2.0 (Исправленная)  
+**Дата:** 26 October 2025  
+**Статус:** Канонический план разработки - Фундаментальные ошибки исправлены  
+**Основан на:** Архитектурном review от 25 октября 2025 + Критические исправления модели выполнения AI Dungeon
+
+**⚠️ ВАЖНЫЕ ИСПРАВЛЕНИЯ В ЭТОЙ ВЕРСИИ:**
+- ✅ Правильная модель выполнения Library.txt (3x за ход, не при загрузке)
+- ✅ Удалены ссылки на несуществующий state.shared
+- ✅ Добавлена обязательная структура modifier для всех скриптов
+- ✅ Исправлен CommandsRegistry на ES5-совместимый plain object
+- ✅ Правильная работа с глобальной переменной storyCards
+- ✅ Обработка пустых строк и ошибок везде
+- ✅ Реалистичный timeline: 10-14 недель
 
 ---
 
@@ -695,6 +704,174 @@ if (state.lincoln.characters[char] &&
 console.log("Debug:", value);  // ✅ работает
 console.log("Obj:", obj);      // ⚠️  undefined выводится как null
 log("Message");                // ✅ алиас для console.log
+```
+
+### 2.8 Интеграция с Игровым Процессом
+
+**Обработка событий в Output Script - правильная последовательность:**
+
+Когда AI генерирует текст ответа, Lincoln должен извлечь события и обновить все системы в правильном порядке согласно четырёхуровневой модели сознания.
+
+```javascript
+// Output Script - полная интеграция всех уровней
+const modifier = (text) => {
+    try {
+        // 1. Извлечение базовой информации
+        var characters = LC.UnifiedAnalyzer.extractCharacters(text);
+        var events = LC.UnifiedAnalyzer.extractEvents(text);
+        var emotionalContext = LC.UnifiedAnalyzer.analyzeEmotions(text);
+        
+        // 2. Обновление всех систем в правильном порядке
+        for (var i = 0; i < characters.length; i++) {
+            var char = characters[i];
+            
+            // === LEVEL 1: PHENOMENOLOGY ===
+            // Сначала обновляем "ощущения" персонажа
+            LC.QualiaEngine.resonate(char, emotionalContext);
+            
+            // === LEVEL 2: PSYCHOLOGY ===
+            // Затем интерпретируем события через призму qualia
+            for (var j = 0; j < events.length; j++) {
+                var event = events[j];
+                
+                // Субъективная интерпретация зависит от qualia_state
+                var interpretation = LC.InformationEngine.interpret(char, event);
+                
+                // === LEVEL 3: PERSONALITY ===
+                // Формирующие события влияют на self_concept
+                if (event.formative) {
+                    LC.CrucibleEngine.registerFormativeEvent(char, event);
+                }
+                
+                // === LEVEL 4: SOCIAL ===
+                // Обновляем отношения с учётом интерпретации
+                if (event.involves && event.involves.length > 1) {
+                    LC.RelationsEngine.updateFromEvent(char, event, interpretation);
+                }
+                
+                // Обновляем восприятия персонажей друг о друге
+                if (event.target && event.target !== char) {
+                    LC.InformationEngine.updatePerception(char, event.target, {
+                        trust: interpretation.multiplier > 1 ? 0.1 : -0.1,
+                        respect: event.competenceDemo ? 0.15 : 0
+                    });
+                }
+            }
+        }
+        
+        // 5. Обновление иерархии (зависит от perceptions)
+        LC.HierarchyEngine.recalculate();
+        
+        // 6. Культурная память (если были важные события)
+        var formativeEvents = events.filter(function(e) { return e.formative; });
+        if (formativeEvents.length > 0) {
+            LC.MemoryEngine.processNewEvents(formativeEvents);
+        }
+        
+        // 7. Инкремент версии состояния
+        state.lincoln.stateVersion++;
+        
+        // ВАЖНО: возвращаем текст неизменным (или с минимальной обработкой)
+        return { text: text || " " };
+        
+    } catch (e) {
+        console.log("Output processing error:", e);
+        // Fallback: даже при ошибке возвращаем текст
+        return { text: text || " " };
+    }
+};
+modifier(text);
+```
+
+**Ключевые принципы:**
+1. **Последовательность критична:** Level 1 → 2 → 3 → 4
+2. **QualiaEngine ВСЕГДА первый:** Интерпретация зависит от текущего состояния qualia
+3. **Безопасность через try-catch:** Ошибка в одном движке не должна ломать всю систему
+4. **Проверка существования:** Все массивы и объекты проверяются перед использованием
+5. **Не модифицировать текст AI:** Output Script только анализирует, не изменяет
+
+**Пример обработки конкретного события:**
+
+```javascript
+// Текст AI: "Bob поблагодарил Alice за помощь. Alice улыбнулась."
+
+// 1. extractEvents() находит:
+var event = {
+    type: "praise",
+    source: "Bob",
+    target: "Alice",
+    intensity: 0.6,
+    involves: ["Bob", "Alice"]
+};
+
+// 2. Для Alice:
+// Level 1 (Qualia): valence ↑ (приятное ощущение от похвалы)
+LC.QualiaEngine.resonate("Alice", { type: "praise", intensity: 0.6 });
+
+// Level 2 (Information): интерпретация зависит от valence
+var aliceValence = LC.QualiaEngine.getValence("Alice");
+// Если Alice уже чувствовала себя хорошо (valence=0.7):
+// interpretation = "искренне", multiplier = 1.4
+
+var interpretation = LC.InformationEngine.interpret("Alice", event);
+// { interpretation: "искренне", multiplier: 1.4, confidence: 0.8 }
+
+// Level 3 (Crucible): если событие формирующее
+// (не в этом случае - простая благодарность)
+
+// Level 4 (Social): обновление отношения Alice → Bob
+var baseChange = 10;
+var actualChange = baseChange * interpretation.multiplier; // 10 * 1.4 = 14
+LC.RelationsEngine.updateRelation("Alice", "Bob", actualChange);
+
+// Обновление восприятия: Alice теперь больше доверяет Bob
+LC.InformationEngine.updatePerception("Alice", "Bob", {
+    trust: +0.1,
+    affection: +0.05
+});
+
+// 3. Для Bob (если нужно):
+// Bob тоже получает обратную связь от улыбки Alice
+// ... аналогичная обработка
+```
+
+**Fallback стратегии:**
+
+```javascript
+// Если персонаж не существует - создать с дефолтными значениями
+if (!state.lincoln.characters[char]) {
+    state.lincoln.characters[char] = {
+        qualia_state: {
+            somatic_tension: 0.5,
+            valence: 0.5,
+            focus_aperture: 0.5,
+            energy_level: 0.5
+        },
+        perceptions: {},
+        self_concept: {},
+        mood: "neutral",
+        goals: []
+    };
+}
+
+// Если событие не распознано - использовать нейтральную интерпретацию
+if (!event.type || event.type === "unknown") {
+    interpretation = { 
+        interpretation: "нейтрально", 
+        multiplier: 1.0, 
+        confidence: 0.5 
+    };
+}
+
+// Если Story Cards недоступен - сохранить в state.lincoln.fallbackCards
+if (!canUseStoryCards()) {
+    if (!state.lincoln.fallbackCards) state.lincoln.fallbackCards = [];
+    state.lincoln.fallbackCards.push({
+        keys: ["memory", char],
+        entry: event.description,
+        type: "event"
+    });
+}
 ```
 
 ---
@@ -4907,14 +5084,28 @@ With these additions, the plan is **APPROVED FOR IMPLEMENTATION** with the follo
 This Master Plan v2.0 represents the culmination of:
 - Analysis of 40 systems from v16
 - Comprehensive architectural review
-- Identification and correction of critical errors
+- **Correction of fundamental AI Dungeon execution model errors**
+- **Addition of critical safety patterns and error handling**
 - Addition of 3000+ lines of detailed specifications
 - Complete risk assessment and mitigation planning
 - Full testing strategy from unit to system level
 
+**Key Corrections in v2.0:**
+
+1. ✅ **Library.txt execution model** — Correctly documented that Library runs BEFORE EACH hook (3x per turn), not "при загрузке"
+2. ✅ **state.shared removed** — Documented that state.shared does NOT exist in AI Dungeon
+3. ✅ **Mandatory modifier pattern** — All scripts now include proper `const modifier = (text) => {...}; modifier(text);` structure
+4. ✅ **CommandsRegistry ES5 compliance** — Changed from Map to plain object {}
+5. ✅ **storyCards global variable** — Documented correct usage with safety checks
+6. ✅ **Empty string handling** — Added warnings about "" errors in Input/Output, use " " instead
+7. ✅ **info.maxChars availability** — Documented only available in Context hook
+8. ✅ **Error handling everywhere** — Added try-catch patterns with fallbacks
+9. ✅ **Game event processing** — Added detailed integration examples (Section 2.8)
+10. ✅ **Realistic timeline** — Updated to 10-14 weeks for full implementation
+
 **Status:** READY FOR IMPLEMENTATION  
 **Approval:** CONDITIONAL on strict adherence to all critical rules  
-**Recommendation:** Proceed with confidence—architecture is sound, risks are managed, path is clear
+**Recommendation:** Proceed with confidence—architecture is sound, AI Dungeon limitations understood, risks are managed, path is clear
 
 ---
 
