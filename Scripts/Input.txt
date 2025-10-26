@@ -27,6 +27,12 @@ const modifier = function(text) {
   if (userText.charAt(0) === "/") {
     var parts = userText.slice(1).split(/\s+/);
     var cmdName = parts[0].toLowerCase();
+    
+    // Skip if command name is empty (just "/" typed)
+    if (!cmdName) {
+      return { text: raw };
+    }
+    
     var args = parts.slice(1);
     
     // Check if command exists

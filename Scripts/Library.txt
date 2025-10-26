@@ -54,7 +54,7 @@ if (typeof LC.Commands === "undefined") {
       try {
         return cmd.handler(args);
       } catch (e) {
-        return "⟦SYS⟧ Command error: " + (e && e.message);
+        return "⟦SYS⟧ Command error: " + String(e && e.message || e || "Unknown error");
       }
     }
   };
