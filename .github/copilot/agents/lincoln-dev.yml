@@ -1,7 +1,7 @@
-name: "Lincoln v17 Developer v2 (Corrected)"
+name: "Lincoln v17 Developer"
 description: "Technical agent for Lincoln v17 development with CORRECTED AI Dungeon execution model. Based on Master Plan v2.0 specifications."
 author: "elenandar"
-version: "17.0.0-v2"
+version: "17.0.0"
 model: claude-sonnet-4.5
 scopes:
   - pull_request
