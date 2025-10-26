@@ -367,15 +367,27 @@ try {
     cmdResult.text === ' ',
     'text="' + cmdResult.text + '"');
   
-  // Test that commands set stop flag to prevent further AI generation
-  passed += test('Commands set stop:true flag', cmdResult.stop === true,
+  // Test that commands do NOT set stop:true in Input (new behavior)
+  passed += test('Commands do NOT set stop:true in Input', 
+    cmdResult.stop === undefined || cmdResult.stop === false,
     'stop=' + cmdResult.stop);
   
-  // Test stop flag across different command types
+  // Test that commands set _commandExecuted flag for Context hook
+  passed += test('Commands set _commandExecuted flag', 
+    state.lincoln._commandExecuted === true,
+    '_commandExecuted=' + state.lincoln._commandExecuted);
+  
+  // Test command flag across different command types
   LC.Drafts.clear();
+  state.lincoln._commandExecuted = false; // Reset
   const helpResult = executeModifier(inputCode, '/help');
-  passed += test('/help sets stop:true', helpResult.stop === true,
+  passed += test('/help does NOT set stop:true in Input', 
+    helpResult.stop === undefined || helpResult.stop === false,
     'stop=' + helpResult.stop);
+  
+  passed += test('/help sets _commandExecuted flag',
+    state.lincoln._commandExecuted === true,
+    '_commandExecuted=' + state.lincoln._commandExecuted);
   
   const helpDrafts = LC.Drafts.getAll();
   passed += test('/help adds to Drafts', 
@@ -383,14 +395,77 @@ try {
     LC.Tools.truncate(helpDrafts[0] || '', 40));
   
   LC.Drafts.clear();
+  state.lincoln._commandExecuted = false; // Reset
   const debugResult = executeModifier(inputCode, '/debug');
-  passed += test('/debug sets stop:true', debugResult.stop === true,
+  passed += test('/debug does NOT set stop:true in Input', 
+    debugResult.stop === undefined || debugResult.stop === false,
     'stop=' + debugResult.stop);
+  
+  passed += test('/debug sets _commandExecuted flag',
+    state.lincoln._commandExecuted === true,
+    '_commandExecuted=' + state.lincoln._commandExecuted);
   
   const debugDrafts = LC.Drafts.getAll();
   passed += test('/debug adds to Drafts',
     debugDrafts.length > 0 && debugDrafts[0].indexOf('LINCOLN DEBUG') !== -1,
     LC.Tools.truncate(debugDrafts[0] || '', 40));
+  
+  // ===== Test 14.5: Context.txt Integration - Command Flag Handling =====
+  section('Test 14.5: Context.txt - Command Flag Handling');
+  
+  const contextPath = path.join(__dirname, 'Context.txt');
+  const contextCode = fs.readFileSync(contextPath, 'utf8');
+  
+  // Test that Context returns stop:true when flag is set
+  state.lincoln._commandExecuted = true;
+  const contextWithFlag = executeModifier(contextCode, 'Some context');
+  passed += test('Context sets stop:true when _commandExecuted flag is set',
+    contextWithFlag.stop === true,
+    'stop=' + contextWithFlag.stop);
+  
+  passed += test('Context clears _commandExecuted flag after processing',
+    state.lincoln._commandExecuted === false,
+    '_commandExecuted=' + state.lincoln._commandExecuted);
+  
+  passed += test('Context returns empty text when stopping',
+    contextWithFlag.text === '',
+    'text="' + contextWithFlag.text + '"');
+  
+  // Test that Context passes through normally when flag is not set
+  state.lincoln._commandExecuted = false;
+  const contextNormal = executeModifier(contextCode, 'Normal context');
+  passed += test('Context does NOT set stop when flag is false',
+    contextNormal.stop === undefined || contextNormal.stop === false,
+    'stop=' + contextNormal.stop);
+  
+  passed += test('Context passes through text normally',
+    contextNormal.text === 'Normal context',
+    'text="' + contextNormal.text + '"');
+  
+  // Test full command flow: Input -> Context
+  section('Test 14.6: Full Command Flow (Input → Context)');
+  
+  LC.Drafts.clear();
+  state.lincoln._commandExecuted = false;
+  
+  // Step 1: Input processes command
+  const flowInputResult = executeModifier(inputCode, '/ping');
+  passed += test('Flow Step 1: Input processes command',
+    state.lincoln._commandExecuted === true && LC.Drafts.getAll().length > 0,
+    'flag=' + state.lincoln._commandExecuted + ', drafts=' + LC.Drafts.getAll().length);
+  
+  // Step 2: Context detects flag and halts AI
+  const flowContextResult = executeModifier(contextCode, 'AI would generate this');
+  passed += test('Flow Step 2: Context halts AI generation',
+    flowContextResult.stop === true && flowContextResult.text === '',
+    'stop=' + flowContextResult.stop + ', text="' + flowContextResult.text + '"');
+  
+  passed += test('Flow Step 2: Context clears flag',
+    state.lincoln._commandExecuted === false,
+    '_commandExecuted=' + state.lincoln._commandExecuted);
+  
+  // Step 3: Output flushes Drafts (existing test below covers this)
+
   
   // ===== Test 15: Output.txt Integration =====
   section('Test 15: Output.txt - Phase 1 Integration');
