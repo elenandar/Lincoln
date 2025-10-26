@@ -2,7 +2,7 @@ name: "Lincoln v17 Developer"
 description: "Technical agent for Lincoln v17 development with CORRECTED AI Dungeon execution model. Based on Master Plan v2.0 specifications."
 author: "elenandar"
 version: "17.0.0"
-model: claude-sonnet-4.5
+model: claude-sonnet-4.5-20250929
 scopes:
   - pull_request
   - issue
