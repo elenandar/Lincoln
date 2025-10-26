@@ -12,14 +12,20 @@
 
 ## Available Commands
 
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `/ping` | Health check | `/ping` |
-| `/help` | List all commands | `/help` or `/help [command]` |
-| `/debug` | System information | `/debug` |
-| `/turn` | Turn management | `/turn` or `/turn set <number>` |
-| `/action` | Current action type | `/action` |
-| `/test-phase1` | Run infrastructure tests (8 tests) | `/test-phase1` |
+| Command | Description | Usage | Notes |
+|---------|-------------|-------|-------|
+| `/ping` | Health check | `/ping` | Works in all modes (Do/Say/Story) |
+| `/help` | List all commands | `/help` or `/help [command]` | Shows command details |
+| `/debug` | System information | `/debug` | Display state and version |
+| `/turn` | Turn management | `/turn` or `/turn set <number>` | Get/set turn counter |
+| `/action` | Current action type | `/action` | Shows do/say/story mode |
+| `/test-phase1` | Run infrastructure tests (8 tests) | `/test-phase1` | In-game testing |
+
+**Command System Notes:**
+- Commands use LC.Drafts queue for output (prevents AI Dungeon display issues)
+- All commands work in Do, Say, and Story modes without freezing
+- Commands stop AI generation to prevent unwanted prose
+- Output is automatically prepended to AI response by Output.txt
 
 ## Infrastructure Components
 
@@ -106,8 +112,9 @@ state.lincoln = {
 
 Run comprehensive tests locally (not available in AI Dungeon):
 ```bash
-node Scripts/test-phase1.js    # 99 Phase 1 tests
-node Scripts/test-phase0.js    # 20 Phase 0 tests
+node Scripts/test-phase1.js                  # 106 infrastructure tests
+node Scripts/test-commands-integration.js    # 35 command integration tests
+node Scripts/test-phase0.js                  # 20 Phase 0 tests
 ```
 
 In-game testing:
@@ -154,5 +161,5 @@ See full documentation:
 
 - **Current**: 17.0.0-phase1
 - **Status**: Complete ✅
-- **Tests**: 99/99 passing (100%)
+- **Tests**: 141/141 passing (100%) - includes command integration tests
 - **Date**: October 26, 2025

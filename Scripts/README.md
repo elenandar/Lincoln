@@ -7,7 +7,7 @@ This directory contains the AI Dungeon scripts for Project Lincoln v17.
 **Status:** ✅ Complete  
 **Version:** 17.0.0-phase1  
 **Date:** October 26, 2025  
-**Tests:** 99/99 passing (100%)
+**Tests:** 141/141 passing (100%) - includes command integration tests
 
 ### Scripts Overview
 
@@ -35,12 +35,19 @@ Phase 1 establishes the complete infrastructure foundation for Lincoln v17 with 
 - ✅ **CommandsRegistry (#24)** - Enhanced ES5-compatible command system with metadata
 
 #### Commands Available
-- ✅ `/ping` - Health check verification
+- ✅ `/ping` - Health check verification (works in all modes: Do/Say/Story)
 - ✅ `/help [command]` - List all commands or get detailed help
 - ✅ `/debug` - Display system and state information
 - ✅ `/turn [set <n>]` - Display or set current turn number
 - ✅ `/action` - Display current action type and flags
 - ✅ `/test-phase1` - Run infrastructure tests (8 tests)
+
+**Command System Features:**
+- ✅ Commands use LC.Drafts queue for output (Issue #266 fix)
+- ✅ Commands return `{ text: " ", stop: true }` to prevent AI generation
+- ✅ Output.txt automatically prepends queued command results
+- ✅ Commands work without freezing in all action modes (Do/Say/Story)
+- ✅ No AI prose generated after command execution
 
 #### Quality Features
 - ✅ ES5 compliance strictly enforced (no Map/Set/async)
@@ -76,21 +83,21 @@ Phase 1 establishes the complete infrastructure foundation for Lincoln v17 with 
 
 ### Testing
 
-Run the comprehensive Phase 1 verification test suite:
+Run the comprehensive Phase 1 verification test suites:
 
 ```bash
-node Scripts/test-phase1.js
+node Scripts/test-phase1.js                  # Infrastructure tests
+node Scripts/test-commands-integration.js    # Command integration tests
 ```
 
 **Test Results:**
-- ✅ 99/99 tests passing (100% success rate)
-- ✅ All infrastructure components verified
-- ✅ ES5 compliance verified
-- ✅ State versioning verified
-- ✅ Error handling verified
-- ✅ Integration between components verified
+- ✅ 106/106 infrastructure tests passing (100% success rate)
+- ✅ 35/35 command integration tests passing (100% success rate)
+- ✅ **Total: 141/141 tests passing**
 
 **Test Coverage:**
+
+**Infrastructure Tests (test-phase1.js):**
 - Library.txt infrastructure (8 tests)
 - LC.Tools (9 tests)
 - LC.Utils (13 tests)
@@ -99,10 +106,19 @@ node Scripts/test-phase1.js
 - currentAction (7 tests)
 - LC.Flags (7 tests)
 - Commands Registry (4 tests)
-- Command execution (14 tests)
-- Script integration (8 tests)
+- Command execution with Drafts queue (17 tests)
+- Script integration (11 tests)
 - State versioning (3 tests)
 - ES5 compliance (5 tests)
+
+**Command Integration Tests (test-commands-integration.js):**
+- /ping in all modes (11 tests)
+- /help in all modes (3 tests)
+- /debug in all modes (3 tests)
+- Normal input handling (3 tests)
+- Multiple commands in sequence (3 tests)
+- Edge cases (3 tests)
+- Issue #266 acceptance criteria (4 tests)
 
 ### State Structure
 
@@ -157,7 +173,8 @@ See `/v17.0/PROJECT_LINCOLN_v17_MASTER_PLAN_v2.md` for the complete roadmap.
 ### Documentation
 
 - **PHASE1_COMPLETION.md** - Complete Phase 1 implementation checklist
-- **test-phase1.js** - Comprehensive test suite with 99 tests
+- **test-phase1.js** - Infrastructure test suite (106 tests)
+- **test-commands-integration.js** - Command integration test suite (35 tests)
 - **PHASE0_COMPLETION.md** - Phase 0 foundation record
 - **test-phase0.js** - Phase 0 test suite
 
@@ -169,7 +186,9 @@ See `/v17.0/PROJECT_LINCOLN_v17_MASTER_PLAN_v2.md` for the complete roadmap.
   - currentAction tracker with auto-detection
   - LC.Flags compatibility facade
   - Enhanced CommandsRegistry with 6 commands
-  - 99 comprehensive tests (100% passing)
+  - Drafts queue integration for commands (Issue #266 fix)
+  - Commands work in all modes (Do/Say/Story) without freezing
+  - 141 comprehensive tests (100% passing)
   
 - **17.0.0-phase0** (Oct 26, 2025) - Null System Foundation
   - Basic LC object structure
