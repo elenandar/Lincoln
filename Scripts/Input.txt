@@ -1,13 +1,13 @@
 /*
-Module: Input — Lincoln v17.0.0-phase0
+Module: Input — Lincoln v17.0.0-phase1
 Contract:
-- Phase 0: Null System Foundation
-- Minimal modifier pattern
-- Handles command parsing and /ping execution
-- No actual input processing yet
+- Phase 1: Infrastructure Layer Implementation
+- Handles command parsing and execution
+- Detects and tracks action types (do/say/story)
+- Increments turn counter on each input
 */
 
-// === INPUT MODIFIER v17.0.0-phase0 ===
+// === INPUT MODIFIER v17.0.0-phase1 ===
 const __SCRIPT_SLOT__ = "Input";
 
 const modifier = function(text) {
@@ -22,6 +22,11 @@ const modifier = function(text) {
   
   // Initialize for this slot
   var L = LC.lcInit(__SCRIPT_SLOT__);
+  
+  // Increment turn counter at start of each input
+  if (LC.Turns) {
+    LC.Turns.increment();
+  }
   
   // Command detection (slash commands)
   if (userText.charAt(0) === "/") {
@@ -43,7 +48,12 @@ const modifier = function(text) {
     }
   }
   
-  // Pass through for Phase 0 (no processing)
+  // Detect action type from user input
+  if (LC.currentAction && userText) {
+    LC.currentAction.detect(userText);
+  }
+  
+  // Pass through user input
   return { text: raw };
 };
 
