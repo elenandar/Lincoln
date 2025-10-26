@@ -66,26 +66,33 @@
 
 Этот план v2.0 основан на **comprehensive architectural review**, который выявил:
 - ✅ Фундаментальная архитектура правильна
-- ⚠️ Найдены критические ошибки (ES5 violations, missing dependencies)
+- ⚠️ Найдены критические ошибки (ES5 violations, missing dependencies, **фундаментальные ошибки о работе AI Dungeon**)
 - ✅ Добавлены детальные спецификации для всех движков
 - ✅ Добавлена полная стратегия тестирования
 - ✅ Добавлен risk assessment с митигацией
+- ✅ **Исправлена модель выполнения скриптов AI Dungeon**
 
 **Ключевые улучшения:**
 
-1. **Исправлены ES5 violations** (CommandsRegistry теперь plain object)
-2. **Дополнен граф зависимостей** (6 новых связей):
+1. **Исправлена модель выполнения Library.txt** - Правильно документировано, что Library выполняется ПЕРЕД КАЖДЫМ хуком (3x за ход), а не "при загрузке игры"
+2. **Удалены ссылки на state.shared** - Документировано, что state.shared НЕ СУЩЕСТВУЕТ
+3. **Добавлена обязательная структура modifier** - Все скрипты должны заканчиваться на `const modifier = (text) => {...}; modifier(text);`
+4. **Исправлены ES5 violations** (CommandsRegistry теперь plain object, не Map)
+5. **Добавлена Section 2.7: Критические ограничения AI Dungeon** - Глобальные переменные, storyCards, обработка пустых строк, паттерны безопасного кода
+6. **Добавлена Section 2.8: Интеграция с игровым процессом** - Полные примеры обработки событий через все 4 уровня сознания
+7. **Дополнен граф зависимостей** (6 новых связей):
    - MoodEngine (#3) → QualiaEngine (FUNCTIONAL)
    - CrucibleEngine (#16) → InformationEngine (FUNCTIONAL)
    - GossipEngine (#9) → RelationsEngine (FUNCTIONAL)
    - MemoryEngine (#12) → CrucibleEngine (FUNCTIONAL)
    - HierarchyEngine (#10) → RelationsEngine (FUNCTIONAL)
    - GoalsEngine (#2) → InformationEngine (FUNCTIONAL)
-3. **Детализирована Phase 4** (Qualia → Information) с полными спецификациями
-4. **Добавлены timeline** с оценками (5-7 недель, 172-268 hours)
-5. **Добавлены 25 рисков** с конкретными стратегиями митигации
-6. **Добавлена comprehensive testing strategy** с unit/integration/system tests
-7. **Перемещен KnowledgeEngine (#6)** в Phase 5 (зависит от QualiaEngine.focus_aperture)
+8. **Детализирована Phase 4** (Qualia → Information) с полными спецификациями
+9. **Обновлён timeline** - Реалистичная оценка 10-14 недель (вместо 5-7) для всех 40 систем
+10. **Добавлены 25 рисков** с конкретными стратегиями митигации
+11. **Добавлена comprehensive testing strategy** с unit/integration/system tests
+12. **Перемещен KnowledgeEngine (#6)** в Phase 5 (зависит от QualiaEngine.focus_aperture)
+13. **Добавлена обработка ошибок везде** - try-catch с fallback стратегиями во всех примерах
 
 ---
 
@@ -5111,16 +5118,19 @@ This Master Plan v2.0 represents the culmination of:
 
 **КОНЕЦ ДОКУМЕНТА**
 
-**Версия:** 2.0  
-**Последнее обновление:** 25 October 2025  
+**Версия:** 2.0 (Исправленная)  
+**Последнее обновление:** 26 October 2025  
 **Основан на:**
 - PROJECT_LINCOLN_v17_MASTER_PLAN.md v1.0
 - ARCHITECTURAL_REVIEW_v17.md v1.0
 - Comprehensive analysis and integration
+- **Critical corrections to AI Dungeon execution model**
 
 **Prepared by:** Lincoln Architect  
+**Reviewed and Corrected:** 26 October 2025  
 **Approved for:** Implementation Phase
 
 ---
 
-*This document is the single source of truth for Lincoln v17 development.*
+*This document is the single source of truth for Lincoln v17 development.*  
+*All fundamental errors about AI Dungeon scripting have been corrected.*
