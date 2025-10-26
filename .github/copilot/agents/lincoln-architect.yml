@@ -143,8 +143,11 @@ purpose: |
 
   ### 1. Global Object Pattern
 
+  **CRITICAL CORRECTION:** `state.shared` does NOT exist in AI Dungeon!
+
   ```javascript
-  state.shared.LC = {
+  // In Library.txt - creates LC in local scope
+  const LC = {
     Tools: { /* utilities */ },
     CommandsRegistry: {},  // Plain object, NOT Map
     
@@ -156,6 +159,9 @@ purpose: |
     
     lcInit: function() { /* initialization */ }
   };
+  
+  // LC is accessible in Input/Context/Output scripts through closure
+  // Do NOT try to save it to state - it's recreated before each hook
   ```
 
   ### 2. Central State Structure
@@ -399,7 +405,7 @@ purpose: |
   ### State Management
   - [ ] Increments `state.lincoln.stateVersion++` after ANY write
   - [ ] Properly initializes `state.lincoln` structure
-  - [ ] Uses `state.shared.LC` for global object
+  - [ ] Creates `LC` object in Library.txt scope (NOT in state.shared - that doesn't exist!)
   - [ ] Implements caching with version checks
 
   ### Testing
