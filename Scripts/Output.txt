@@ -1,13 +1,13 @@
 /*
-Module: Output — Lincoln v17.0.0-phase0
+Module: Output — Lincoln v17.0.0-phase1
 Contract:
-- Phase 0: Null System Foundation
-- Minimal modifier pattern
-- No actual output processing yet
-- Pass through for all text
+- Phase 1: Infrastructure Layer Implementation
+- Handles message queue (LC.Drafts) integration
+- Prepends queued messages to AI output
+- Clears action type after output
 */
 
-// === OUTPUT MODIFIER v17.0.0-phase0 ===
+// === OUTPUT MODIFIER v17.0.0-phase1 ===
 const __SCRIPT_SLOT__ = "Output";
 
 const modifier = function(text) {
@@ -22,10 +22,21 @@ const modifier = function(text) {
   // Initialize for this slot
   var L = LC.lcInit(__SCRIPT_SLOT__);
   
-  // Pass through for Phase 0 (no processing)
-  // In future phases, this will handle output formatting,
-  // system messages, and AI response processing
-  return { text: raw };
+  // Process drafts queue if available
+  var output = raw;
+  if (LC.Drafts) {
+    var queuedMessages = LC.Drafts.flush("\n");
+    if (queuedMessages) {
+      output = queuedMessages + (raw ? "\n" + raw : "");
+    }
+  }
+  
+  // Clear action type after output is processed
+  if (LC.currentAction) {
+    LC.currentAction.clear();
+  }
+  
+  return { text: output };
 };
 
 // Execute modifier and return result
