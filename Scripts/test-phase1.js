@@ -354,23 +354,43 @@ try {
     inputResult.stop === undefined || inputResult.stop === false,
     'stop=' + inputResult.stop);
   
-  // Test command execution through Input
+  // Test command execution through Input (now uses Drafts queue)
+  LC.Drafts.clear();
   const cmdResult = executeModifier(inputCode, '/ping');
-  passed += test('Input executes commands', cmdResult.text && cmdResult.text.indexOf('Pong') !== -1,
-    LC.Tools.truncate(cmdResult.text, 40));
+  const draftsAfterCmd = LC.Drafts.getAll();
+  passed += test('Input executes commands and adds to Drafts', 
+    draftsAfterCmd.length > 0 && draftsAfterCmd[0].indexOf('Pong') !== -1,
+    LC.Tools.truncate(draftsAfterCmd[0] || '', 40));
+  
+  // Test that commands return space (not empty string)
+  passed += test('Commands return space in text field', 
+    cmdResult.text === ' ',
+    'text="' + cmdResult.text + '"');
   
   // Test that commands set stop flag to prevent further AI generation
   passed += test('Commands set stop:true flag', cmdResult.stop === true,
     'stop=' + cmdResult.stop);
   
   // Test stop flag across different command types
+  LC.Drafts.clear();
   const helpResult = executeModifier(inputCode, '/help');
   passed += test('/help sets stop:true', helpResult.stop === true,
     'stop=' + helpResult.stop);
   
+  const helpDrafts = LC.Drafts.getAll();
+  passed += test('/help adds to Drafts', 
+    helpDrafts.length > 0 && helpDrafts[0].indexOf('AVAILABLE COMMANDS') !== -1,
+    LC.Tools.truncate(helpDrafts[0] || '', 40));
+  
+  LC.Drafts.clear();
   const debugResult = executeModifier(inputCode, '/debug');
   passed += test('/debug sets stop:true', debugResult.stop === true,
     'stop=' + debugResult.stop);
+  
+  const debugDrafts = LC.Drafts.getAll();
+  passed += test('/debug adds to Drafts',
+    debugDrafts.length > 0 && debugDrafts[0].indexOf('LINCOLN DEBUG') !== -1,
+    LC.Tools.truncate(debugDrafts[0] || '', 40));
   
   // ===== Test 15: Output.txt Integration =====
   section('Test 15: Output.txt - Phase 1 Integration');
