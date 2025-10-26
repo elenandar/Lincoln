@@ -19,7 +19,7 @@
 | `/debug` | System information | `/debug` |
 | `/turn` | Turn management | `/turn` or `/turn set <number>` |
 | `/action` | Current action type | `/action` |
-| `/test-phase1` | Run tests | `/test-phase1` |
+| `/test-phase1` | Run infrastructure tests (8 tests) | `/test-phase1` |
 
 ## Infrastructure Components
 
@@ -102,12 +102,17 @@ state.lincoln = {
 - **Message Queue**: Auto-flushes in output
 - **Action Clearing**: Auto-clears after output
 
-## Testing
+## Local Testing (Development)
 
-Run tests locally:
+Run comprehensive tests locally (not available in AI Dungeon):
 ```bash
 node Scripts/test-phase1.js    # 99 Phase 1 tests
 node Scripts/test-phase0.js    # 20 Phase 0 tests
+```
+
+In-game testing:
+```
+/test-phase1    # Runs 8 infrastructure verification tests
 ```
 
 ## Troubleshooting
