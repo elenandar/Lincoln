@@ -6248,7 +6248,6 @@ L.debugMode = toBool(L.debugMode, false);
           /расслабиться|расслабился|расслабляться/iu,
           /прилечь|прилёг/iu,
           /посидеть|сидеть/iu,
-          /отдыхать/iu,
           // Rest and relaxation verbs (English)
           /rest(?:s|ed|ing)?/iu,
           /sleep(?:s|ing)?|slept/iu,
