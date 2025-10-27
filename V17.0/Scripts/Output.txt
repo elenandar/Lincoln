@@ -25,6 +25,10 @@ const modifier = (text) => {
         // Increment turn counter on normal AI output
         LC.Turns.increment();
         
+        // Calculate and apply time progression (Phase 2: TimeEngine)
+        var minutesPassed = LC.TimeEngine.calculateHybridTime(text);
+        LC.TimeEngine.addMinutes(minutesPassed);
+        
         // Extract characters mentioned in output
         var characters = LC.CharacterTracker.extract(text);
         for (var i = 0; i < characters.length; i++) {

@@ -17,7 +17,19 @@ if (!state.lincoln || state.lincoln.version !== "17.0.0") {
         rumors: [],
         lore: [],
         myths: [],
-        time: {},
+        time: {
+            day: 1,
+            hour: 8,
+            minute: 0,
+            timeString: "Day 1, Morning (8:00 AM)",
+            timeOfDay: "Morning",
+            currentScene: "general",
+            sceneStartTurn: 0,
+            sceneTurnCount: 0,
+            sceneMinutes: 0,
+            mode: "hybrid",
+            totalMinutesPassed: 0
+        },
         environment: {},
         evergreen: [],
         secrets: []
@@ -357,6 +369,383 @@ const LC = (function() {
                     return "";
                 }
             }
+        },
+        
+        // TimeEngine - Hybrid time progression system (Phase 2)
+        TimeEngine: {
+            // Scene configuration: rates in minutes/turn, maxDuration in minutes
+            _sceneConfig: {
+                combat: { rate: 2, maxDuration: 30, keywords: ['attack', 'fight', 'battle', 'strike', 'dodge', 'swing', 'slash', 'parry', 'block', 'evade'] },
+                dialogue: { rate: 5, maxDuration: 60, keywords: ['say', 'ask', 'tell', 'speak', 'talk', 'reply', 'respond', 'whisper', 'shout', 'exclaim'] },
+                travel: { rate: 15, maxDuration: 180, keywords: ['walk', 'run', 'ride', 'journey', 'travel', 'move', 'head', 'depart', 'arrive', 'reach'] },
+                training: { rate: 10, maxDuration: 120, keywords: ['train', 'practice', 'exercise', 'spar', 'drill', 'rehearse', 'study', 'learn'] },
+                exploration: { rate: 8, maxDuration: 240, keywords: ['search', 'explore', 'examine', 'investigate', 'inspect', 'look', 'scan', 'survey'] },
+                rest: { rate: 60, maxDuration: 480, keywords: ['sleep', 'rest', 'camp', 'relax', 'nap', 'doze', 'lie', 'sit'] },
+                general: { rate: 10, maxDuration: null, keywords: [] }
+            },
+            
+            // Time anchors: absolute time setters
+            _timeAnchors: [
+                // Next day transitions
+                { pattern: /\bnext\s+morning\b/i, action: 'nextDay', hour: 8, minute: 0 },
+                { pattern: /\bnext\s+day\b/i, action: 'nextDay', hour: 8, minute: 0 },
+                { pattern: /\bovernight\b/i, action: 'addHours', hours: 8 },
+                
+                // Absolute times
+                { pattern: /\bat\s+dawn\b/i, action: 'setTime', hour: 6, minute: 0 },
+                { pattern: /\bin\s+the\s+early\s+morning\b/i, action: 'setTime', hour: 7, minute: 0 },
+                { pattern: /\bin\s+the\s+morning\b/i, action: 'setTime', hour: 8, minute: 0 },
+                { pattern: /\bat\s+noon\b/i, action: 'setTime', hour: 12, minute: 0 },
+                { pattern: /\bmidday\b/i, action: 'setTime', hour: 12, minute: 0 },
+                { pattern: /\bin\s+the\s+afternoon\b/i, action: 'setTime', hour: 14, minute: 0 },
+                { pattern: /\bin\s+the\s+evening\b/i, action: 'setTime', hour: 18, minute: 0 },
+                { pattern: /\bat\s+dusk\b/i, action: 'setTime', hour: 19, minute: 0 },
+                { pattern: /\bat\s+night\b/i, action: 'setTime', hour: 21, minute: 0 },
+                { pattern: /\bat\s+midnight\b/i, action: 'setTime', hour: 0, minute: 0 },
+                
+                // Event-based times
+                { pattern: /\bbreakfast\s+time\b/i, action: 'setTime', hour: 8, minute: 0 },
+                { pattern: /\bbreakfast\b/i, action: 'setTime', hour: 8, minute: 0 },
+                { pattern: /\blunch\s+time\b/i, action: 'setTime', hour: 12, minute: 30 },
+                { pattern: /\blunch\b/i, action: 'setTime', hour: 12, minute: 30 },
+                { pattern: /\bdinner\s+time\b/i, action: 'setTime', hour: 19, minute: 0 },
+                { pattern: /\bdinner\b/i, action: 'setTime', hour: 19, minute: 0 },
+                { pattern: /\bafter\s+lessons?\b/i, action: 'setTime', hour: 16, minute: 0 },
+                { pattern: /\bafter\s+class(?:es)?\b/i, action: 'setTime', hour: 16, minute: 0 },
+                { pattern: /\bafter\s+school\b/i, action: 'setTime', hour: 16, minute: 0 },
+                { pattern: /\bevening\s+training\b/i, action: 'setTime', hour: 19, minute: 0 },
+                
+                // Relative time (hours)
+                { pattern: /(\d+)\s*hours?\s+later/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /(\d+)\s*hours?\s+passed/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /after\s+(\d+)\s*hours?/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /an?\s+hour\s+later/i, action: 'addHours', hours: 1 },
+                { pattern: /an?\s+hour\s+passed/i, action: 'addHours', hours: 1 },
+                
+                // Relative time (minutes)
+                { pattern: /(\d+)\s*minutes?\s+later/i, action: 'addMinutes', captureGroup: 1 },
+                { pattern: /(\d+)\s*minutes?\s+passed/i, action: 'addMinutes', captureGroup: 1 },
+                { pattern: /after\s+(\d+)\s*minutes?/i, action: 'addMinutes', captureGroup: 1 }
+            ],
+            
+            // Scene priority (higher priority = checked first)
+            _scenePriority: ['combat', 'rest', 'training', 'dialogue', 'travel', 'exploration', 'general'],
+            
+            // Detect time anchor in text
+            detectAnchor: function(text) {
+                try {
+                    for (var i = 0; i < this._timeAnchors.length; i++) {
+                        var anchor = this._timeAnchors[i];
+                        var match = text.match(anchor.pattern);
+                        if (match) {
+                            return {
+                                anchor: anchor,
+                                match: match
+                            };
+                        }
+                    }
+                    return null;
+                } catch (e) {
+                    console.log("TimeEngine.detectAnchor error:", e);
+                    return null;
+                }
+            },
+            
+            // Detect scene type from text
+            detectScene: function(text) {
+                try {
+                    var lowerText = text.toLowerCase();
+                    var sceneScores = {};
+                    
+                    // Score each scene type based on keyword matches
+                    for (var i = 0; i < this._scenePriority.length; i++) {
+                        var sceneType = this._scenePriority[i];
+                        var config = this._sceneConfig[sceneType];
+                        var score = 0;
+                        
+                        for (var j = 0; j < config.keywords.length; j++) {
+                            var keyword = config.keywords[j];
+                            // Use word boundaries to avoid substring matches
+                            var regex = new RegExp('\\b' + keyword + '\\b', 'gi');
+                            var matches = lowerText.match(regex);
+                            if (matches) {
+                                score += matches.length;
+                            }
+                        }
+                        
+                        if (score > 0) {
+                            sceneScores[sceneType] = score;
+                        }
+                    }
+                    
+                    // Return scene with highest score (respecting priority order)
+                    var bestScene = 'general';
+                    var bestScore = 0;
+                    for (var k = 0; k < this._scenePriority.length; k++) {
+                        var scene = this._scenePriority[k];
+                        if (sceneScores[scene] && sceneScores[scene] > bestScore) {
+                            bestScene = scene;
+                            bestScore = sceneScores[scene];
+                        }
+                    }
+                    
+                    return bestScene;
+                } catch (e) {
+                    console.log("TimeEngine.detectScene error:", e);
+                    return 'general';
+                }
+            },
+            
+            // Calculate time progression based on hybrid logic
+            calculateHybridTime: function(text) {
+                try {
+                    var timeState = state.lincoln.time;
+                    
+                    // Skip if in manual mode
+                    if (timeState.mode === 'manual') {
+                        return 0;
+                    }
+                    
+                    // Priority 1: Check for time anchors
+                    var anchorResult = this.detectAnchor(text);
+                    if (anchorResult) {
+                        return this._applyAnchor(anchorResult.anchor, anchorResult.match);
+                    }
+                    
+                    // Priority 2: Scene-based progression
+                    if (timeState.mode === 'hybrid' || timeState.mode === 'auto') {
+                        var detectedScene = this.detectScene(text);
+                        return this._applySceneTime(detectedScene);
+                    }
+                    
+                    // Fallback: fixed rate (15 min/turn)
+                    return 15;
+                } catch (e) {
+                    console.log("TimeEngine.calculateHybridTime error:", e);
+                    return 10; // Fallback rate
+                }
+            },
+            
+            // Apply time anchor
+            _applyAnchor: function(anchor, match) {
+                try {
+                    var timeState = state.lincoln.time;
+                    
+                    if (anchor.action === 'setTime') {
+                        // Set absolute time
+                        var oldMinutes = timeState.hour * 60 + timeState.minute;
+                        var newMinutes = anchor.hour * 60 + anchor.minute;
+                        
+                        // If new time is earlier in day, assume next day
+                        if (newMinutes < oldMinutes) {
+                            timeState.day++;
+                        }
+                        
+                        timeState.hour = anchor.hour;
+                        timeState.minute = anchor.minute;
+                        this.updateTimeString();
+                        
+                        // Reset scene tracking
+                        timeState.sceneMinutes = 0;
+                        timeState.sceneTurnCount = 0;
+                        timeState.sceneStartTurn = state.lincoln.turn;
+                        
+                        return 0; // Anchor sets time, doesn't add
+                    } else if (anchor.action === 'nextDay') {
+                        timeState.day++;
+                        timeState.hour = anchor.hour;
+                        timeState.minute = anchor.minute;
+                        this.updateTimeString();
+                        
+                        timeState.sceneMinutes = 0;
+                        timeState.sceneTurnCount = 0;
+                        timeState.sceneStartTurn = state.lincoln.turn;
+                        
+                        return 0;
+                    } else if (anchor.action === 'addHours') {
+                        var hours = anchor.hours;
+                        if (anchor.captureGroup && match[anchor.captureGroup]) {
+                            hours = parseInt(match[anchor.captureGroup], 10);
+                        }
+                        return hours * 60;
+                    } else if (anchor.action === 'addMinutes') {
+                        var minutes = 0;
+                        if (anchor.captureGroup && match[anchor.captureGroup]) {
+                            minutes = parseInt(match[anchor.captureGroup], 10);
+                        }
+                        return minutes;
+                    }
+                    
+                    return 0;
+                } catch (e) {
+                    console.log("TimeEngine._applyAnchor error:", e);
+                    return 0;
+                }
+            },
+            
+            // Apply scene-based time progression
+            _applySceneTime: function(sceneType) {
+                try {
+                    var timeState = state.lincoln.time;
+                    var config = this._sceneConfig[sceneType];
+                    
+                    // Check if scene changed
+                    if (timeState.currentScene !== sceneType) {
+                        timeState.currentScene = sceneType;
+                        timeState.sceneStartTurn = state.lincoln.turn;
+                        timeState.sceneTurnCount = 0;
+                        timeState.sceneMinutes = 0;
+                    }
+                    
+                    // Increment scene turn count
+                    timeState.sceneTurnCount++;
+                    
+                    // Base rate
+                    var rate = config.rate;
+                    
+                    // Apply scene drift (slowdown over time)
+                    if (timeState.sceneTurnCount >= 20) {
+                        rate = Math.floor(rate * 0.5);
+                    } else if (timeState.sceneTurnCount >= 10) {
+                        rate = Math.floor(rate * 0.7);
+                    }
+                    
+                    // Check max duration cap
+                    if (config.maxDuration !== null) {
+                        var potentialMinutes = timeState.sceneMinutes + rate;
+                        if (potentialMinutes > config.maxDuration) {
+                            // Near max duration: reduce rate by 70%
+                            rate = Math.floor(rate * 0.3);
+                            
+                            // Hard cap: don't exceed max duration
+                            if (timeState.sceneMinutes >= config.maxDuration) {
+                                rate = 0;
+                            }
+                        }
+                    }
+                    
+                    // Update scene minutes
+                    timeState.sceneMinutes += rate;
+                    
+                    return rate;
+                } catch (e) {
+                    console.log("TimeEngine._applySceneTime error:", e);
+                    return 10;
+                }
+            },
+            
+            // Add minutes to current time
+            addMinutes: function(minutes) {
+                try {
+                    var timeState = state.lincoln.time;
+                    
+                    timeState.minute += minutes;
+                    timeState.totalMinutesPassed += minutes;
+                    
+                    // Handle minute overflow
+                    while (timeState.minute >= 60) {
+                        timeState.minute -= 60;
+                        timeState.hour++;
+                    }
+                    
+                    // Handle hour overflow
+                    while (timeState.hour >= 24) {
+                        timeState.hour -= 24;
+                        timeState.day++;
+                    }
+                    
+                    this.updateTimeString();
+                    state.lincoln.stateVersion++;
+                } catch (e) {
+                    console.log("TimeEngine.addMinutes error:", e);
+                }
+            },
+            
+            // Update time string and time of day
+            updateTimeString: function() {
+                try {
+                    var timeState = state.lincoln.time;
+                    var hour = timeState.hour;
+                    var minute = timeState.minute;
+                    
+                    // Determine time of day
+                    var timeOfDay;
+                    if (hour >= 5 && hour < 12) {
+                        timeOfDay = "Morning";
+                    } else if (hour >= 12 && hour < 17) {
+                        timeOfDay = "Afternoon";
+                    } else if (hour >= 17 && hour < 21) {
+                        timeOfDay = "Evening";
+                    } else {
+                        timeOfDay = "Night";
+                    }
+                    
+                    // Format time (12-hour format)
+                    var displayHour = hour % 12;
+                    if (displayHour === 0) displayHour = 12;
+                    var ampm = hour < 12 ? "AM" : "PM";
+                    var minuteStr = minute < 10 ? "0" + minute : String(minute);
+                    
+                    timeState.timeOfDay = timeOfDay;
+                    timeState.timeString = "Day " + timeState.day + ", " + timeOfDay + 
+                                          " (" + displayHour + ":" + minuteStr + " " + ampm + ")";
+                } catch (e) {
+                    console.log("TimeEngine.updateTimeString error:", e);
+                }
+            },
+            
+            // Set absolute time
+            setTime: function(day, hour, minute) {
+                try {
+                    var timeState = state.lincoln.time;
+                    timeState.day = LC.Utils.toNum(day, 1);
+                    timeState.hour = LC.Utils.clamp(LC.Utils.toNum(hour, 0), 0, 23);
+                    timeState.minute = LC.Utils.clamp(LC.Utils.toNum(minute, 0), 0, 59);
+                    
+                    this.updateTimeString();
+                    state.lincoln.stateVersion++;
+                } catch (e) {
+                    console.log("TimeEngine.setTime error:", e);
+                }
+            },
+            
+            // Get current time info
+            getTimeInfo: function() {
+                try {
+                    var timeState = state.lincoln.time;
+                    return "=== Current Time ===\n" +
+                           timeState.timeString + "\n" +
+                           "Scene: " + timeState.currentScene + " (" + timeState.sceneTurnCount + " turns)\n" +
+                           "Mode: " + timeState.mode + "\n" +
+                           "Total time passed: " + Math.floor(timeState.totalMinutesPassed / 60) + "h " + 
+                           (timeState.totalMinutesPassed % 60) + "m";
+                } catch (e) {
+                    console.log("TimeEngine.getTimeInfo error:", e);
+                    return "Time info unavailable";
+                }
+            },
+            
+            // Get detailed stats
+            getStats: function() {
+                try {
+                    var timeState = state.lincoln.time;
+                    var config = this._sceneConfig[timeState.currentScene];
+                    
+                    return "=== Time Statistics ===\n" +
+                           "Current: " + timeState.timeString + "\n" +
+                           "Day: " + timeState.day + " | Hour: " + timeState.hour + " | Minute: " + timeState.minute + "\n" +
+                           "Time of Day: " + timeState.timeOfDay + "\n" +
+                           "Scene: " + timeState.currentScene + "\n" +
+                           "Scene turns: " + timeState.sceneTurnCount + "\n" +
+                           "Scene minutes: " + timeState.sceneMinutes + "/" + (config.maxDuration || "unlimited") + "\n" +
+                           "Mode: " + timeState.mode + "\n" +
+                           "Total elapsed: " + Math.floor(timeState.totalMinutesPassed / 60) + "h " + 
+                           (timeState.totalMinutesPassed % 60) + "m";
+                } catch (e) {
+                    console.log("TimeEngine.getStats error:", e);
+                    return "Stats unavailable";
+                }
+            }
         }
     };
 })();
@@ -413,6 +802,85 @@ LC.CommandsRegistry.register('help', function(args) {
     } catch (e) {
         console.log("Help command error:", e);
         return "\u27E6SYS\u27E7 Help error: " + e.message;
+    }
+});
+
+// Time commands
+LC.CommandsRegistry.register('time', function(args) {
+    try {
+        if (!args || args.length === 0) {
+            // Display current time
+            return LC.TimeEngine.getTimeInfo();
+        }
+        
+        var subcommand = args[0].toLowerCase();
+        
+        if (subcommand === 'skip') {
+            // /time skip <number> <unit>
+            if (args.length < 3) {
+                return "Usage: /time skip <number> <hours|minutes>";
+            }
+            var amount = parseInt(args[1], 10);
+            var unit = args[2].toLowerCase();
+            
+            if (isNaN(amount) || amount < 0) {
+                return "Invalid amount: " + args[1];
+            }
+            
+            if (unit === 'hours' || unit === 'hour' || unit === 'h') {
+                LC.TimeEngine.addMinutes(amount * 60);
+                return "Skipped " + amount + " hour(s) forward.\n" + LC.TimeEngine.getTimeInfo();
+            } else if (unit === 'minutes' || unit === 'minute' || unit === 'min' || unit === 'm') {
+                LC.TimeEngine.addMinutes(amount);
+                return "Skipped " + amount + " minute(s) forward.\n" + LC.TimeEngine.getTimeInfo();
+            } else {
+                return "Invalid unit. Use 'hours' or 'minutes'.";
+            }
+        } else if (subcommand === 'set') {
+            // /time set <day> <hour> <minute>
+            if (args.length < 4) {
+                return "Usage: /time set <day> <hour> <minute>";
+            }
+            var day = parseInt(args[1], 10);
+            var hour = parseInt(args[2], 10);
+            var minute = parseInt(args[3], 10);
+            
+            if (isNaN(day) || day < 1) {
+                return "Invalid day: " + args[1];
+            }
+            if (isNaN(hour) || hour < 0 || hour > 23) {
+                return "Invalid hour (0-23): " + args[2];
+            }
+            if (isNaN(minute) || minute < 0 || minute > 59) {
+                return "Invalid minute (0-59): " + args[3];
+            }
+            
+            LC.TimeEngine.setTime(day, hour, minute);
+            return "Time set to Day " + day + ", " + hour + ":" + (minute < 10 ? "0" : "") + minute + ".\n" + 
+                   LC.TimeEngine.getTimeInfo();
+        } else if (subcommand === 'mode') {
+            // /time mode <hybrid|manual|auto>
+            if (args.length < 2) {
+                return "Usage: /time mode <hybrid|manual|auto>\nCurrent mode: " + state.lincoln.time.mode;
+            }
+            var newMode = args[1].toLowerCase();
+            
+            if (newMode !== 'hybrid' && newMode !== 'manual' && newMode !== 'auto') {
+                return "Invalid mode. Use 'hybrid', 'manual', or 'auto'.";
+            }
+            
+            state.lincoln.time.mode = newMode;
+            state.lincoln.stateVersion++;
+            return "Time mode set to: " + newMode;
+        } else if (subcommand === 'stats') {
+            // /time stats
+            return LC.TimeEngine.getStats();
+        } else {
+            return "Unknown subcommand. Try: /time, /time skip, /time set, /time mode, /time stats";
+        }
+    } catch (e) {
+        console.log("Time command error:", e);
+        return "\u27E6SYS\u27E7 Time command error: " + e.message;
     }
 });
 
