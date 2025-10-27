@@ -5797,7 +5797,11 @@ L.debugMode = toBool(L.debugMode, false);
           /позавтракал(?:а|и)?/iu,
           /во\s+время\s+завтрака/iu,
           /съел(?:а|и)?\s+завтрак/iu,
-          /утренний\s+прием\s+пищи/iu
+          /утренний\s+прием\s+пищи/iu,
+          // English patterns
+          /(?:at|for|during)\s+breakfast/iu,
+          /had\s+breakfast/iu,
+          /ate\s+breakfast/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'Утро' }
       },
@@ -5848,7 +5852,18 @@ L.debugMode = toBool(L.debugMode, false);
           /(?:два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)\s+спустя/iu,
           // Verbal numerals for minutes
           /(?:через|спустя)\s+(?:две|три|четыре|пять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:ы)?/iu,
-          /(?:две|три|четыре|пять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:ы)?\s+спустя/iu
+          /(?:две|три|четыре|пять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:ы)?\s+спустя/iu,
+          // English patterns
+          /(?:after|in)\s+(?:an?\s+)?hour/iu,
+          /(?:a\s+)?couple\s+(?:of\s+)?hours?\s+later/iu,
+          /(?:some|a\s+bit)\s+later/iu,
+          /(?:after|in)\s+(?:a\s+few|some)\s+time/iu,
+          /(?:in|after)\s+(?:\d+|one|two|three|four|five)\s+hours?/iu,
+          /(?:\d+|one|two|three|four|five)\s+hours?\s+later/iu,
+          /(?:in|after)\s+(?:\d+|five|ten|fifteen|twenty|thirty)\s+minutes?/iu,
+          /(?:\d+|five|ten|fifteen|twenty|thirty)\s+minutes?\s+later/iu,
+          /a\s+moment\s+later/iu,
+          /shortly\s+after/iu
         ],
         action: { type: 'ADVANCE_TIME_OF_DAY', steps: 1 }
       },
@@ -5861,7 +5876,12 @@ L.debugMode = toBool(L.debugMode, false);
           /назавтра/iu,
           /на\s+следующее\s+утро/iu,
           /через\s+ночь/iu,
-          /ночью\s+отдыхают/iu
+          /ночью\s+отдыхают/iu,
+          // English patterns
+          /(?:the\s+)?next\s+(?:day|morning|evening)/iu,
+          /(?:the\s+)?following\s+(?:day|morning|evening)/iu,
+          /overnight/iu,
+          /(?:the\s+)?day\s+after/iu
         ],
         action: { type: 'ADVANCE_DAY', days: 1 }
       },
@@ -5891,7 +5911,11 @@ L.debugMode = toBool(L.debugMode, false);
         patterns: [
           /в\s+полдень/iu,
           /к\s+полудню/iu,
-          /около\s+полудня/iu
+          /около\s+полудня/iu,
+          // English patterns
+          /at\s+noon/iu,
+          /around\s+noon/iu,
+          /by\s+noon/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'День' }
       },
@@ -5900,7 +5924,11 @@ L.debugMode = toBool(L.debugMode, false);
         patterns: [
           /на\s+закате/iu,
           /к\s+закату/iu,
-          /во\s+время\s+заката/iu
+          /во\s+время\s+заката/iu,
+          // English patterns
+          /at\s+sunset/iu,
+          /during\s+sunset/iu,
+          /by\s+sunset/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'Вечер' }
       },
@@ -5909,7 +5937,10 @@ L.debugMode = toBool(L.debugMode, false);
         patterns: [
           /(?:^|[^а-яё])дн(?:ём|ем)(?:[^а-яё]|$)/iu,
           /в\s+полдень/iu,
-          /днем/iu
+          /днем/iu,
+          // English patterns
+          /(?:in\s+the\s+)?afternoon/iu,
+          /during\s+the\s+day/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'День' }
       },
@@ -6010,7 +6041,7 @@ L.debugMode = toBool(L.debugMode, false);
       // Scene keywords organized by scene type
       sceneKeywords: {
         combat: [
-          // Combat verbs and actions
+          // Combat verbs and actions (Russian)
           /атаковать|атаку(?:ет|ют|ю)/iu,
           /сражаться|сражается|сражаются|сражение/iu,
           /ударить|удар(?:ил|ила|или|яет|яют|)/iu,
@@ -6031,11 +6062,28 @@ L.debugMode = toBool(L.debugMode, false);
           /выстрел|выстрелы/iu,
           /бить|бьёт|били|побить/iu,
           /нападать|нападение|напал/iu,
-          /оружие|вооружен/iu
+          /оружие|вооружен/iu,
+          // Combat verbs and actions (English)
+          /attack(?:s|ed|ing)?/iu,
+          /fight(?:s|ing)?|fought/iu,
+          /strike(?:s)?|struck/iu,
+          /punch(?:es|ed|ing)?/iu,
+          /kick(?:s|ed|ing)?/iu,
+          /parr(?:y|ies|ied|ying)/iu,
+          /block(?:s|ed|ing)?/iu,
+          /deflect(?:s|ed|ing)?/iu,
+          /defend(?:s|ed|ing)?|defense/iu,
+          /dodge(?:s|d|ing)?/iu,
+          /shoot(?:s|ing)?|shot/iu,
+          /wound(?:s|ed|ing)?/iu,
+          /battle|skirmish/iu,
+          /counterattack/iu,
+          /fist|sword|shield|arrow/iu,
+          /weapon/iu
         ],
         
         dialogue: [
-          // Dialogue verbs and actions
+          // Dialogue verbs and actions (Russian)
           /сказать|сказал(?:а|и)?/iu,
           /спросить|спросил(?:а|и)?/iu,
           /ответить|ответил(?:а|и)?/iu,
@@ -6057,11 +6105,26 @@ L.debugMode = toBool(L.debugMode, false);
           /крикнуть|крикнул(?:а|и)?/iu,
           /воскликнуть|воскликнул(?:а|и)?/iu,
           /произнести|произнёс|произнесла/iu,
-          /беседа|беседовать/iu
+          /беседа|беседовать/iu,
+          // Dialogue verbs and actions (English)
+          /sa(?:y|ys|id|ying)/iu,
+          /ask(?:s|ed|ing)?/iu,
+          /answer(?:s|ed|ing)?|replied/iu,
+          /speak(?:s|ing)?|spoke/iu,
+          /talk(?:s|ed|ing)?/iu,
+          /discuss(?:es|ed|ing)?/iu,
+          /tell(?:s|ing)?|told/iu,
+          /explain(?:s|ed|ing)?/iu,
+          /mention(?:s|ed|ing)?/iu,
+          /whisper(?:s|ed|ing)?/iu,
+          /shout(?:s|ed|ing)?/iu,
+          /exclaim(?:s|ed|ing)?/iu,
+          /conversation|dialogue/iu,
+          /chat(?:s|ted|ting)?/iu
         ],
         
         travel: [
-          // Travel and movement verbs
+          // Travel and movement verbs (Russian)
           /идти|иду|идёт|идут|пошёл|пошла|пошли/iu,
           /пойти|пойду|пойдёт/iu,
           /ехать|еду|едет|едут|поехал(?:и|а)?/iu,
@@ -6082,11 +6145,23 @@ L.debugMode = toBool(L.debugMode, false);
           /перебраться|перебрался/iu,
           /перейти|перешёл|перешла/iu,
           /маршрут/iu,
-          /направиться|направился/iu
+          /направиться|направился/iu,
+          // Travel and movement verbs (English)
+          /go(?:es|ing)?|went|gone/iu,
+          /walk(?:s|ed|ing)?/iu,
+          /travel(?:s|ed|ing)?|journey/iu,
+          /move(?:s|d|ing)?|movement/iu,
+          /head(?:s|ed|ing)?\s+to/iu,
+          /approach(?:es|ed|ing)?/iu,
+          /arrive(?:s|d|ing)?/iu,
+          /reach(?:es|ed|ing)?/iu,
+          /proceed(?:s|ed|ing)?/iu,
+          /cross(?:es|ed|ing)?/iu,
+          /depart(?:s|ed|ing)?/iu
         ],
         
         training: [
-          // Training and practice verbs
+          // Training and practice verbs (Russian)
           /тренироваться|тренируется|тренировался/iu,
           /заниматься|занимается|занимался/iu,
           /упражняться|упражняется/iu,
@@ -6106,11 +6181,22 @@ L.debugMode = toBool(L.debugMode, false);
           /шлифовать|шлифует/iu,
           /разрабатывать|разрабатывает/iu,
           /совершенствовать|совершенствует/iu,
-          /практика|практиковать/iu
+          /практика|практиковать/iu,
+          // Training and practice verbs (English)
+          /train(?:s|ed|ing)?|training/iu,
+          /practice(?:s|d|ing)?/iu,
+          /exercise(?:s|d|ing)?/iu,
+          /drill(?:s|ed|ing)?/iu,
+          /rehearse(?:s|d|ing)?/iu,
+          /learn(?:s|ed|ing)?/iu,
+          /study(?:ing)?|studied/iu,
+          /develop(?:s|ed|ing)?\s+skill/iu,
+          /improve(?:s|d|ing)?/iu,
+          /perfect(?:s|ed|ing)?/iu
         ],
         
         exploration: [
-          // Exploration and investigation verbs
+          // Exploration and investigation verbs (Russian)
           /исследовать|исследует|исследовал/iu,
           /осмотреть|осматривает|осмотрел/iu,
           /осматриваться|осматривается/iu,
@@ -6129,11 +6215,22 @@ L.debugMode = toBool(L.debugMode, false);
           /обходить|обходит|обошёл/iu,
           /обследовать|обследует|обследовал/iu,
           /изучать|изучает|изучил/iu,
-          /наблюдать|наблюдает/iu
+          /наблюдать|наблюдает/iu,
+          // Exploration and investigation verbs (English)
+          /explore(?:s|d|ing)?|exploration/iu,
+          /examine(?:s|d|ing)?/iu,
+          /investigate(?:s|d|ing)?/iu,
+          /discover(?:s|ed|ing)?/iu,
+          /find(?:s|ing)?|found/iu,
+          /search(?:es|ed|ing)?/iu,
+          /look\s+for/iu,
+          /observe(?:s|d|ing)?/iu,
+          /scout(?:s|ed|ing)?/iu,
+          /survey(?:s|ed|ing)?/iu
         ],
         
         rest: [
-          // Rest and relaxation verbs
+          // Rest and relaxation verbs (Russian)
           /отдыхать|отдыхает|отдыхал/iu,
           /спать|спит|спал(?:а|и)?/iu,
           /полежать|лежит|лежал/iu,
@@ -6151,11 +6248,18 @@ L.debugMode = toBool(L.debugMode, false);
           /расслабиться|расслабился|расслабляться/iu,
           /прилечь|прилёг/iu,
           /посидеть|сидеть/iu,
-          /отдыхать/iu
+          /отдыхать/iu,
+          // Rest and relaxation verbs (English)
+          /rest(?:s|ed|ing)?/iu,
+          /sleep(?:s|ing)?|slept/iu,
+          /nap(?:s|ped|ping)?/iu,
+          /relax(?:es|ed|ing)?/iu,
+          /lie\s+down|lay\s+down/iu,
+          /sit(?:s|ting)?|sat/iu
         ],
         
         general: [
-          // General action verbs
+          // General action verbs (Russian)
           /сделать|делать|делает|сделал/iu,
           /действовать|действует/iu,
           /заняться|занялся/iu,
@@ -6166,7 +6270,13 @@ L.debugMode = toBool(L.debugMode, false);
           /провести\s+время/iu,
           /событие/iu,
           /описание/iu,
-          /действие/iu
+          /действие/iu,
+          // General action verbs (English)
+          /do(?:es|ing)?|did/iu,
+          /act(?:s|ed|ing)?|action/iu,
+          /make(?:s|ing)?|made/iu,
+          /perform(?:s|ed|ing)?/iu,
+          /event/iu
         ]
       },
       
