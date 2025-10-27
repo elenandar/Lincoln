@@ -9,9 +9,9 @@ The TimeEngine is a context-aware time progression system for Lincoln v17 that a
 
 ## Features
 
-### 1. Time Anchor Detection (50+ Patterns)
+### 1. Time Anchor Detection (70+ Patterns)
 
-Time anchors are explicit markers that set or skip time:
+Time anchors are explicit markers that set or skip time. Supports both English and Russian languages.
 
 #### Absolute Time Anchors
 - `at dawn` → 6:00 AM
@@ -38,6 +38,26 @@ Time anchors are explicit markers that set or skip time:
 - `X hours later` / `X hours passed` → Adds X hours
 - `an hour later` → Adds 1 hour
 - `X minutes later` → Adds X minutes
+
+#### Russian Relative Time Anchors
+Russian time expressions are fully supported with both numeric and word-based patterns:
+
+**Hours:**
+- `спустя 2 часа` / `через 2 часа` → Adds 2 hours
+- `2 часа спустя` → Adds 2 hours
+- `час спустя` → Adds 1 hour
+- Word numerals: `два`, `три`, `четыре`, `пять`, `шесть`, `семь`, `восемь`, `девять`, `десять`, `одиннадцать`, `двенадцать`
+- Colloquial: `пару часов` → 2 hours, `несколько часов` → 2 hours
+
+**Minutes:**
+- `спустя 5 минут` / `через 5 минут` → Adds 5 minutes
+- `15 минут спустя` → Adds 15 minutes
+- Word numerals: `один`, `два`, `три`, `четыре`, `пять`, `десять`, `пятнадцать`, `двадцать`, `тридцать`
+
+**Examples:**
+- `"Спустя 2 часа пришла Хлоя."` → +2 hours
+- `"Через три минуты раздался звонок."` → +3 minutes
+- `"Через пару часов все собрались."` → +2 hours
 
 ### 2. Scene Type Detection
 
@@ -200,6 +220,18 @@ Take actions → time doesn't change
 → Resume automatic progression
 ```
 
+### Example 5: Russian Time Anchors
+```
+Input: "Спустя 2 часа пришла Хлоя."
+→ Time jumps forward by 2 hours (anchor detected)
+
+Input: "Через три минуты раздался звонок."
+→ Time advances by 3 minutes (word numeral parsed)
+
+Input: "Через пару часов все собрались."
+→ Time advances by 2 hours (colloquial expression)
+```
+
 ## ES5 Compliance
 
 The TimeEngine is fully ES5-compliant:
@@ -217,6 +249,14 @@ The TimeEngine is fully ES5-compliant:
 See `TIMEENGINE_TESTING_GUIDE.md` for comprehensive test cases.
 
 ## Technical Notes
+
+### Russian Numeral Parser
+The TimeEngine includes a dedicated parser for Russian word numerals:
+- Converts Russian words to numbers: `два` → 2, `три` → 3, `пять` → 5, etc.
+- Supports hours: 1-12 (один through двенадцать)
+- Supports minutes: common values (пять, десять, пятнадцать, двадцать, тридцать)
+- Handles colloquial expressions: `пару` → 2, `несколько` → 3
+- Fallback to numeric parsing for digit strings
 
 ### Anchor Detection
 - Anchors are checked in order (first match wins)
