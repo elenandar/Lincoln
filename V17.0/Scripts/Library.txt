@@ -227,7 +227,7 @@ const LC = (function() {
                 { pattern: /\bafter (the )?fight\b/i, minutes: 20, type: 'skip' },
                 
                 // Morning anchors (after "next morning" patterns)
-                { pattern: /\b(early )?morning\b/i, hour: 8, minute: 0, type: 'set' },
+                { pattern: /\b(in the |this )?(early )?morning\b(?! lesson| class| training| practice)/i, hour: 8, minute: 0, type: 'set' },
                 { pattern: /\bat dawn\b/i, hour: 6, minute: 0, type: 'set' },
                 { pattern: /\bat sunrise\b/i, hour: 6, minute: 30, type: 'set' },
                 { pattern: /\bbreakfast time\b/i, hour: 7, minute: 30, type: 'set' },
@@ -379,7 +379,10 @@ const LC = (function() {
                     var keywordCount = 0;
                     
                     for (var j = 0; j < sceneType.keywords.length; j++) {
-                        if (lowerText.indexOf(sceneType.keywords[j]) !== -1) {
+                        // Use word boundary matching to avoid false positives (e.g., "forest" matching "rest")
+                        var keyword = sceneType.keywords[j];
+                        var pattern = new RegExp('\\b' + keyword + '\\b', 'i');
+                        if (pattern.test(lowerText)) {
                             keywordCount++;
                         }
                     }
