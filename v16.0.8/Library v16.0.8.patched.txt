@@ -3460,6 +3460,13 @@ L.debugMode = toBool(L.debugMode, false);
           LC.lcWarn?.("UnifiedAnalyzer LoreEngine error: " + (e && e.message));
         }
         
+        // SceneDetectionEngine: Detect scene type based on keywords
+        try {
+          LC.SceneDetectionEngine?.analyze?.(text);
+        } catch (e) {
+          LC.lcWarn?.("UnifiedAnalyzer SceneDetectionEngine error: " + (e && e.message));
+        }
+        
         // CALIBRATION: Clean up temporary event info
         if (L.__currentEventInfo) {
           delete L.__currentEventInfo;
@@ -5775,11 +5782,28 @@ L.debugMode = toBool(L.debugMode, false);
         patterns: [
           /после\s+уроков/iu,
           /после\s+школы/iu,
+          /после\s+занятий/iu,
           /занятия\s+закончились/iu,
           /уроки\s+(?:окончились|закончились|завершились)/iu,
-          /(?:конец|окончание)\s+(?:уроков|занятий|школьного\s+дня)/iu
+          /(?:конец|окончание)\s+(?:уроков|занятий|школьного\s+дня)/iu,
+          /вечерняя\s+тренировка/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'День' }
+      },
+      
+      BREAKFAST: {
+        patterns: [
+          /(?:за|на)\s+завтрак(?:ом|е)/iu,
+          /позавтракал(?:а|и)?/iu,
+          /во\s+время\s+завтрака/iu,
+          /съел(?:а|и)?\s+завтрак/iu,
+          /утренний\s+прием\s+пищи/iu,
+          // English patterns
+          /(?:at|for|during)\s+breakfast/iu,
+          /had\s+breakfast/iu,
+          /ate\s+breakfast/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Утро' }
       },
       
       LUNCH: {
@@ -5811,7 +5835,35 @@ L.debugMode = toBool(L.debugMode, false);
           /(?:через|спустя)\s+(?:несколько|пару)\s+час(?:ов|а)/iu,
           /к\s+вечеру/iu,
           /к\s+концу\s+дня/iu,
-          /(?:через|спустя)\s+некоторое\s+время/iu
+          /(?:через|спустя)\s+некоторое\s+время/iu,
+          /через\s+пару\s+час(?:ов|а)/iu,
+          /немного\s+погодя/iu,
+          /немного\s+позже/iu,
+          /через\s+мгновение/iu,
+          /через\s+какое-то\s+время/iu,
+          // Numeric patterns with hours
+          /(?:через|спустя)\s+(?:1|2|3|4|5|один|два|две|три|четыре|пять)\s+час(?:а|ов)?/iu,
+          /(?:1|2|3|4|5|один|два|две|три|четыре|пять)\s+час(?:а|ов)?\s+спустя/iu,
+          // Numeric patterns with minutes  
+          /(?:через|спустя)\s+(?:\d+|один|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?/iu,
+          /(?:\d+|один|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?\s+спустя/iu,
+          // Verbal numerals for hours (2-12)
+          /(?:через|спустя)\s+(?:два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)/iu,
+          /(?:два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)\s+спустя/iu,
+          // Verbal numerals for minutes
+          /(?:через|спустя)\s+(?:две|три|четыре|пять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:ы)?/iu,
+          /(?:две|три|четыре|пять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:ы)?\s+спустя/iu,
+          // English patterns
+          /(?:after|in)\s+(?:an?\s+)?hour/iu,
+          /(?:a\s+)?couple\s+(?:of\s+)?hours?\s+later/iu,
+          /(?:some|a\s+bit)\s+later/iu,
+          /(?:after|in)\s+(?:a\s+few|some)\s+time/iu,
+          /(?:in|after)\s+(?:\d+|one|two|three|four|five)\s+hours?/iu,
+          /(?:\d+|one|two|three|four|five)\s+hours?\s+later/iu,
+          /(?:in|after)\s+(?:\d+|five|ten|fifteen|twenty|thirty)\s+minutes?/iu,
+          /(?:\d+|five|ten|fifteen|twenty|thirty)\s+minutes?\s+later/iu,
+          /a\s+moment\s+later/iu,
+          /shortly\s+after/iu
         ],
         action: { type: 'ADVANCE_TIME_OF_DAY', steps: 1 }
       },
@@ -5822,7 +5874,14 @@ L.debugMode = toBool(L.debugMode, false);
           /следующим\s+(?:утром|днем|вечером)/iu,
           /на\s+другой\s+день/iu,
           /назавтра/iu,
-          /на\s+следующее\s+утро/iu
+          /на\s+следующее\s+утро/iu,
+          /через\s+ночь/iu,
+          /ночью\s+отдыхают/iu,
+          // English patterns
+          /(?:the\s+)?next\s+(?:day|morning|evening)/iu,
+          /(?:the\s+)?following\s+(?:day|morning|evening)/iu,
+          /overnight/iu,
+          /(?:the\s+)?day\s+after/iu
         ],
         action: { type: 'ADVANCE_DAY', days: 1 }
       },
@@ -5846,6 +5905,44 @@ L.debugMode = toBool(L.debugMode, false);
           /на\s+рассвете/iu
         ],
         action: { type: 'SET_TIME_OF_DAY', value: 'Утро' }
+      },
+      
+      NOON: {
+        patterns: [
+          /в\s+полдень/iu,
+          /к\s+полудню/iu,
+          /около\s+полудня/iu,
+          // English patterns
+          /at\s+noon/iu,
+          /around\s+noon/iu,
+          /by\s+noon/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'День' }
+      },
+      
+      SUNSET: {
+        patterns: [
+          /на\s+закате/iu,
+          /к\s+закату/iu,
+          /во\s+время\s+заката/iu,
+          // English patterns
+          /at\s+sunset/iu,
+          /during\s+sunset/iu,
+          /by\s+sunset/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'Вечер' }
+      },
+      
+      DAY: {
+        patterns: [
+          /(?:^|[^а-яё])дн(?:ём|ем)(?:[^а-яё]|$)/iu,
+          /в\s+полдень/iu,
+          /днем/iu,
+          // English patterns
+          /(?:in\s+the\s+)?afternoon/iu,
+          /during\s+the\s+day/iu
+        ],
+        action: { type: 'SET_TIME_OF_DAY', value: 'День' }
       },
       
       EVENING: {
@@ -5934,6 +6031,313 @@ L.debugMode = toBool(L.debugMode, false);
           /пару\s+дней\s+(?:спустя|позже)/iu
         ],
         action: { type: 'ADVANCE_DAY', days: 2 }
+      }
+    },
+
+    // =======================================================================
+    // == SceneDetectionEngine: Определение типа сцены по ключевым словам
+    // =======================================================================
+    SceneDetectionEngine: {
+      // Scene keywords organized by scene type
+      sceneKeywords: {
+        combat: [
+          // Combat verbs and actions (Russian)
+          /атаковать|атаку(?:ет|ют|ю)/iu,
+          /сражаться|сражается|сражаются|сражение/iu,
+          /ударить|удар(?:ил|ила|или|яет|яют|)/iu,
+          /драться|дерётся|дерутся|драка/iu,
+          /парировать|парирует|парировал/iu,
+          /блокировать|блокирует|блокировал/iu,
+          /отразить|отражает|отразил/iu,
+          /защищаться|защищается|защита/iu,
+          /уклониться|уклоняется|уклонился/iu,
+          /выстрелить|выстрел(?:ил|ила|или|)/iu,
+          /ранить|ранил|ранила|ранили/iu,
+          /боёвка|битва|стычка/iu,
+          /контратака|контратаковать/iu,
+          /кулак(?:ом|и|а|ов)?/iu,
+          /меч(?:ом|и|а|ей)?/iu,
+          /щит(?:ом|а|ы)?/iu,
+          /стрела|стрелы|стрелой/iu,
+          /выстрел|выстрелы/iu,
+          /бить|бьёт|били|побить/iu,
+          /нападать|нападение|напал/iu,
+          /оружие|вооружен/iu,
+          // Combat verbs and actions (English)
+          /attack(?:s|ed|ing)?/iu,
+          /fight(?:s|ing)?|fought/iu,
+          /strike(?:s)?|struck/iu,
+          /punch(?:es|ed|ing)?/iu,
+          /kick(?:s|ed|ing)?/iu,
+          /parr(?:y|ies|ied|ying)/iu,
+          /block(?:s|ed|ing)?/iu,
+          /deflect(?:s|ed|ing)?/iu,
+          /defend(?:s|ed|ing)?|defense/iu,
+          /dodge(?:s|d|ing)?/iu,
+          /shoot(?:s|ing)?|shot/iu,
+          /wound(?:s|ed|ing)?/iu,
+          /battle|skirmish/iu,
+          /counterattack/iu,
+          /fist|sword|shield|arrow/iu,
+          /weapon/iu
+        ],
+        
+        dialogue: [
+          // Dialogue verbs and actions (Russian)
+          /сказать|сказал(?:а|и)?/iu,
+          /спросить|спросил(?:а|и)?/iu,
+          /ответить|ответил(?:а|и)?/iu,
+          /заговорить|заговорил(?:а|и)?/iu,
+          /поговорить|поговорил(?:а|и)?/iu,
+          /обсудить|обсудил(?:а|и)?/iu,
+          /рассказать|рассказал(?:а|и)?/iu,
+          /объяснять|объяснил(?:а|и)?|объясняет/iu,
+          /переброситься\s+словами/iu,
+          /высказаться|высказался|высказалась/iu,
+          /обсуждать|обсуждает|обсуждали/iu,
+          /переброситься\s+репликами/iu,
+          /разговаривать|разговаривает|разговор/iu,
+          /переговариваться|переговаривались/iu,
+          /намекнуть|намекнул(?:а|и)?/iu,
+          /обратиться|обратился|обратилась/iu,
+          /молчать|молчал(?:а|и)?|молчание/iu,
+          /шепнуть|шепнул(?:а|и)?|шёпот/iu,
+          /крикнуть|крикнул(?:а|и)?/iu,
+          /воскликнуть|воскликнул(?:а|и)?/iu,
+          /произнести|произнёс|произнесла/iu,
+          /беседа|беседовать/iu,
+          // Dialogue verbs and actions (English)
+          /sa(?:y|ys|id|ying)/iu,
+          /ask(?:s|ed|ing)?/iu,
+          /answer(?:s|ed|ing)?|replied/iu,
+          /speak(?:s|ing)?|spoke/iu,
+          /talk(?:s|ed|ing)?/iu,
+          /discuss(?:es|ed|ing)?/iu,
+          /tell(?:s|ing)?|told/iu,
+          /explain(?:s|ed|ing)?/iu,
+          /mention(?:s|ed|ing)?/iu,
+          /whisper(?:s|ed|ing)?/iu,
+          /shout(?:s|ed|ing)?/iu,
+          /exclaim(?:s|ed|ing)?/iu,
+          /conversation|dialogue/iu,
+          /chat(?:s|ted|ting)?/iu
+        ],
+        
+        travel: [
+          // Travel and movement verbs (Russian)
+          /идти|иду|идёт|идут|пошёл|пошла|пошли/iu,
+          /пойти|пойду|пойдёт/iu,
+          /ехать|еду|едет|едут|поехал(?:и|а)?/iu,
+          /отправиться|отправился|отправилась|отправились/iu,
+          /двигаться|двигается|движение/iu,
+          /путешествовать|путешествие/iu,
+          /брести|бредёт|брёл|брела/iu,
+          /шагать|шагает|шагал/iu,
+          /переходить|переходит|перешёл/iu,
+          /приближаться|приближается|приблизился/iu,
+          /отойти|отошёл|отошла/iu,
+          /перемещаться|перемещается|переместился/iu,
+          /добраться|добрался|добралась/iu,
+          /достичь|достиг|достигла/iu,
+          /двигаться\s+вперёд/iu,
+          /следовать|следует|следовал/iu,
+          /отправиться\s+в\s+путь/iu,
+          /перебраться|перебрался/iu,
+          /перейти|перешёл|перешла/iu,
+          /маршрут/iu,
+          /направиться|направился/iu,
+          // Travel and movement verbs (English)
+          /go(?:es|ing)?|went|gone/iu,
+          /walk(?:s|ed|ing)?/iu,
+          /travel(?:s|ed|ing)?|journey/iu,
+          /move(?:s|d|ing)?|movement/iu,
+          /head(?:s|ed|ing)?\s+to/iu,
+          /approach(?:es|ed|ing)?/iu,
+          /arrive(?:s|d|ing)?/iu,
+          /reach(?:es|ed|ing)?/iu,
+          /proceed(?:s|ed|ing)?/iu,
+          /cross(?:es|ed|ing)?/iu,
+          /depart(?:s|ed|ing)?/iu
+        ],
+        
+        training: [
+          // Training and practice verbs (Russian)
+          /тренироваться|тренируется|тренировался/iu,
+          /заниматься|занимается|занимался/iu,
+          /упражняться|упражняется/iu,
+          /отрабатывать|отрабатывает|отработал/iu,
+          /осваивать|осваивает|освоил/iu,
+          /оттачивать|оттачивает/iu,
+          /отрепетировать|репетировать/iu,
+          /отрабатывать\s+удары/iu,
+          /учиться|учится|учился/iu,
+          /осваивать\s+навык/iu,
+          /развивать|развивает|развивал/iu,
+          /тренировка|тренировки/iu,
+          /занятие|занятия/iu,
+          /упражнение|упражнения/iu,
+          /повторять|повторяет|повторял/iu,
+          /заниматься\s+спортом/iu,
+          /шлифовать|шлифует/iu,
+          /разрабатывать|разрабатывает/iu,
+          /совершенствовать|совершенствует/iu,
+          /практика|практиковать/iu,
+          // Training and practice verbs (English)
+          /train(?:s|ed|ing)?|training/iu,
+          /practice(?:s|d|ing)?/iu,
+          /exercise(?:s|d|ing)?/iu,
+          /drill(?:s|ed|ing)?/iu,
+          /rehearse(?:s|d|ing)?/iu,
+          /learn(?:s|ed|ing)?/iu,
+          /study(?:ing)?|studied/iu,
+          /develop(?:s|ed|ing)?\s+skill/iu,
+          /improve(?:s|d|ing)?/iu,
+          /perfect(?:s|ed|ing)?/iu
+        ],
+        
+        exploration: [
+          // Exploration and investigation verbs (Russian)
+          /исследовать|исследует|исследовал/iu,
+          /осмотреть|осматривает|осмотрел/iu,
+          /осматриваться|осматривается/iu,
+          /разузнать|разузнаёт|разузнал/iu,
+          /разведать|разведывать|разведка/iu,
+          /исследование/iu,
+          /обнаружить|обнаружил(?:а|и)?/iu,
+          /найти|нашёл|нашла|нашли/iu,
+          /осматривать|осматривал/iu,
+          /проверить|проверяет|проверил/iu,
+          /рассмотреть|рассматривает|рассмотрел/iu,
+          /расспрашивать|расспрашивает/iu,
+          /поискать|ищет|искать/iu,
+          /отыскать|отыскал/iu,
+          /разглядеть|разглядывает/iu,
+          /обходить|обходит|обошёл/iu,
+          /обследовать|обследует|обследовал/iu,
+          /изучать|изучает|изучил/iu,
+          /наблюдать|наблюдает/iu,
+          // Exploration and investigation verbs (English)
+          /explore(?:s|d|ing)?|exploration/iu,
+          /examine(?:s|d|ing)?/iu,
+          /investigate(?:s|d|ing)?/iu,
+          /discover(?:s|ed|ing)?/iu,
+          /find(?:s|ing)?|found/iu,
+          /search(?:es|ed|ing)?/iu,
+          /look\s+for/iu,
+          /observe(?:s|d|ing)?/iu,
+          /scout(?:s|ed|ing)?/iu,
+          /survey(?:s|ed|ing)?/iu
+        ],
+        
+        rest: [
+          // Rest and relaxation verbs (Russian)
+          /отдыхать|отдыхает|отдыхал/iu,
+          /спать|спит|спал(?:а|и)?/iu,
+          /полежать|лежит|лежал/iu,
+          /отдохнуть|отдохнул/iu,
+          /поспать|спал/iu,
+          /развалиться|развалился/iu,
+          /релаксировать|релаксирует/iu,
+          /вздремнуть|дремать|дремота/iu,
+          /уснуть|уснул(?:а|и)?/iu,
+          /отдых/iu,
+          /передохнуть|передохнул/iu,
+          /откинуться|откинулся/iu,
+          /сон|спать/iu,
+          /покой/iu,
+          /расслабиться|расслабился|расслабляться/iu,
+          /прилечь|прилёг/iu,
+          /посидеть|сидеть/iu,
+          // Rest and relaxation verbs (English)
+          /rest(?:s|ed|ing)?/iu,
+          /sleep(?:s|ing)?|slept/iu,
+          /nap(?:s|ped|ping)?/iu,
+          /relax(?:es|ed|ing)?/iu,
+          /lie\s+down|lay\s+down/iu,
+          /sit(?:s|ting)?|sat/iu
+        ],
+        
+        general: [
+          // General action verbs (Russian)
+          /сделать|делать|делает|сделал/iu,
+          /действовать|действует/iu,
+          /заняться|занялся/iu,
+          /выполнить|выполнил/iu,
+          /принять\s+решение/iu,
+          /совершить\s+поступок/iu,
+          /заняться\s+делом/iu,
+          /провести\s+время/iu,
+          /событие/iu,
+          /описание/iu,
+          /действие/iu,
+          // General action verbs (English)
+          /do(?:es|ing)?|did/iu,
+          /act(?:s|ed|ing)?|action/iu,
+          /make(?:s|ing)?|made/iu,
+          /perform(?:s|ed|ing)?/iu,
+          /event/iu
+        ]
+      },
+      
+      /**
+       * Detects the scene type based on keywords in the text
+       * @param {string} text - The text to analyze
+       * @returns {string} Scene type ('combat', 'dialogue', 'travel', 'training', 'exploration', 'rest', or 'general')
+       */
+      detectSceneType(text) {
+        if (!text) return 'general';
+        
+        const textLower = String(text).toLowerCase();
+        const scores = {
+          combat: 0,
+          dialogue: 0,
+          travel: 0,
+          training: 0,
+          exploration: 0,
+          rest: 0,
+          general: 0
+        };
+        
+        // Count keyword matches for each scene type
+        for (const sceneType in this.sceneKeywords) {
+          if (this.sceneKeywords.hasOwnProperty(sceneType)) {
+            const keywords = this.sceneKeywords[sceneType];
+            for (let i = 0; i < keywords.length; i++) {
+              const keyword = keywords[i];
+              if (keyword.test && keyword.test(textLower)) {
+                scores[sceneType]++;
+              }
+            }
+          }
+        }
+        
+        // Find the scene type with the highest score
+        let maxScore = 0;
+        let detectedType = 'general';
+        
+        for (const sceneType in scores) {
+          if (scores[sceneType] > maxScore) {
+            maxScore = scores[sceneType];
+            detectedType = sceneType;
+          }
+        }
+        
+        return detectedType;
+      },
+      
+      /**
+       * Analyzes text and updates scene type in state
+       * @param {string} text - The text to analyze
+       */
+      analyze(text) {
+        if (!text) return;
+        const L = LC.lcInit();
+        
+        const sceneType = this.detectSceneType(text);
+        if (!L.currentScene || L.currentScene !== sceneType) {
+          L.currentScene = sceneType;
+          L.stateVersion++;
+        }
       }
     },
 
