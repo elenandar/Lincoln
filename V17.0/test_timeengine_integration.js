@@ -132,6 +132,8 @@ function runIntegrationTests() {
     console.log('Start:', getTimeString());
     
     // Simulate extended combat (should cap at 30 minutes)
+    // Combat is 1 min/turn with max 30 min duration
+    // Run 35 turns: first 30 add 1 min each, last 5 add 0 (capped)
     for (var i = 0; i < 35; i++) {
         executeOutput('You strike and dodge, exchanging blows with your opponent.');
     }

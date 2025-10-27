@@ -227,7 +227,8 @@ const LC = (function() {
                 { pattern: /\bafter (the )?fight\b/i, minutes: 20, type: 'skip' },
                 
                 // Morning anchors (after "next morning" patterns)
-                { pattern: /\b(in the |this )?(early )?morning\b(?! lesson| class| training| practice)/i, hour: 8, minute: 0, type: 'set' },
+                // Excludes common false positives like "morning lesson", "morning training", etc.
+                { pattern: /\b(in the |this )?(early )?morning\b(?! lesson| class| training| practice| workout| meeting| routine| session| briefing| drill)/i, hour: 8, minute: 0, type: 'set' },
                 { pattern: /\bat dawn\b/i, hour: 6, minute: 0, type: 'set' },
                 { pattern: /\bat sunrise\b/i, hour: 6, minute: 30, type: 'set' },
                 { pattern: /\bbreakfast time\b/i, hour: 7, minute: 30, type: 'set' },
@@ -313,6 +314,31 @@ const LC = (function() {
                 }
             ],
             
+            // Compiled regex patterns for scene keywords (cached for performance)
+            _scenePatterns: null,
+            
+            // Pre-compile scene keyword patterns on first use
+            _ensureScenePatterns: function() {
+                if (this._scenePatterns) return;
+                
+                this._scenePatterns = [];
+                for (var i = 0; i < this._sceneTypes.length; i++) {
+                    var sceneType = this._sceneTypes[i];
+                    var patterns = [];
+                    for (var j = 0; j < sceneType.keywords.length; j++) {
+                        var keyword = sceneType.keywords[j];
+                        patterns.push(new RegExp('\\b' + keyword + '\\b', 'i'));
+                    }
+                    this._scenePatterns.push({
+                        patterns: patterns,
+                        scene: sceneType.scene,
+                        rate: sceneType.rate,
+                        maxDuration: sceneType.maxDuration,
+                        priority: sceneType.priority
+                    });
+                }
+            },
+            
             // Initialize time state if needed
             _ensureTimeState: function() {
                 if (!state.lincoln.time) {
@@ -370,29 +396,29 @@ const LC = (function() {
             detectScene: function(text) {
                 if (!text || typeof text !== 'string') return null;
                 
+                // Ensure patterns are compiled
+                this._ensureScenePatterns();
+                
                 var lowerText = text.toLowerCase();
                 var detectedScenes = [];
                 
-                // Find all matching scene types
-                for (var i = 0; i < this._sceneTypes.length; i++) {
-                    var sceneType = this._sceneTypes[i];
+                // Find all matching scene types using pre-compiled patterns
+                for (var i = 0; i < this._scenePatterns.length; i++) {
+                    var scenePattern = this._scenePatterns[i];
                     var keywordCount = 0;
                     
-                    for (var j = 0; j < sceneType.keywords.length; j++) {
-                        // Use word boundary matching to avoid false positives (e.g., "forest" matching "rest")
-                        var keyword = sceneType.keywords[j];
-                        var pattern = new RegExp('\\b' + keyword + '\\b', 'i');
-                        if (pattern.test(lowerText)) {
+                    for (var j = 0; j < scenePattern.patterns.length; j++) {
+                        if (scenePattern.patterns[j].test(lowerText)) {
                             keywordCount++;
                         }
                     }
                     
                     if (keywordCount > 0) {
                         detectedScenes.push({
-                            scene: sceneType.scene,
-                            rate: sceneType.rate,
-                            maxDuration: sceneType.maxDuration,
-                            priority: sceneType.priority,
+                            scene: scenePattern.scene,
+                            rate: scenePattern.rate,
+                            maxDuration: scenePattern.maxDuration,
+                            priority: scenePattern.priority,
                             keywordCount: keywordCount
                         });
                     }
