@@ -348,6 +348,13 @@ const LC = (function() {
         
         // TimeEngine - Hybrid Smart TimeEngine (Phase 2, #7)
         TimeEngine: {
+            // Scene drift protection thresholds
+            _SCENE_DRIFT_TURN_THRESHOLD_1: 10,
+            _SCENE_DRIFT_TURN_THRESHOLD_2: 20,
+            _SCENE_DRIFT_RATE_FACTOR_1: 0.7,
+            _SCENE_DRIFT_RATE_FACTOR_2: 0.5,
+            _SCENE_DRIFT_MAX_LOOP_ITERATIONS: 100,
+            
             // Time anchor patterns - explicit time markers in AI output
             _timeAnchors: [
                 // Morning markers (ordered by specificity)
@@ -581,10 +588,13 @@ const LC = (function() {
                         
                         this._advanceMinutes(skipMinutes);
                         
-                        // If toHour is specified, advance to that hour
+                        // If toHour is specified, advance to that hour with safety limit
                         if (typeof anchor.toHour === 'number') {
-                            while (t.hour !== anchor.toHour) {
+                            var loopCounter = 0;
+                            var targetHour = LC.Utils.clamp(anchor.toHour, 0, 23);
+                            while (t.hour !== targetHour && loopCounter < this._SCENE_DRIFT_MAX_LOOP_ITERATIONS) {
                                 this._advanceMinutes(60);
+                                loopCounter++;
                             }
                             t.minute = 0;
                         }
@@ -637,11 +647,11 @@ const LC = (function() {
                     var minutesToAdd = scene.rate;
                     
                     // Scene drift protection - slow down rate if scene continues too long
-                    if (t.sceneTurns > 10) {
-                        minutesToAdd = Math.max(1, Math.floor(minutesToAdd * 0.7));
+                    if (t.sceneTurns > this._SCENE_DRIFT_TURN_THRESHOLD_1) {
+                        minutesToAdd = Math.max(1, Math.floor(minutesToAdd * this._SCENE_DRIFT_RATE_FACTOR_1));
                     }
-                    if (t.sceneTurns > 20) {
-                        minutesToAdd = Math.max(1, Math.floor(minutesToAdd * 0.5));
+                    if (t.sceneTurns > this._SCENE_DRIFT_TURN_THRESHOLD_2) {
+                        minutesToAdd = Math.max(1, Math.floor(minutesToAdd * this._SCENE_DRIFT_RATE_FACTOR_2));
                     }
                     
                     // Hard cap on scene duration
@@ -849,9 +859,24 @@ LC.CommandsRegistry.register('time', function(args) {
                 return "Usage: /time set <day> <hour> <minute>\nExample: /time set 1 8 30";
             }
             LC.TimeEngine._ensureTimeState();
-            state.lincoln.time.day = LC.Utils.toNum(args[1], 1);
-            state.lincoln.time.hour = LC.Utils.toNum(args[2], 8);
-            state.lincoln.time.minute = LC.Utils.toNum(args[3], 0);
+            var day = LC.Utils.toNum(args[1], 1);
+            var hour = LC.Utils.toNum(args[2], 8);
+            var minute = LC.Utils.toNum(args[3], 0);
+            
+            // Validate inputs
+            if (day < 1) {
+                return "Error: Day must be at least 1";
+            }
+            if (hour < 0 || hour > 23) {
+                return "Error: Hour must be 0-23";
+            }
+            if (minute < 0 || minute > 59) {
+                return "Error: Minute must be 0-59";
+            }
+            
+            state.lincoln.time.day = day;
+            state.lincoln.time.hour = hour;
+            state.lincoln.time.minute = minute;
             state.lincoln.stateVersion++;
             
             return "Time set to: " + LC.TimeEngine.formatTime();
