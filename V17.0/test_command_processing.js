@@ -118,32 +118,33 @@ function runTests() {
     let passed = 0;
     let failed = 0;
     
-    // Test 1: /ping command - UX improvement: keep input visible and add [SYS] prefix
+    // Test 1: /ping command - UX improvement: keep input visible, add [SYS] prefix, and add newline
     console.log('Test 1: /ping command (state relay pattern with UX improvements)');
     global.state.lincoln = null; // Reset state
     const pingResult = simulateCommand('/ping');
-    if (pingResult.output.text === '[SYS] pong' && pingResult.input.text === '/ping') {
-        console.log('✓ PASS: /ping command output relayed correctly with [SYS] prefix and visible input');
+    if (pingResult.output.text === '\n[SYS] pong' && pingResult.input.text === '/ping') {
+        console.log('✓ PASS: /ping command output relayed correctly with newline, [SYS] prefix, and visible input');
         console.log('  Input text:', JSON.stringify(pingResult.input.text));
         console.log('  Output text:', JSON.stringify(pingResult.output.text));
         passed++;
     } else {
         console.log('✗ FAIL: /ping did not relay correctly');
-        console.log('  Expected output.text: "[SYS] pong", input.text: "/ping"');
+        console.log('  Expected output.text: "\\n[SYS] pong", input.text: "/ping"');
         console.log('  Got:', pingResult);
         failed++;
     }
     console.log();
     
-    // Test 2: /debug command - verify [SYS] prefix
+    // Test 2: /debug command - verify newline and [SYS] prefix
     console.log('Test 2: /debug command');
     global.state.lincoln = null; // Reset state
     const debugResult = simulateCommand('/debug');
-    if (debugResult.output.text.indexOf('[SYS]') === 0 &&
+    if (debugResult.output.text.charAt(0) === '\n' &&
+        debugResult.output.text.indexOf('[SYS]') === 1 &&
         debugResult.output.text.indexOf('Lincoln v17 Debug') !== -1 && 
         debugResult.output.text.indexOf('Turn:') !== -1 &&
         debugResult.input.text === '/debug') {
-        console.log('✓ PASS: /debug returns debug information with [SYS] prefix and visible input');
+        console.log('✓ PASS: /debug returns debug information with newline, [SYS] prefix, and visible input');
         console.log('  Output:', JSON.stringify(debugResult.output.text.substring(0, 50) + '...'));
         passed++;
     } else {
@@ -153,14 +154,15 @@ function runTests() {
     }
     console.log();
     
-    // Test 3: /turn command - verify [SYS] prefix
+    // Test 3: /turn command - verify newline and [SYS] prefix
     console.log('Test 3: /turn command');
     global.state.lincoln = null; // Reset state
     const turnResult = simulateCommand('/turn');
-    if (turnResult.output.text.indexOf('[SYS]') === 0 &&
+    if (turnResult.output.text.charAt(0) === '\n' &&
+        turnResult.output.text.indexOf('[SYS]') === 1 &&
         turnResult.output.text.indexOf('Current turn:') !== -1 &&
         turnResult.input.text === '/turn') {
-        console.log('✓ PASS: /turn returns turn information with [SYS] prefix and visible input');
+        console.log('✓ PASS: /turn returns turn information with newline, [SYS] prefix, and visible input');
         console.log('  Output:', JSON.stringify(turnResult.output.text));
         passed++;
     } else {
@@ -170,14 +172,15 @@ function runTests() {
     }
     console.log();
     
-    // Test 4: /characters command - verify [SYS] prefix
+    // Test 4: /characters command - verify newline and [SYS] prefix
     console.log('Test 4: /characters command');
     global.state.lincoln = null; // Reset state
     const charsResult = simulateCommand('/characters');
-    if (charsResult.output.text.indexOf('[SYS]') === 0 &&
+    if (charsResult.output.text.charAt(0) === '\n' &&
+        charsResult.output.text.indexOf('[SYS]') === 1 &&
         charsResult.output.text.indexOf('No characters tracked yet') !== -1 &&
         charsResult.input.text === '/characters') {
-        console.log('✓ PASS: /characters returns character list with [SYS] prefix and visible input');
+        console.log('✓ PASS: /characters returns character list with newline, [SYS] prefix, and visible input');
         console.log('  Output:', JSON.stringify(charsResult.output.text));
         passed++;
     } else {
@@ -187,16 +190,17 @@ function runTests() {
     }
     console.log();
     
-    // Test 5: /help command - verify [SYS] prefix
+    // Test 5: /help command - verify newline and [SYS] prefix
     console.log('Test 5: /help command');
     global.state.lincoln = null; // Reset state
     const helpResult = simulateCommand('/help');
-    if (helpResult.output.text.indexOf('[SYS]') === 0 &&
+    if (helpResult.output.text.charAt(0) === '\n' &&
+        helpResult.output.text.indexOf('[SYS]') === 1 &&
         helpResult.output.text.indexOf('Lincoln v17 Commands') !== -1 &&
         helpResult.output.text.indexOf('Available commands') !== -1 &&
         helpResult.output.text.indexOf('/ping') !== -1 &&
         helpResult.input.text === '/help') {
-        console.log('✓ PASS: /help lists available commands with [SYS] prefix and visible input');
+        console.log('✓ PASS: /help lists available commands with newline, [SYS] prefix, and visible input');
         console.log('  Output contains /ping, /debug, /turn, /characters, /help');
         passed++;
     } else {
@@ -272,10 +276,11 @@ function runTests() {
     console.log('Test 10: Substring detection (command in Say mode)');
     global.state.lincoln = null; // Reset state
     const sayResult = simulateCommand('You say "/help"');
-    if (sayResult.output.text.indexOf('[SYS]') === 0 &&
+    if (sayResult.output.text.charAt(0) === '\n' &&
+        sayResult.output.text.indexOf('[SYS]') === 1 &&
         sayResult.output.text.indexOf('Lincoln v17 Commands') !== -1 &&
         sayResult.input.text === 'You say "/help"') {
-        console.log('✓ PASS: Command detected even when not at start of text, with [SYS] prefix and visible input');
+        console.log('✓ PASS: Command detected even when not at start of text, with newline, [SYS] prefix, and visible input');
         passed++;
     } else {
         console.log('✗ FAIL: Command not detected in substring');

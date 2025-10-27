@@ -16,6 +16,9 @@ const modifier = (text) => {
                 text = '[SYS] ' + text;
             }
             
+            // Add newline before output to separate from command input in Story mode
+            text = '\n' + text;
+            
             return { text: text };
         }
         
