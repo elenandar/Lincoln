@@ -425,11 +425,65 @@ const LC = (function() {
                 // Relative time (minutes)
                 { pattern: /(\d+)\s*minutes?\s+later/i, action: 'addMinutes', captureGroup: 1 },
                 { pattern: /(\d+)\s*minutes?\s+passed/i, action: 'addMinutes', captureGroup: 1 },
-                { pattern: /after\s+(\d+)\s*minutes?/i, action: 'addMinutes', captureGroup: 1 }
+                { pattern: /after\s+(\d+)\s*minutes?/i, action: 'addMinutes', captureGroup: 1 },
+                
+                // Russian: Relative time with numeric digits (hours)
+                { pattern: /(?:через|спустя)\s+(\d+)\s*час(?:а|ов)?/iu, action: 'addHours', captureGroup: 1 },
+                { pattern: /(\d+)\s*час(?:а|ов)?\s+спустя/iu, action: 'addHours', captureGroup: 1 },
+                { pattern: /час\s+спустя/iu, action: 'addHours', hours: 1 },
+                
+                // Russian: Relative time with word numerals (hours)
+                { pattern: /(?:через|спустя)\s+(один|одна|одно)\s+час/iu, action: 'addHours', captureGroup: 1 },
+                { pattern: /(?:через|спустя)\s+(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)/iu, action: 'addHours', captureGroup: 1 },
+                { pattern: /(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)\s+спустя/iu, action: 'addHours', captureGroup: 1 },
+                { pattern: /(?:через|спустя)\s+(?:пару|несколько)\s+час(?:ов|а)/iu, action: 'addHours', hours: 2 },
+                
+                // Russian: Relative time with numeric digits (minutes)
+                { pattern: /(?:через|спустя)\s+(\d+)\s*минут(?:у|ы)?/iu, action: 'addMinutes', captureGroup: 1 },
+                { pattern: /(\d+)\s*минут(?:у|ы)?\s+спустя/iu, action: 'addMinutes', captureGroup: 1 },
+                
+                // Russian: Relative time with word numerals (minutes)
+                { pattern: /(?:через|спустя)\s+(одну|один|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?/iu, action: 'addMinutes', captureGroup: 1 },
+                { pattern: /(одну|один|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?\s+спустя/iu, action: 'addMinutes', captureGroup: 1 }
             ],
             
             // Scene priority (higher priority = checked first)
             _scenePriority: ['combat', 'rest', 'training', 'dialogue', 'travel', 'exploration', 'general'],
+            
+            // Convert Russian word numerals to numbers
+            _parseRussianNumeral: function(text) {
+                var russianNumerals = {
+                    // Hours (1-12)
+                    'один': 1, 'одна': 1, 'одно': 1,
+                    'два': 2, 'две': 2,
+                    'три': 3,
+                    'четыре': 4,
+                    'пять': 5,
+                    'шесть': 6,
+                    'семь': 7,
+                    'восемь': 8,
+                    'девять': 9,
+                    'десять': 10,
+                    'одиннадцать': 11,
+                    'двенадцать': 12,
+                    // Common minute values
+                    'пятнадцать': 15,
+                    'двадцать': 20,
+                    'тридцать': 30,
+                    // Colloquial
+                    'пару': 2,
+                    'несколько': 3
+                };
+                
+                var lowerText = text.toLowerCase();
+                if (russianNumerals[lowerText] !== undefined) {
+                    return russianNumerals[lowerText];
+                }
+                
+                // Try parsing as number
+                var num = parseInt(text, 10);
+                return isNaN(num) ? 0 : num;
+            },
             
             // Detect time anchor in text
             detectAnchor: function(text) {
@@ -565,13 +619,13 @@ const LC = (function() {
                     } else if (anchor.action === 'addHours') {
                         var hours = anchor.hours;
                         if (anchor.captureGroup && match[anchor.captureGroup]) {
-                            hours = parseInt(match[anchor.captureGroup], 10);
+                            hours = this._parseRussianNumeral(match[anchor.captureGroup]);
                         }
                         return hours * 60;
                     } else if (anchor.action === 'addMinutes') {
                         var minutes = 0;
                         if (anchor.captureGroup && match[anchor.captureGroup]) {
-                            minutes = parseInt(match[anchor.captureGroup], 10);
+                            minutes = this._parseRussianNumeral(match[anchor.captureGroup]);
                         }
                         return minutes;
                     }
