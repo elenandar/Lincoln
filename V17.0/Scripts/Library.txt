@@ -524,7 +524,8 @@ const LC = (function() {
                 { pattern: /(?:через|спустя)\s+(один|одна|одно)\s+час/i, action: 'addHours', captureGroup: 1 },
                 { pattern: /(?:через|спустя)\s+(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)/i, action: 'addHours', captureGroup: 1 },
                 { pattern: /(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)\s+спустя/i, action: 'addHours', captureGroup: 1 },
-                { pattern: /(?:через|спустя)\s+(?:пару|несколько)\s+час(?:ов|а)/i, action: 'addHours', hours: 2 },
+                { pattern: /(?:через|спустя)\s+(?:пару)\s+час(?:ов|а)/i, action: 'addHours', hours: 2 },
+                { pattern: /(?:через|спустя)\s+(?:несколько)\s+час(?:ов|а)/i, action: 'addHours', hours: 3 },
                 
                 // Russian: Relative time with numeric digits (minutes) - ES5 compatible
                 { pattern: /(?:через|спустя)\s+(\d+)\s*минут(?:у|ы)?/i, action: 'addMinutes', captureGroup: 1 },
@@ -653,9 +654,9 @@ const LC = (function() {
                     // Russian instant actions
                     /поверну/i, /кивну/i, /открыл\s+глаза/i, /взгляну/i, /посмотре/i,
                     /улыбну/i, /вздохну/i, /пожал\s+плеч/i, /моргну/i,
-                    // English instant actions
-                    /\bturn/i, /\bnod/i, /\bglance/i, /\blook/i, /\bsmile/i,
-                    /\bsigh/i, /\bshrug/i, /\bblink/i
+                    // English instant actions (root forms to match all conjugations)
+                    /turn/i, /nod/i, /glance/i, /\blook/i, /smile/i,
+                    /sigh/i, /shrug/i, /blink/i
                 ];
                 
                 for (var i = 0; i < instantPatterns.length; i++) {
