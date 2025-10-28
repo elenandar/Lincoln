@@ -1,19 +1,31 @@
-# TimeEngine - Hybrid Smart Time System
+# TimeEngine - Hybrid Smart Time System (v17.0 Overhauled)
 
 ## Overview
 
 The TimeEngine is a context-aware time progression system for Lincoln v17 that automatically tracks time based on:
 1. **Time Anchors** - Explicit time markers in AI output ("after lessons", "2 hours later", "overnight")
-2. **Scene Detection** - Keyword-based scene type detection (combat, dialogue, travel, etc.)
-3. **Fallback Rate** - Default 15 minutes/turn when no anchors or clear scenes
+2. **Scene Detection** - Pattern-based scene type detection (combat, dialogue, travel, etc.) with full Russian support
+3. **Context Modifiers** - Emotional state, weather, group size, and travel distance awareness
+4. **Instant Actions** - Quick actions (nods, glances) take minimal time
+5. **Fallback Rate** - Default **1 minute/turn** when no anchors or clear scenes
+
+## Key Updates in Overhaul
+
+- ✅ **ES5 Compatibility**: All regex patterns use `/i` flag only (removed `/u`)
+- ✅ **Realistic Scene Rates**: General 1 min/turn, Travel 5 min/turn, Fallback 1 min/turn
+- ✅ **Russian Scene Detection**: Full Cyrillic pattern support for all 7 scene types
+- ✅ **Scene Drift Fix**: Uses `Math.round()` for natural time progression
+- ✅ **Context Awareness**: Speed, weather, group size, travel distance modifiers
+- ✅ **Instant Actions**: 0 time cost for quick actions (nods, glances, turns)
+- ✅ **Montage Support**: Time-skip phrases ("весь день", "all day")
 
 ## Features
 
-### 1. Time Anchor Detection (70+ Patterns)
+### 1. Time Anchor Detection (90+ Patterns)
 
 Time anchors are explicit markers that set or skip time. Supports both English and Russian languages.
 
-#### Absolute Time Anchors
+#### Absolute Time Anchors - English
 - `at dawn` → 6:00 AM
 - `in the morning` → 8:00 AM
 - `at noon` / `midday` → 12:00 PM
@@ -23,68 +35,133 @@ Time anchors are explicit markers that set or skip time. Supports both English a
 - `at night` → 9:00 PM
 - `at midnight` → 12:00 AM
 
-#### Event-Based Anchors
+#### Absolute Time Anchors - Russian (NEW)
+- `на рассвете` → 6:00 AM (at dawn)
+- `утром` → 8:00 AM (in the morning)
+- `в полдень` → 12:00 PM (at noon)
+- `днём` → 2:00 PM (in the afternoon)
+- `вечером` → 6:00 PM (in the evening)
+- `на закате` → 7:00 PM (at dusk)
+- `ночью` → 9:00 PM (at night)
+- `в полночь` → 12:00 AM (at midnight)
+
+#### Event-Based Anchors - English
 - `breakfast` → 8:00 AM
 - `lunch` → 12:30 PM
 - `dinner` → 7:00 PM
 - `after lessons` / `after class` / `after school` → 4:00 PM
 - `evening training` → 7:00 PM
 
-#### Next Day Transitions
-- `next morning` / `next day` → Next day at 8:00 AM
-- `overnight` → Adds 8 hours
+#### Event-Based Anchors - Russian (NEW)
+- `завтрак` → 8:00 AM (breakfast)
+- `обед` → 12:30 PM (lunch)
+- `ужин` → 7:00 PM (dinner)
+- `после уроков` / `после занятий` → 4:00 PM (after lessons/classes)
+- `вечерняя тренировка` → 7:00 PM (evening training)
 
-#### Relative Time
+#### Next Day Transitions
+- English: `next morning`, `next day`, `overnight`
+- Russian: `следующим утром`, `на следующий день`, `через ночь`
+
+#### Relative Time - English
 - `X hours later` / `X hours passed` → Adds X hours
 - `an hour later` → Adds 1 hour
 - `X minutes later` → Adds X minutes
 
-#### Russian Relative Time Anchors
-Russian time expressions are fully supported with both numeric and word-based patterns:
-
+#### Relative Time - Russian
 **Hours:**
 - `спустя 2 часа` / `через 2 часа` → Adds 2 hours
 - `2 часа спустя` → Adds 2 hours
 - `час спустя` → Adds 1 hour
 - Word numerals: `два`, `три`, `четыре`, `пять`, `шесть`, `семь`, `восемь`, `девять`, `десять`, `одиннадцать`, `двенадцать`
-- Colloquial: `пару часов` → 2 hours, `несколько часов` → 2 hours
+- Colloquial: `пару часов` → 2 hours, `несколько часов` → 3 hours
 
 **Minutes:**
 - `спустя 5 минут` / `через 5 минут` → Adds 5 minutes
 - `15 минут спустя` → Adds 15 minutes
 - Word numerals: `один`, `два`, `три`, `четыре`, `пять`, `десять`, `пятнадцать`, `двадцать`, `тридцать`
 
+#### Montage/Summary Expressions (NEW)
+- `весь день` / `all day` → 8 hours
+- `всё утро` / `all morning` → 4 hours
+- `весь вечер` → 4 hours
+- `несколько часов` / `several hours` → 3 hours
+
 **Examples:**
 - `"Спустя 2 часа пришла Хлоя."` → +2 hours
 - `"Через три минуты раздался звонок."` → +3 minutes
-- `"Через пару часов все собрались."` → +2 hours
+- `"Весь день они работали."` → +8 hours
 
-### 2. Scene Type Detection
+### 2. Scene Type Detection (WITH RUSSIAN SUPPORT)
 
-Scenes are detected via keyword matching in AI output:
+Scenes are detected via pattern matching in AI output with both English and Russian patterns:
 
-| Scene | Rate | Max Duration | Keywords |
-|-------|------|--------------|----------|
-| Combat | 2 min/turn | 30 min | attack, fight, battle, strike, dodge, swing, slash, parry, block, evade |
-| Dialogue | 5 min/turn | 60 min | say, ask, tell, speak, talk, reply, respond, whisper, shout, exclaim |
-| Travel | 15 min/turn | 180 min | walk, run, ride, journey, travel, move, head, depart, arrive, reach |
-| Training | 10 min/turn | 120 min | train, practice, exercise, spar, drill, rehearse, study, learn |
-| Exploration | 8 min/turn | 240 min | search, explore, examine, investigate, inspect, look, scan, survey |
-| Rest | 60 min/turn | 480 min | sleep, rest, camp, relax, nap, doze, lie, sit |
-| General | 10 min/turn | None | (fallback) |
+| Scene | Rate | Max Duration | English Keywords | Russian Patterns |
+|-------|------|--------------|-----------------|------------------|
+| Combat | 2 min/turn | 30 min | attack, fight, battle, strike, dodge | атак, бит, драк, удар, бой |
+| Dialogue | 5 min/turn | 60 min | say, ask, tell, speak, talk | сказа, спрос, ответ, разговар, обсуд |
+| Travel | **5 min/turn** | 180 min | walk, run, ride, journey, travel | иди, пошёл, пошла, еха, отправ |
+| Training | 10 min/turn | 120 min | train, practice, exercise, study | тренир, занима, упражн, учи |
+| Exploration | 8 min/turn | 240 min | search, explore, examine, investigate | исследов, осмотр, обнаруж, найд |
+| Rest | 60 min/turn | 480 min | sleep, rest, relax, nap | отдых, спа, лежа, дремот |
+| General | **1 min/turn** | None | (fallback for undetected actions) | (по умолчанию) |
 
 **Scene Priority:** combat > rest > training > dialogue > travel > exploration > general
 
-### 3. Scene Drift
+### 3. Instant Actions (NEW)
 
-Prevents unrealistic time accumulation in long scenes:
+Quick, momentary actions that take essentially no measurable time:
 
-- **After 10 turns:** Rate reduced to 70% (e.g., 5 min → 3.5 min)
-- **After 20 turns:** Rate reduced to 50% (e.g., 5 min → 2.5 min)
-- **Near max duration:** Rate reduced to 30% (e.g., 5 min → 1.5 min)
+**English:** turn, nod, glance, look, smile, sigh, shrug, blink
+**Russian:** поверну, кивну, открыл глаза, взгляну, посмотре, улыбну, вздохну, пожал плеч
+
+**Time Cost:** 0 minutes
+
+**Examples:**
+- `"He turned around."` → 0 min
+- `"Кивнул в ответ."` → 0 min
+
+### 4. Travel Distance Awareness (NEW)
+
+Travel time automatically adjusts based on distance context:
+
+| Distance | Modifier | Example Phrases |
+|----------|----------|----------------|
+| Short | ×0.3 (1-2 min) | "в соседнюю комнату", "next room", "nearby" |
+| Medium | ×1.0 (5 min) | "в здание", "на улицу", "to building", "outside" |
+| Long | ×3.0 (15 min) | "в город", "домой", "to town", "home", "far" |
+
+**Examples:**
+- `"Вошёл в соседнюю комнату."` → 1 min (short travel)
+- `"Пошёл в школу."` → 5 min (medium travel)
+- `"Отправился домой."` → 15 min (long travel)
+
+### 5. Context Modifiers (NEW)
+
+Emotional state, weather, and group size affect time cost:
+
+| Modifier | Effect | Detection Patterns |
+|----------|--------|-------------------|
+| Speed/Hurry | ×0.7 (faster) | "торопи", "спеши", "быстр", "hurry", "rush", "quick" |
+| Slowness/Caution | ×1.5 (slower) | "медленн", "осторожн", "slow", "careful", "cautious" |
+| Weather (rain/snow) | ×1.3 (slower) | "дожд", "снег", "буря", "rain", "snow", "storm" |
+| Group Actions | ×1.5 (slower) | "групп", "все вместе", "команд", "group", "everyone", "team" |
+
+**Examples:**
+- `"Быстро побежал."` → time ×0.7
+- `"Медленно шёл под дождём."` → time ×1.5 ×1.3 = ×1.95
+- `"Группа вместе двигалась."` → time ×1.5
+
+### 6. Scene Drift (UPDATED)
+
+Prevents unrealistic time accumulation in long scenes. **Now uses `Math.round()` for more natural results:**
+
+- **After 10 turns:** Rate reduced to 70% (e.g., 5 min → 4 min rounded)
+- **After 20 turns:** Rate reduced to 50% (e.g., 5 min → 3 min rounded)
+- **Near max duration:** Rate reduced to 30% (e.g., 5 min → 2 min rounded)
 - **At max duration:** Rate becomes 0 (hard cap)
 
-### 4. Time Modes
+### 7. Time Modes
 
 Three modes control time progression:
 
