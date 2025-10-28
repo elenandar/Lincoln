@@ -373,25 +373,95 @@ const LC = (function() {
         
         // TimeEngine - Hybrid time progression system (Phase 2)
         TimeEngine: {
-            // Scene configuration: rates in minutes/turn, maxDuration in minutes
+            // Scene configuration: rates in minutes/turn, maxDuration in minutes  
             _sceneConfig: {
-                combat: { rate: 2, maxDuration: 30, keywords: ['attack', 'fight', 'battle', 'strike', 'dodge', 'swing', 'slash', 'parry', 'block', 'evade'] },
-                dialogue: { rate: 5, maxDuration: 60, keywords: ['say', 'ask', 'tell', 'speak', 'talk', 'reply', 'respond', 'whisper', 'shout', 'exclaim'] },
-                travel: { rate: 15, maxDuration: 180, keywords: ['walk', 'run', 'ride', 'journey', 'travel', 'move', 'head', 'depart', 'arrive', 'reach'] },
-                training: { rate: 10, maxDuration: 120, keywords: ['train', 'practice', 'exercise', 'spar', 'drill', 'rehearse', 'study', 'learn'] },
-                exploration: { rate: 8, maxDuration: 240, keywords: ['search', 'explore', 'examine', 'investigate', 'inspect', 'look', 'scan', 'survey'] },
-                rest: { rate: 60, maxDuration: 480, keywords: ['sleep', 'rest', 'camp', 'relax', 'nap', 'doze', 'lie', 'sit'] },
-                general: { rate: 10, maxDuration: null, keywords: [] }
+                combat: { 
+                    rate: 2, 
+                    maxDuration: 30, 
+                    patterns: [
+                        // English
+                        /attack/i, /fight/i, /battle/i, /strike/i, /dodge/i, /swing/i, /slash/i, 
+                        /parry/i, /block/i, /evade/i, /punch/i, /kick/i, /hit/i, /stab/i, 
+                        /shoot/i, /defend/i, /counter/i,
+                        // Russian (ES5 compatible: /i only)
+                        /атак/i, /бит/i, /драк/i, /драт/i, /удар/i, /бой/i, /парир/i, /блокир/i,
+                        /уклон/i, /защищ/i, /напа/i, /стрел/i, /меч/i, /оружи/i
+                    ]
+                },
+                dialogue: { 
+                    rate: 5, 
+                    maxDuration: 60, 
+                    patterns: [
+                        // English
+                        /\bsay/i, /\bask/i, /tell/i, /speak/i, /talk/i, /reply/i, /respond/i, 
+                        /whisper/i, /shout/i, /exclaim/i, /chat/i, /discuss/i, /mention/i, /answer/i,
+                        // Russian (ES5 compatible)
+                        /сказа/i, /спрос/i, /ответ/i, /разговар/i, /обсуд/i, /бесед/i,
+                        /шепн/i, /крикн/i, /произн/i, /обрат/i, /говор/i
+                    ]
+                },
+                travel: { 
+                    rate: 5, 
+                    maxDuration: 180, 
+                    patterns: [
+                        // English
+                        /walk/i, /\brun/i, /ride/i, /journey/i, /travel/i, /move/i, /head/i, 
+                        /depart/i, /arrive/i, /reach/i, /cross/i, /proceed/i, /approach/i,
+                        // Russian (ES5 compatible)
+                        /иди/i, /пошёл/i, /пошла/i, /пошли/i, /пойд/i, /еха/i, /отправ/i,
+                        /двига/i, /переход/i, /приближ/i, /добра/i, /маршрут/i
+                    ]
+                },
+                training: { 
+                    rate: 10, 
+                    maxDuration: 120, 
+                    patterns: [
+                        // English
+                        /train/i, /practice/i, /exercise/i, /spar/i, /drill/i, /rehearse/i, 
+                        /study/i, /learn/i, /develop/i, /improve/i, /perfect/i,
+                        // Russian (ES5 compatible)
+                        /тренир/i, /занима/i, /упражн/i, /отрабат/i, /освоа/i,
+                        /учи/i, /развива/i, /практик/i
+                    ]
+                },
+                exploration: { 
+                    rate: 8, 
+                    maxDuration: 240, 
+                    patterns: [
+                        // English
+                        /search/i, /explore/i, /examine/i, /investigate/i, /inspect/i, 
+                        /\blook/i, /scan/i, /survey/i, /discover/i, /find/i, /observe/i, /scout/i,
+                        // Russian (ES5 compatible)
+                        /исследов/i, /осмотр/i, /обнаруж/i, /найд/i, /найш/i, /набл/i,
+                        /провер/i, /рассмотр/i, /поиск/i, /обход/i, /изуч/i
+                    ]
+                },
+                rest: { 
+                    rate: 60, 
+                    maxDuration: 480, 
+                    patterns: [
+                        // English
+                        /sleep/i, /\brest/i, /camp/i, /relax/i, /\bnap/i, /doze/i, /\blie/i, /\bsit/i,
+                        // Russian (ES5 compatible)
+                        /отдых/i, /спа/i, /лежа/i, /дремот/i, /усну/i, /покой/i, /расслаб/i
+                    ]
+                },
+                general: { rate: 1, maxDuration: null, patterns: [] }
             },
             
             // Time anchors: absolute time setters
             _timeAnchors: [
-                // Next day transitions
+                // Next day transitions - English
                 { pattern: /\bnext\s+morning\b/i, action: 'nextDay', hour: 8, minute: 0 },
                 { pattern: /\bnext\s+day\b/i, action: 'nextDay', hour: 8, minute: 0 },
                 { pattern: /\bovernight\b/i, action: 'addHours', hours: 8 },
                 
-                // Absolute times
+                // Next day transitions - Russian (ES5 compatible: /i only, no /u)
+                { pattern: /следующим\s+утром/i, action: 'nextDay', hour: 8, minute: 0 },
+                { pattern: /на\s+следующий\s+день/i, action: 'nextDay', hour: 8, minute: 0 },
+                { pattern: /через\s+ночь/i, action: 'nextDay', hour: 8, minute: 0 },
+                
+                // Absolute times - English
                 { pattern: /\bat\s+dawn\b/i, action: 'setTime', hour: 6, minute: 0 },
                 { pattern: /\bin\s+the\s+early\s+morning\b/i, action: 'setTime', hour: 7, minute: 0 },
                 { pattern: /\bin\s+the\s+morning\b/i, action: 'setTime', hour: 8, minute: 0 },
@@ -403,7 +473,17 @@ const LC = (function() {
                 { pattern: /\bat\s+night\b/i, action: 'setTime', hour: 21, minute: 0 },
                 { pattern: /\bat\s+midnight\b/i, action: 'setTime', hour: 0, minute: 0 },
                 
-                // Event-based times
+                // Absolute times - Russian (ES5 compatible: /i only, no /u)
+                { pattern: /на\s+рассвете/i, action: 'setTime', hour: 6, minute: 0 },
+                { pattern: /утром/i, action: 'setTime', hour: 8, minute: 0 },
+                { pattern: /в\s+полдень/i, action: 'setTime', hour: 12, minute: 0 },
+                { pattern: /днём/i, action: 'setTime', hour: 14, minute: 0 },
+                { pattern: /вечером/i, action: 'setTime', hour: 18, minute: 0 },
+                { pattern: /на\s+закате/i, action: 'setTime', hour: 19, minute: 0 },
+                { pattern: /ночью/i, action: 'setTime', hour: 21, minute: 0 },
+                { pattern: /в\s+полночь/i, action: 'setTime', hour: 0, minute: 0 },
+                
+                // Event-based times - English
                 { pattern: /\bbreakfast\s+time\b/i, action: 'setTime', hour: 8, minute: 0 },
                 { pattern: /\bbreakfast\b/i, action: 'setTime', hour: 8, minute: 0 },
                 { pattern: /\blunch\s+time\b/i, action: 'setTime', hour: 12, minute: 30 },
@@ -415,36 +495,53 @@ const LC = (function() {
                 { pattern: /\bafter\s+school\b/i, action: 'setTime', hour: 16, minute: 0 },
                 { pattern: /\bevening\s+training\b/i, action: 'setTime', hour: 19, minute: 0 },
                 
-                // Relative time (hours)
+                // Event-based times - Russian (ES5 compatible)
+                { pattern: /завтрак/i, action: 'setTime', hour: 8, minute: 0 },
+                { pattern: /обед/i, action: 'setTime', hour: 12, minute: 30 },
+                { pattern: /ужин/i, action: 'setTime', hour: 19, minute: 0 },
+                { pattern: /после\s+уроков/i, action: 'setTime', hour: 16, minute: 0 },
+                { pattern: /после\s+занятий/i, action: 'setTime', hour: 16, minute: 0 },
+                { pattern: /вечерняя\s+тренировка/i, action: 'setTime', hour: 19, minute: 0 },
+                
+                // Relative time (hours) - English
                 { pattern: /(\d+)\s*hours?\s+later/i, action: 'addHours', captureGroup: 1 },
                 { pattern: /(\d+)\s*hours?\s+passed/i, action: 'addHours', captureGroup: 1 },
                 { pattern: /after\s+(\d+)\s*hours?/i, action: 'addHours', captureGroup: 1 },
                 { pattern: /an?\s+hour\s+later/i, action: 'addHours', hours: 1 },
                 { pattern: /an?\s+hour\s+passed/i, action: 'addHours', hours: 1 },
                 
-                // Relative time (minutes)
+                // Relative time (minutes) - English
                 { pattern: /(\d+)\s*minutes?\s+later/i, action: 'addMinutes', captureGroup: 1 },
                 { pattern: /(\d+)\s*minutes?\s+passed/i, action: 'addMinutes', captureGroup: 1 },
                 { pattern: /after\s+(\d+)\s*minutes?/i, action: 'addMinutes', captureGroup: 1 },
                 
-                // Russian: Relative time with numeric digits (hours)
-                { pattern: /(?:через|спустя)\s+(\d+)\s*час(?:а|ов)?/iu, action: 'addHours', captureGroup: 1 },
-                { pattern: /(\d+)\s*час(?:а|ов)?\s+спустя/iu, action: 'addHours', captureGroup: 1 },
-                { pattern: /час\s+спустя/iu, action: 'addHours', hours: 1 },
+                // Russian: Relative time with numeric digits (hours) - ES5 compatible
+                { pattern: /(?:через|спустя)\s+(\d+)\s*час(?:а|ов)?/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /(\d+)\s*час(?:а|ов)?\s+спустя/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /час\s+спустя/i, action: 'addHours', hours: 1 },
                 
-                // Russian: Relative time with word numerals (hours)
-                { pattern: /(?:через|спустя)\s+(один|одна|одно)\s+час/iu, action: 'addHours', captureGroup: 1 },
-                { pattern: /(?:через|спустя)\s+(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)/iu, action: 'addHours', captureGroup: 1 },
-                { pattern: /(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)\s+спустя/iu, action: 'addHours', captureGroup: 1 },
-                { pattern: /(?:через|спустя)\s+(?:пару|несколько)\s+час(?:ов|а)/iu, action: 'addHours', hours: 2 },
+                // Russian: Relative time with word numerals (hours) - ES5 compatible
+                { pattern: /(?:через|спустя)\s+(один|одна|одно)\s+час/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /(?:через|спустя)\s+(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /(два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать)\s+час(?:а|ов)\s+спустя/i, action: 'addHours', captureGroup: 1 },
+                { pattern: /(?:через|спустя)\s+(?:пару|несколько)\s+час(?:ов|а)/i, action: 'addHours', hours: 2 },
                 
-                // Russian: Relative time with numeric digits (minutes)
-                { pattern: /(?:через|спустя)\s+(\d+)\s*минут(?:у|ы)?/iu, action: 'addMinutes', captureGroup: 1 },
-                { pattern: /(\d+)\s*минут(?:у|ы)?\s+спустя/iu, action: 'addMinutes', captureGroup: 1 },
+                // Russian: Relative time with numeric digits (minutes) - ES5 compatible
+                { pattern: /(?:через|спустя)\s+(\d+)\s*минут(?:у|ы)?/i, action: 'addMinutes', captureGroup: 1 },
+                { pattern: /(\d+)\s*минут(?:у|ы)?\s+спустя/i, action: 'addMinutes', captureGroup: 1 },
                 
-                // Russian: Relative time with word numerals (minutes)
-                { pattern: /(?:через|спустя)\s+(одну|один|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?/iu, action: 'addMinutes', captureGroup: 1 },
-                { pattern: /(одну|один|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?\s+спустя/iu, action: 'addMinutes', captureGroup: 1 }
+                // Russian: Relative time with word numerals (minutes) - ES5 compatible
+                { pattern: /(?:через|спустя)\s+(одну|один|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?/i, action: 'addMinutes', captureGroup: 1 },
+                { pattern: /(одну|один|две|два|три|четыре|пять|шесть|семь|восемь|девять|десять|пятнадцать|двадцать|тридцать)\s+минут(?:у|ы)?\s+спустя/i, action: 'addMinutes', captureGroup: 1 },
+                
+                // Montage/Summary expressions - detect long time skips
+                { pattern: /весь\s+день/i, action: 'addHours', hours: 8 },
+                { pattern: /всё\s+утро/i, action: 'addHours', hours: 4 },
+                { pattern: /весь\s+вечер/i, action: 'addHours', hours: 4 },
+                { pattern: /несколько\s+часов/i, action: 'addHours', hours: 3 },
+                { pattern: /all\s+day/i, action: 'addHours', hours: 8 },
+                { pattern: /all\s+morning/i, action: 'addHours', hours: 4 },
+                { pattern: /several\s+hours/i, action: 'addHours', hours: 3 }
             ],
             
             // Scene priority (higher priority = checked first)
@@ -508,22 +605,21 @@ const LC = (function() {
             // Detect scene type from text
             detectScene: function(text) {
                 try {
-                    var lowerText = text.toLowerCase();
                     var sceneScores = {};
                     
-                    // Score each scene type based on keyword matches
+                    // Score each scene type based on pattern matches
                     for (var i = 0; i < this._scenePriority.length; i++) {
                         var sceneType = this._scenePriority[i];
                         var config = this._sceneConfig[sceneType];
                         var score = 0;
                         
-                        for (var j = 0; j < config.keywords.length; j++) {
-                            var keyword = config.keywords[j];
-                            // Use word boundaries to avoid substring matches
-                            var regex = new RegExp('\\b' + keyword + '\\b', 'gi');
-                            var matches = lowerText.match(regex);
-                            if (matches) {
-                                score += matches.length;
+                        // Changed from keywords to patterns
+                        if (config.patterns) {
+                            for (var j = 0; j < config.patterns.length; j++) {
+                                var pattern = config.patterns[j];
+                                if (pattern.test && pattern.test(text)) {
+                                    score++;
+                                }
                             }
                         }
                         
@@ -550,6 +646,76 @@ const LC = (function() {
                 }
             },
             
+            // Detect instant/routine actions that should have minimal time cost
+            _detectInstantAction: function(text) {
+                var lowerText = text.toLowerCase();
+                var instantPatterns = [
+                    // Russian instant actions
+                    /поверну/i, /кивну/i, /открыл\s+глаза/i, /взгляну/i, /посмотре/i,
+                    /улыбну/i, /вздохну/i, /пожал\s+плеч/i, /моргну/i,
+                    // English instant actions
+                    /\bturn/i, /\bnod/i, /\bglance/i, /\blook/i, /\bsmile/i,
+                    /\bsigh/i, /\bshrug/i, /\bblink/i
+                ];
+                
+                for (var i = 0; i < instantPatterns.length; i++) {
+                    if (instantPatterns[i].test(lowerText)) {
+                        return true;
+                    }
+                }
+                return false;
+            },
+            
+            // Detect travel distance modifiers
+            _detectTravelDistance: function(text) {
+                var lowerText = text.toLowerCase();
+                
+                // Short distance
+                if (/в\s+соседн|next\s+room|nearby|close/i.test(lowerText)) {
+                    return 'short'; // 1-2 min
+                }
+                
+                // Medium distance  
+                if (/в\s+здани|в\s+школ|на\s+улиц|to\s+building|outside|across/i.test(lowerText)) {
+                    return 'medium'; // 5 min
+                }
+                
+                // Long distance
+                if (/в\s+город|домой|to\s+town|home|far/i.test(lowerText)) {
+                    return 'long'; // 15 min
+                }
+                
+                return 'normal'; // default travel rate
+            },
+            
+            // Detect emotional/weather/context modifiers
+            _detectModifiers: function(text) {
+                var lowerText = text.toLowerCase();
+                var modifier = 1.0;
+                
+                // Speed modifiers - makes actions faster
+                if (/торопи|спеши|быстр|hurry|rush|quick|fast/i.test(lowerText)) {
+                    modifier *= 0.7;
+                }
+                
+                // Slowness modifiers - makes actions slower
+                if (/медленн|осторожн|slow|careful|cautious/i.test(lowerText)) {
+                    modifier *= 1.5;
+                }
+                
+                // Weather modifiers
+                if (/дожд|снег|буря|rain|snow|storm/i.test(lowerText)) {
+                    modifier *= 1.3;
+                }
+                
+                // Group modifiers - more people = more time for coordination
+                if (/групп|все\s+вместе|команд|group|everyone|together|team/i.test(lowerText)) {
+                    modifier *= 1.5;
+                }
+                
+                return modifier;
+            },
+            
             // Calculate time progression based on hybrid logic
             calculateHybridTime: function(text) {
                 try {
@@ -566,17 +732,39 @@ const LC = (function() {
                         return this._applyAnchor(anchorResult.anchor, anchorResult.match);
                     }
                     
-                    // Priority 2: Scene-based progression
-                    if (timeState.mode === 'hybrid' || timeState.mode === 'auto') {
-                        var detectedScene = this.detectScene(text);
-                        return this._applySceneTime(detectedScene);
+                    // Check for instant actions - minimal time cost
+                    if (this._detectInstantAction(text)) {
+                        return 0; // Instant actions take no measurable time
                     }
                     
-                    // Fallback: fixed rate (15 min/turn)
-                    return 15;
+                    // Priority 2: Scene-based progression with modifiers
+                    if (timeState.mode === 'hybrid' || timeState.mode === 'auto') {
+                        var detectedScene = this.detectScene(text);
+                        var baseTime = this._applySceneTime(detectedScene);
+                        
+                        // Apply travel distance adjustments
+                        if (detectedScene === 'travel') {
+                            var distance = this._detectTravelDistance(text);
+                            if (distance === 'short') {
+                                baseTime = Math.round(baseTime * 0.3); // Very short travel
+                            } else if (distance === 'long') {
+                                baseTime = Math.round(baseTime * 3.0); // Long travel
+                            }
+                            // medium/normal uses default rate
+                        }
+                        
+                        // Apply context modifiers (emotional, weather, group)
+                        var modifier = this._detectModifiers(text);
+                        baseTime = Math.round(baseTime * modifier);
+                        
+                        return baseTime;
+                    }
+                    
+                    // Fallback: fixed rate (1 min/turn per requirements)
+                    return 1;
                 } catch (e) {
                     console.log("TimeEngine.calculateHybridTime error:", e);
-                    return 10; // Fallback rate
+                    return 1; // Fallback rate
                 }
             },
             
@@ -657,11 +845,11 @@ const LC = (function() {
                     // Base rate
                     var rate = config.rate;
                     
-                    // Apply scene drift (slowdown over time)
+                    // Apply scene drift (slowdown over time) - use Math.round() for natural results
                     if (timeState.sceneTurnCount >= 20) {
-                        rate = Math.floor(rate * 0.5);
+                        rate = Math.round(rate * 0.5);
                     } else if (timeState.sceneTurnCount >= 10) {
-                        rate = Math.floor(rate * 0.7);
+                        rate = Math.round(rate * 0.7);
                     }
                     
                     // Check max duration cap
@@ -669,7 +857,7 @@ const LC = (function() {
                         var potentialMinutes = timeState.sceneMinutes + rate;
                         if (potentialMinutes > config.maxDuration) {
                             // Near max duration: reduce rate by 70%
-                            rate = Math.floor(rate * 0.3);
+                            rate = Math.round(rate * 0.3);
                             
                             // Hard cap: don't exceed max duration
                             if (timeState.sceneMinutes >= config.maxDuration) {
@@ -684,7 +872,7 @@ const LC = (function() {
                     return rate;
                 } catch (e) {
                     console.log("TimeEngine._applySceneTime error:", e);
-                    return 10;
+                    return 1; // Updated fallback rate
                 }
             },
             
