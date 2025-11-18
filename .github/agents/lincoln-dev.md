@@ -5,7 +5,7 @@ author: elenandar
 version: 1.0.0
 agent-version: 1.0
 model: gpt5-codex
-temperature: 0.15
+temperature: 0.3
 top_p: 0.9
 max_tokens: 12000
 allowed_repositories:
