@@ -100,7 +100,7 @@ purpose: |
   ✅ **ALLOWED:**
   - ES5 JavaScript + arrow functions
   - Plain objects `{}` and arrays `[]`
-  - Standard methods: `map`, `filter`, `forEach`, `find`, `findIndex`
+  - Standard methods: `map`, `filter`, `forEach`
   - `Math`, `JSON`, `Date`
 
   ### Mandatory Script Structure
