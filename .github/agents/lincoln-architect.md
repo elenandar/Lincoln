@@ -4,8 +4,8 @@ description: Strategic architect for Lincoln project. Designs system architectur
 author: elenandar
 version: 1.0.1
 agent-version: 1.0
-model: claude-opus-4
-temperature: 0.2
+model: gpt5-codex
+temperature: 0.5
 top_p: 0.9
 max_tokens: 8000
 allowed_repositories:
