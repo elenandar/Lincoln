@@ -1,0 +1,46 @@
+/********************************************************************
+ * Lincoln v17 - Phase 0 Input Modifier
+ * Responsibilities in Phase 0:
+ *  - Обнаружение простых команд (/ping)
+ *  - Возврат текста без изменений если не команда
+ *  - Строгий modifier pattern
+ *  - Никакой игровой логики, счётчиков ходов и пр.
+ *
+ * NOT IMPLEMENTED YET (Phase 1+):
+ *  - /debug, /turn
+ *  - Инкремент ходов
+ *  - Flags, Drafts
+ ********************************************************************/
+
+const modifier = (text) => {
+    try {
+        // Гарантируем работу с строками
+        var input = (typeof text === "string") ? text : "";
+
+        // Тримим только для анализа, но возвращаем исходный text, чтобы не менять намерение игрока.
+        var trimmed = input.trim();
+
+        // Команда?
+        if (trimmed.charAt(0) === "/") {
+            var result = LC.CommandsRegistry.process(trimmed);
+            if (result.handled) {
+                // Останавливаем дальнейшую обработку (команда сама по себе завершает ход ввода).
+                // НИКОГДА не возвращаем пустую строку "".
+                return { text: (result.output && result.output !== "") ? result.output : " ", stop: true };
+            }
+            // Если команда неизвестна — просто пропускаем как обычный ввод.
+        }
+
+        // Обычный ввод — возвращаем как есть.
+        return { text: text };
+    } catch (e) {
+        console.log("Input modifier error:", e);
+        // Fallback: вернуть текст хотя бы с пробелом, чтобы не упасть.
+        return { text: (text && text !== "") ? text : " " };
+    }
+};
+
+modifier(text);
+// END Phase 0 Input
+// ===========================================
+// TODO Phase 1: добавить /debug, /version, /turn и архитектурные команды

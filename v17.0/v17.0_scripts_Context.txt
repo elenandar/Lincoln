@@ -1,0 +1,40 @@
+/********************************************************************
+ * Lincoln v17 - Phase 0 Context Modifier
+ * Responsibilities:
+ *  - Сохранить метаданные info.* (если доступны) в state.lincoln
+ *  - НЕ изменять контекст (прозрачный проход)
+ *  - Строгий modifier pattern
+ *
+ * Важно: info.maxChars, info.memoryLength, info.actionCount доступны
+ * ТОЛЬКО в контекстном хуке.
+ *
+ * NOT IMPLEMENTED YET (Phase 2+ / Phase 8):
+ *  - composeContextOverlay
+ *  - Context Caching
+ *  - UnifiedAnalyzer
+ ********************************************************************/
+
+const modifier = (text) => {
+    try {
+        // Сохраняем полезные метаданные (инертно, без логики сейчас)
+        if (state.lincoln && typeof info !== "undefined") {
+            // Без пересоздания структуры — просто обновляем.
+            state.lincoln.maxChars = info.maxChars;
+            state.lincoln.memoryLength = info.memoryLength;
+            state.lincoln.actionCount = info.actionCount;
+            // В Phase 0 не инкрементируем stateVersion на такие записи — решим в Phase 1 (политика версионирования).
+        }
+
+        // Никаких модификаций текста в Phase 0.
+        return { text: text };
+    } catch (e) {
+        console.log("Context modifier error:", e);
+        // Fallback: возвращаем исходный текст или один пробел.
+        return { text: (text && text !== "") ? text : " " };
+    }
+};
+
+modifier(text);
+// END Phase 0 Context
+// ===========================================
+// TODO Phase 8: внедрить UnifiedAnalyzer и сбор сложного контекста
