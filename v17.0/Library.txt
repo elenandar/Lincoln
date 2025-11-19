@@ -1,0 +1,115 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// LINCOLN v17.0.0 - LIBRARY SCRIPT
+// ═══════════════════════════════════════════════════════════════════════════
+// This script executes BEFORE each hook (Input, Context, Output).
+// Library runs 3 times per turn - LC object is recreated each time.
+// All persistent data MUST be stored in state.lincoln.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────────────────────────────────────────
+// 1. STATE INITIALIZATION
+// ──────────────────────────────────────────────────────────────────────────
+if (!state.lincoln || state.lincoln.version !== "17.0.0") {
+  state.lincoln = {
+    version: "17.0.0",
+    stateVersion: 0,
+    turn: 0,
+    
+    // Core domains
+    characters: {},
+    relations: {},
+    hierarchy: {},
+    rumors: [],
+    lore: [],
+    myths: [],
+    time: {},
+    environment: {},
+    evergreen: [],
+    goals: {},
+    settings: {},
+    secrets: [],
+    
+    // Story Cards fallback (when Memory Bank disabled)
+    fallbackCards: [],
+    
+    // Internal cache (ephemeral)
+    _cache: {}
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// 2. LC OBJECT INITIALIZATION (recreated each hook execution)
+// ──────────────────────────────────────────────────────────────────────────
+var LC = {};
+
+// ──────────────────────────────────────────────────────────────────────────
+// 3. COMMANDS REGISTRY (ES5-compliant plain object)
+// ──────────────────────────────────────────────────────────────────────────
+LC.CommandsRegistry = {
+  commands: {},
+  
+  register: function(name, handler) {
+    this.commands[name] = handler;
+  },
+  
+  process: function(text) {
+    if (!text || typeof text !== 'string' || !text.startsWith('/')) {
+      return { handled: false };
+    }
+    
+    try {
+      var parts = text.slice(1).split(' ');
+      var command = parts[0];
+      var args = parts.slice(1);
+      
+      if (this.commands[command]) {
+        var output = this.commands[command](args);
+        return { handled: true, output: output || " " };
+      }
+      
+      return { handled: false };
+    } catch (e) {
+      console.log("CommandsRegistry error:", e);
+      return { handled: false, error: e };
+    }
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────────
+// 4. BUILT-IN COMMANDS
+// ──────────────────────────────────────────────────────────────────────────
+
+// Basic ping command for testing
+LC.CommandsRegistry.register('ping', function(args) {
+  return 'pong';
+});
+
+// Debug command showing Lincoln state
+LC.CommandsRegistry.register('debug', function(args) {
+  var action = args[0] || 'info';
+  
+  if (action === 'info') {
+    return 'Lincoln v' + state.lincoln.version + 
+           ' | Turn: ' + state.lincoln.turn + 
+           ' | StateVersion: ' + state.lincoln.stateVersion;
+  }
+  
+  if (action === 'state') {
+    var charCount = 0;
+    var charNames = [];
+    for (var name in state.lincoln.characters) {
+      if (state.lincoln.characters.hasOwnProperty(name)) {
+        charCount++;
+        charNames.push(name);
+      }
+    }
+    
+    return 'State: v' + state.lincoln.stateVersion + 
+           ' | Characters: ' + charCount + 
+           (charCount > 0 ? ' [' + charNames.join(', ') + ']' : '') +
+           ' | Rumors: ' + state.lincoln.rumors.length +
+           ' | Fallback Cards: ' + state.lincoln.fallbackCards.length;
+  }
+  
+  return 'Usage: /debug [info|state]';
+});

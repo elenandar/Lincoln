@@ -1,0 +1,33 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// LINCOLN v17.0.0 - OUTPUT SCRIPT
+// ═══════════════════════════════════════════════════════════════════════════
+// This script processes AI output before it's shown to the player.
+// Executed after Library.txt loads and AI generates response.
+// CRITICAL: Never use stop:true in Output script!
+// ═══════════════════════════════════════════════════════════════════════════
+
+var modifier = function(text) {
+  // ────────────────────────────────────────────────────────────────────────
+  // 1. OUTPUT PROCESSING
+  // ────────────────────────────────────────────────────────────────────────
+  // Phase-0: No output modifications yet
+  // Future phases will add:
+  // - Event extraction and qualia updates
+  // - Relationship changes detection
+  // - Story Cards updates
+  // - Turn counter increment
+  
+  // ────────────────────────────────────────────────────────────────────────
+  // 2. ENSURE VALID RETURN
+  // ────────────────────────────────────────────────────────────────────────
+  // CRITICAL: Never return empty string from Output
+  // CRITICAL: Never use stop:true in Output
+  
+  if (!text || text === "") {
+    return { text: " " };
+  }
+  
+  return { text: text };
+};
+
+modifier(text);
