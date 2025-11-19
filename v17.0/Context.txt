@@ -1,0 +1,27 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// LINCOLN v17.0.0 - CONTEXT SCRIPT
+// ═══════════════════════════════════════════════════════════════════════════
+// This script modifies the context/memory shown to the AI.
+// Executed after Library.txt loads and Input processes.
+// ═══════════════════════════════════════════════════════════════════════════
+
+var modifier = function(text) {
+  // ────────────────────────────────────────────────────────────────────────
+  // 1. CONTEXT PROCESSING
+  // ────────────────────────────────────────────────────────────────────────
+  // Phase-0: No context modifications yet
+  // Future phases will add:
+  // - Character qualia states injection
+  // - Relationship summaries
+  // - Environmental context
+  // - Mood and atmosphere
+  
+  // Ensure we never return empty string
+  if (!text || text === "") {
+    return { text: " " };
+  }
+  
+  return { text: text };
+};
+
+modifier(text);
