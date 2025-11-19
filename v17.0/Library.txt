@@ -52,22 +52,37 @@ LC.CommandsRegistry = {
     this.commands[name] = handler;
   },
   
-  process: function(text) {
-    if (!text || typeof text !== 'string' || !text.startsWith('/')) {
+  process: function(raw) {
+    if (!raw || typeof raw !== 'string') {
+      return { handled: false };
+    }
+    
+    var t = raw.trim();
+    if (t.charAt(0) !== '/') {
       return { handled: false };
     }
     
     try {
-      var parts = text.slice(1).split(' ');
-      var command = parts[0];
+      var parts = t.slice(1).split(/\s+/);
+      var cmd = parts[0];
       var args = parts.slice(1);
       
-      if (this.commands[command]) {
-        var output = this.commands[command](args);
-        return { handled: true, output: output || " " };
+      var h = this.commands[cmd];
+      if (!h) {
+        return { handled: false };
       }
       
-      return { handled: false };
+      var out;
+      try {
+        out = h(args);
+        if (out === "" || out == null) {
+          out = " ";
+        }
+      } catch (e) {
+        out = "[SYS] Command error: " + e.message;
+      }
+      
+      return { handled: true, output: out };
     } catch (e) {
       console.log("CommandsRegistry error:", e);
       return { handled: false, error: e };
@@ -82,6 +97,16 @@ LC.CommandsRegistry = {
 // Basic ping command for testing
 LC.CommandsRegistry.register('ping', function(args) {
   return 'pong';
+});
+
+// Help command listing available commands
+LC.CommandsRegistry.register('help', function(args) {
+  var keys = Object.keys(LC.CommandsRegistry.commands);
+  var s = "Commands:";
+  for (var i = 0; i < keys.length; i++) {
+    s += "\n/" + keys[i];
+  }
+  return s;
 });
 
 // Debug command showing Lincoln state

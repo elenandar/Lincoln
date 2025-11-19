@@ -7,27 +7,44 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 var modifier = function(text) {
-  // ────────────────────────────────────────────────────────────────────────
-  // 1. OUTPUT PROCESSING
-  // ────────────────────────────────────────────────────────────────────────
-  // Phase-0: No output modifications yet
-  // Future phases will add:
-  // - Event extraction and qualia updates
-  // - Relationship changes detection
-  // - Story Cards updates
-  // - Turn counter increment
-  
-  // ────────────────────────────────────────────────────────────────────────
-  // 2. ENSURE VALID RETURN
-  // ────────────────────────────────────────────────────────────────────────
-  // CRITICAL: Never return empty string from Output
-  // CRITICAL: Never use stop:true in Output
-  
-  if (!text || text === "") {
-    return { text: " " };
+  try {
+    // ────────────────────────────────────────────────────────────────────────
+    // 1. COMMAND OUTPUT INTERCEPTION
+    // ────────────────────────────────────────────────────────────────────────
+    if (state.lincoln && state.lincoln.commandOutput) {
+      var out = state.lincoln.commandOutput;
+      delete state.lincoln.commandOutput;
+      if (out === "" || out == null) {
+        out = " ";
+      }
+      return { text: "\n[SYS] " + out };
+    }
+    
+    // ────────────────────────────────────────────────────────────────────────
+    // 2. OUTPUT PROCESSING
+    // ────────────────────────────────────────────────────────────────────────
+    // Phase-0: No output modifications yet
+    // Future phases will add:
+    // - Event extraction and qualia updates
+    // - Relationship changes detection
+    // - Story Cards updates
+    // - Turn counter increment
+    
+    // ────────────────────────────────────────────────────────────────────────
+    // 3. ENSURE VALID RETURN
+    // ────────────────────────────────────────────────────────────────────────
+    // CRITICAL: Never return empty string from Output
+    // CRITICAL: Never use stop:true in Output
+    
+    if (!text || text === "") {
+      return { text: " " };
+    }
+    
+    return { text: text };
+  } catch (e) {
+    console.log("Output error:", e);
+    return { text: text || " " };
   }
-  
-  return { text: text };
 };
 
 modifier(text);

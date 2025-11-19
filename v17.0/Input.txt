@@ -6,30 +6,32 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 var modifier = function(text) {
-  // ────────────────────────────────────────────────────────────────────────
-  // 1. COMMAND PROCESSING
-  // ────────────────────────────────────────────────────────────────────────
-  if (text && text.startsWith('/')) {
-    var result = LC.CommandsRegistry.process(text);
-    if (result.handled) {
-      // Command was processed - return output and stop processing
-      // Note: We use stop:true here because commands should not enter story
-      return { text: result.output || " ", stop: true };
+  try {
+    // ────────────────────────────────────────────────────────────────────────
+    // 1. COMMAND PROCESSING
+    // ────────────────────────────────────────────────────────────────────────
+    var r = LC.CommandsRegistry.process(text);
+    if (r.handled) {
+      state.lincoln.commandOutput = r.output;
+      return { text: text || " " };
     }
+    
+    // ────────────────────────────────────────────────────────────────────────
+    // 2. NORMAL INPUT PROCESSING
+    // ────────────────────────────────────────────────────────────────────────
+    // Phase-0: No transformations yet, just pass through
+    // Future phases will add event parsing, qualia processing, etc.
+    
+    // Ensure we never return empty string
+    if (!text || text === "") {
+      return { text: " " };
+    }
+    
+    return { text: text };
+  } catch (e) {
+    console.log("Input error:", e);
+    return { text: text || " " };
   }
-  
-  // ────────────────────────────────────────────────────────────────────────
-  // 2. NORMAL INPUT PROCESSING
-  // ────────────────────────────────────────────────────────────────────────
-  // Phase-0: No transformations yet, just pass through
-  // Future phases will add event parsing, qualia processing, etc.
-  
-  // Ensure we never return empty string
-  if (!text || text === "") {
-    return { text: " " };
-  }
-  
-  return { text: text };
 };
 
 modifier(text);
