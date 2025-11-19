@@ -99,6 +99,10 @@
 
 ## 2. АРХИТЕКТУРНЫЕ ПРИНЦИПЫ (UPDATED)
 
+**📚 External Alignment:** For comprehensive alignment with official AI Dungeon Guidebook and featured community scripts, including expanded ES5 policy, Story Cards safety patterns, canonical types specification, and integration tasks, see **[MASTER_PLAN_ADDENDUM_GUIDEBOOK.md](./MASTER_PLAN_ADDENDUM_GUIDEBOOK.md)** and **[TYPES_SPEC.md](./TYPES_SPEC.md)**.
+
+---
+
 ### 2.1 Принцип 1: Library.txt и Модель Выполнения AI Dungeon
 
 **КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ:** Library.txt выполняется **НЕ при загрузке игры**, а **ПЕРЕД КАЖДЫМ хуком** (Input/Context/Output).
