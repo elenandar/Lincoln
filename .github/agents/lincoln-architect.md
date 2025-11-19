@@ -34,16 +34,17 @@ Shared Library runs BEFORE EACH hook (3× per turn).
 ## Strict ES5 Policy
 Forbidden:
 - Map, Set, WeakMap, WeakSet
-- includes, find, findIndex
+- Array.includes, Array.find, Array.findIndex (use indexOf !== -1 and for-loops instead)
 - Object.assign, destructuring, spread (...)
-- for...of
+- for...of (use classic for loops)
 - async/await, Promise
 - class syntax
 - Template literals (unless smoke-tested)
 Allowed:
-- const/let, arrow functions
-- indexOf, classic for loops
-- Object.keys, JSON, Math
+- const/let, arrow functions (monitor compatibility)
+- indexOf with !== -1 pattern
+- Classic for loops: for (var i = 0; i < arr.length; i++)
+- Object.keys, JSON.parse/stringify, Math
 
 ## State Rules
 - Persistent data ONLY in state.lincoln
