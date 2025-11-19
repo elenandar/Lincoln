@@ -6,22 +6,27 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 var modifier = function(text) {
-  // ────────────────────────────────────────────────────────────────────────
-  // 1. CONTEXT PROCESSING
-  // ────────────────────────────────────────────────────────────────────────
-  // Phase-0: No context modifications yet
-  // Future phases will add:
-  // - Character qualia states injection
-  // - Relationship summaries
-  // - Environmental context
-  // - Mood and atmosphere
-  
-  // Ensure we never return empty string
-  if (!text || text === "") {
-    return { text: " " };
+  try {
+    // ────────────────────────────────────────────────────────────────────────
+    // 1. CONTEXT PROCESSING
+    // ────────────────────────────────────────────────────────────────────────
+    // Phase-0: No context modifications yet
+    // Future phases will add:
+    // - Character qualia states injection
+    // - Relationship summaries
+    // - Environmental context
+    // - Mood and atmosphere
+    
+    // Ensure we never return empty string
+    if (!text || text === "") {
+      return { text: " " };
+    }
+    
+    return { text: text };
+  } catch (e) {
+    console.log("Context error:", e);
+    return { text: text || " " };
   }
-  
-  return { text: text };
 };
 
 modifier(text);
