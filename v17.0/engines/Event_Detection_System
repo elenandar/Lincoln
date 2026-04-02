@@ -1,0 +1,139 @@
+### 4.8 Intelligent Recap Triggers (Event Detection System)
+
+#### Overview
+
+The recap system uses an **event detection engine** to identify significant narrative moments that warrant offering a recap to the player. Instead of simple turn counting, the system analyzes story content to recognize dramatic turning points.
+
+#### Event Pattern Categories (Russian-only)
+
+The system recognizes **13 categories** of significant events with different importance weights:
+
+**1. Conflict (weight: 1.0)**
+- Patterns: "ударил", "ударила", "ссора", "крик", "драка"
+- Example: "Максим ударил Эшли после ссоры"
+
+**2. Romance (weight: 1.2)**
+- Patterns: "поцеловал", "поцеловала", "признался", "свидание"
+- Example: "Хлоя призналась в любви Максиму"
+
+**3. Authority (weight: 0.8)**
+- Patterns: "директор", "учитель", "выговор", "вызвали к директору"
+- Example: "Максима вызвали к директору"
+
+**4. Achievement (weight: 0.9)**
+- Patterns: "победил", "успех", "трофей", "награда", "выиграл"
+- Example: "Хлоя победила в соревновании"
+
+**5. Reveal (weight: 1.1)**
+- Patterns: "секрет", "разоблачение", "тайна раскрыта", "все узнали"
+- Example: "Тайна о директоре раскрыта"
+
+**6. Location (weight: 0.4)**
+- Patterns: "кабинет", "столовая", "коридор", "спортзал", "библиотека"
+- Example: "В кабинете директора"
+
+**7. Timeskip (weight: 0.5)**
+- Patterns: "прошло \d+", "через \d+", "спустя \d+"
+- Example: "Прошло три дня"
+
+**8. Betrayal (weight: 1.3)**
+- Patterns: "предал", "предала", "измен", "обман"
+- Example: "Эшли предала Хлою"
+
+**9. Loyalty (weight: 0.9)**
+- Patterns: "верность", "преданность", "лояльность", "поддержка"
+- Example: "Максим поддержал Хлою"
+
+**10. Social Upheaval (weight: 1.4)** ⭐ NEW
+- Patterns: "поссорились", "расстались", "признался в любви", "стали врагами", "предала"
+- Example: "Максим и Хлоя расстались"
+
+**11. Secret Reveal (weight: 1.5)** ⭐ NEW
+- Patterns: "он всё узнал", "она всё узнала", "тайна раскрыта", "теперь все знают"
+- Example: "Максим всё узнал о директоре"
+
+**12. Goal Outcome (weight: 1.2)** ⭐ NEW
+- Patterns: "наконец добился своего", "у него получилось", "всё пошло прахом", "потерпела неудачу"
+- Example: "Хлоя наконец добилась своего"
+
+**13. Dramatic Events (weight: 1.6)** ⭐ NEW
+- Patterns: "драка", "авария", "исключили из школы", "побег", "сбежала"
+- Example: "Произошла драка в коридоре"
+
+#### Recap Score Calculation
+
+The system calculates a **recap score** based on:
+
+1. **Turn Cadence** - Time since last recap
+2. **Event Weights** - Sum of detected event weights with time decay
+3. **Character Activity** - Bonus if 3+ characters are "hot" (active in recent turns)
+
+**Formula:**
+```javascript
+score = (turnsSinceRecap / cadence) + 
+        Σ(event.weight × decay) + 
+        (hotCharacters > 0 ? 0.25 : 0)
+
+decay = 0.5^(turnsSinceEvent / 12)  // Half-life of 12 turns
+```
+
+**Threshold:** score >= 1.0 triggers recap offer
+
+#### Practical Examples
+
+**Example 1: High-Impact Event**
+```
+Turn 15: "Максим всё узнал о секрете директора и поссорился с Хлоей"
+
+Events detected:
+- secret_reveal (weight 1.5)
+- social_upheaval (weight 1.4)
+
+Total score: ~2.9 + cadence bonus
+Result: RECAP OFFERED (well above threshold)
+```
+
+**Example 2: Cumulative Small Events**
+```
+Turn 10: "после уроков" (location, weight 0.4)
+Turn 11: "через час спустя" (timeskip, weight 0.5)
+Turn 12: "поцеловал Хлою" (romance, weight 1.2)
+
+Total score with decay: ~1.8
+Result: RECAP OFFERED
+```
+
+**Example 3: Below Threshold**
+```
+Turn 8: "в столовой" (location, weight 0.4)
+
+Total score: 0.4 + cadence (~0.3) = 0.7
+Result: No recap (below 1.0 threshold)
+```
+
+#### Configuration
+
+Located in `CONFIG.RECAP_V2`:
+```javascript
+{
+  SCORE_THRESHOLD: 1.0,      // Minimum score for recap
+  COOLDOWN_TURNS: 3,         // Min turns between recaps
+  DECAY_HALF_LIFE: 12,       // Event importance decay
+  HOT_NPC_BONUS: 0.25,       // Bonus for active characters
+  WEIGHTS: {
+    conflict: 1.0,
+    romance: 1.2,
+    authority: 0.8,
+    achievement: 0.9,
+    reveal: 1.1,
+    location: 0.4,
+    timeskip: 0.5,
+    betrayal: 1.3,
+    loyalty: 0.9,
+    social_upheaval: 1.4,     // NEW
+    secret_reveal: 1.5,        // NEW
+    goal_outcome: 1.2,         // NEW
+    dramatic: 1.6              // NEW
+  }
+}
+```
