@@ -18,6 +18,7 @@
 
 ## СОДЕРЖАНИЕ
 
+0. [Внешнее выравнивание](#внешнее-выравнивание)
 1. [Введение: Уроки v16 и Цели v17](#1-введение-уроки-v16-и-цели-v17)
 2. [Архитектурные Принципы (UPDATED)](#2-архитектурные-принципы-updated)
 3. [Детальные Спецификации Движков (NEW)](#3-детальные-спецификации-движков-new)
@@ -26,6 +27,76 @@
 6. [Стратегия Тестирования (NEW)](#6-стратегия-тестирования-new)
 7. [Граф Зависимостей (UPDATED)](#7-граф-зависимостей-updated)
 8. [Критические Правила (UPDATED)](#8-критические-правила-updated)
+
+---
+
+
+## ВНЕШНЕЕ ВЫРАВНИВАНИЕ
+
+> Данный раздел фиксирует ключевые политики, верифицированные по официальному AI Dungeon Scripting Guidebook. Всё нижеперечисленное является **обязательным** для любой реализации в рамках проекта Lincoln.
+
+### A. Порядок выполнения хуков
+
+Хуки вызываются строго в следующем порядке за каждый ход:
+
+```
+onInput       → sharedLibrary → Input
+onModelContext → sharedLibrary → Context
+onOutput      → sharedLibrary → Output
+```
+
+- **sharedLibrary исполняется перед каждым хуком** (3 раза за ход).
+- Объект `LC` пересоздаётся заново перед каждым хуком — **никогда не хранится в `state`**.
+- Все движки **не имеют состояния** между вызовами; персистентные данные хранятся **исключительно в `state.lincoln`**.
+
+### B. Структура контекста (9 слоёв, канонические)
+
+Слои передаются модели в следующем порядке (сверху вниз):
+
+| № | Слой |
+|---|------|
+| 1 | `"AI Instructions"` |
+| 2 | `"Plot Essentials"` |
+| 3 | World Lore: триггерные Story Cards |
+| 4 | Story Summary |
+| 5 | Memories |
+| 6 | Recent Story |
+| 7 | `[Author's note: …]` |
+| 8 | `"AI's last response or your last action"` |
+| 9 | `frontMemory` |
+
+Политика Lincoln: `LC.ContextComposer.build(parts)` реализуется в Phase 8 со стратегией усечения — сначала обрезается хвост "Recent Story" для соблюдения `info.maxChars`, приоритет отдаётся верхним сегментам (Instructions / Lore / Summary / Memories / Author's Note).
+
+### C. Политика Story Cards
+
+**Встроенный API:** `addStoryCard(keys, entry, type)`, `updateStoryCard(index, keys, entry, type)`, `removeStoryCard(index)`
+
+- Если Memory Bank **выключен** — Story Cards недоступны и вызовы API падают.
+- Доступность проверяется через `LC.StoryCards.available()`.
+- При недоступности — записывать в `state.lincoln.fallbackCards`: `{ keys, entry, type }`.
+- После **любой** мутации `state.lincoln`: обязателен инкремент `state.lincoln.stateVersion++`.
+- **Запрет:** `.find()` / `.findIndex()` в коде Lincoln — использовать явные `for`-циклы.
+
+### D. Console Logging
+
+- В логах AI Dungeon `undefined` сериализуется как `null` (GraphQL JSON) — это платформенное поведение.
+- Для диагностического вывода использовать `LC.Tools.safeLog(label, value)`, который печатает тег: `UNDEFINED` / `NULL` / `typeof(value)`.
+
+### E. ES5 Compliance Delta
+
+| Статус | Конструкции |
+|--------|-------------|
+| ❌ ЗАПРЕЩЕНО | `Map`, `Set`, `WeakMap`, `Array.includes`, `Array.find`, `Array.findIndex`, `Object.assign`, деструктуризация, spread `...`, `for...of`, `class`, `async/await/Promise` |
+| ✅ РАЗРЕШЕНО | `const`/`let`, стрелочные функции (при сбоях — fallback на `function`), `Object.keys`, `JSON.*` |
+| ⚠️ С ОСТОРОЖНОСТЬЮ | Template literals — только после smoke-теста; по умолчанию конкатенация через `+` |
+
+### G. Типы действий в истории (history action types)
+
+**Канонические:** `"do"`, `"say"`, `"story"`, `"continue"`
+
+**Дополнительно встречаются:** `"see"`, `"repeat"`, `"start"`, `"unknown"`
+
+Все анализаторы Lincoln, читающие `history`, **обязаны** корректно обрабатывать расширенный набор типов, не выбрасывая ошибок при встрече незнакомого значения.
 
 ---
 
@@ -99,13 +170,20 @@
 
 ## 2. АРХИТЕКТУРНЫЕ ПРИНЦИПЫ (UPDATED)
 
-**📚 External Alignment:** For comprehensive alignment with official AI Dungeon Guidebook and featured community scripts, including expanded ES5 policy, Story Cards safety patterns, canonical types specification, and integration tasks, see **[MASTER_PLAN_ADDENDUM_GUIDEBOOK.md](./MASTER_PLAN_ADDENDUM_GUIDEBOOK.md)** and **[TYPES_SPEC.md](./TYPES_SPEC.md)**.
+**📚 Внешнее выравнивание:** Ключевые политики (ES5 compliance delta, Story Cards, порядок контекста, типы action в history) зафиксированы в разделе **[Внешнее выравнивание](#внешнее-выравнивание)** в начале документа. Спецификации типов данных — в **[TYPES_SPEC.md](./TYPES_SPEC.md)**.
 
 ---
 
 ### 2.1 Принцип 1: Library.txt и Модель Выполнения AI Dungeon
 
 **КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ:** Library.txt выполняется **НЕ при загрузке игры**, а **ПЕРЕД КАЖДЫМ хуком** (Input/Context/Output).
+
+**Канонический порядок вызова хуков за один ход:**
+```
+onInput       → sharedLibrary → Input
+onModelContext → sharedLibrary → Context
+onOutput      → sharedLibrary → Output
+```
 
 **Модель выполнения для КАЖДОГО хода игрока:**
 ```javascript
@@ -181,7 +259,13 @@ const LC = (() => {
 
 AI Dungeon использует ES5 JavaScript runtime с ограниченными возможностями. **НАРУШЕНИЕ ЭТИХ ПРАВИЛ ПРИВЕДЕТ К RUNTIME ERRORS.**
 
+**Краткая шпаргалка (полная таблица — в разделе [Внешнее выравнивание → E](#e-es5-compliance-delta)):**
 
+| Статус | Конструкции |
+|--------|-------------|
+| ❌ ЗАПРЕЩЕНО | `Map`, `Set`, `WeakMap`, `Array.includes`, `Array.find`, `Array.findIndex`, `Object.assign`, деструктуризация, spread `...`, `for...of`, `class`, `async/await/Promise` |
+| ✅ РАЗРЕШЕНО | `const`/`let`, стрелочные функции, `Object.keys`, `JSON.*` |
+| ⚠️ С ОСТОРОЖНОСТЬЮ | Template literals — только после smoke-теста |
 
 **Issue 1: CommandsRegistry Uses Map**
 
@@ -713,8 +797,45 @@ if (state.lincoln.characters[char] &&
 **Логирование (console.log особенности):**
 ```javascript
 console.log("Debug:", value);  // ✅ работает
-console.log("Obj:", obj);      // ⚠️  undefined выводится как null
+console.log("Obj:", obj);      // ⚠️  undefined выводится как null (GraphQL JSON)
 log("Message");                // ✅ алиас для console.log
+```
+
+**⚠️ Важно:** В логах AI Dungeon значение `undefined` сериализуется как `null` — это платформенное поведение GraphQL, не баг. Для диагностики использовать `LC.Tools.safeLog(label, value)`, который явно печатает тег типа: `UNDEFINED` / `NULL` / `typeof(value)`.
+
+#### 2.7.6 Типы Действий в Истории (history action types)
+
+**Канонические типы** (по документации AI Dungeon):
+
+```javascript
+"do"       // действие игрока
+"say"      // речь игрока
+"story"    // повествование от AI
+"continue" // продолжение
+```
+
+**Дополнительно встречаются на практике:**
+
+```javascript
+"see"      // визуальное описание
+"repeat"   // повтор
+"start"    // начало сцены
+"unknown"  // нераспознанный тип
+```
+
+**Требование:** Все анализаторы Lincoln, читающие `history`, **обязаны** обрабатывать расширенный набор типов без ошибок. Пример:
+
+```javascript
+// ПРАВИЛЬНО: tolerate unknown types
+var actionType = history[i].type || "unknown";
+var isNarrativeAction = (actionType === "story" || actionType === "continue" || 
+                         actionType === "see" || actionType === "start");
+
+// НЕПРАВИЛЬНО: жёсткая проверка только на канонические типы
+if (actionType !== "do" && actionType !== "say" && 
+    actionType !== "story" && actionType !== "continue") {
+    throw new Error("Unknown action type");  // ❌ Сломается на "see", "repeat" и т.д.
+}
 ```
 
 ### 2.8 Интеграция с Игровым Процессом
