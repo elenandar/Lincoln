@@ -215,3 +215,12 @@ All qualia values are clamped to [0, 1] after every change to ensure numerical s
 - No text generation overhead
 - Pure state manipulation
 - Minimal computational cost
+
+### Future Directions
+
+**Planned Extensions:**
+- Qualia → Mood influence (somatic tension affects mood)
+- Qualia → Decision weighting (low energy reduces initiative)
+- Physiological cycles (circadian rhythm affects energy_level)
+- Trauma markers (persistent high tension)
+- Context overlay integration (show extreme qualia states)
